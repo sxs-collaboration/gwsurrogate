@@ -1,0 +1,14 @@
+Overview
+========
+Surrogates produced from EOBNRv2 model as implimented in the 
+LIGO Analysis Library (LAL) Suite version 
+'git hash 59c12886b026c863397f191e6c2ca69ef3498616' with 
+'sSub = 0'. 
+
+Surrogate model waveforms are all peak aligned on a finely
+sampled temporal grid, with the beginning portions of 
+longer waveforms cut off so as to make all waveforms of equal
+length. 
+
+Additional information can be found in specific surrogate
+directories. 
