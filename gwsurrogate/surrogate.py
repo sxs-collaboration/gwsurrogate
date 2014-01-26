@@ -31,7 +31,10 @@ class SurrogateGW:
 
         ### Surrogate's sampling rate and mass ratio ###
         self.sample_rate      = np.loadtxt(sdir+'SampleRate.txt')
-        self.q_interval       = np.loadtxt(sdir+'qSpace.txt')
+        self.q_interval       = np.loadtxt(sdir+'qRange.txt')
+
+        ### greedy points (ordered) ###
+        self.greedypts = np.loadtxt(sdir+'greedy_q.txt')
 
         ### Complex B coefficients ###
         B_i    = np.loadtxt(sdir+'B_imag.txt')
@@ -86,6 +89,18 @@ class SurrogateGW:
         plot(times,hc)
         legend(['h plus', 'h cross'])
         show()
+
+    def h_rb(self,i):
+        """generate the ith reduced basis waveform"""
+
+        times, hp, hc = self(self.greedypts[i])
+
+        return times, hp, hc
+
+    def plot_rb(self,i):
+        "plot the ith reduced basis waveform"""
+
+        self.plot(self.greedypts[i])
 
     def writetxt(self,q_eval,filename='output'):
         """write waveform to text file"""

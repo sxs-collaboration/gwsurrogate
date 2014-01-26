@@ -7,7 +7,7 @@
 
 2) Load a prebuilt surrogate model 
 
-    >>> EOB = gw.SurrogateGW('EOBNRv2/SurrogateQ1to2/')
+    >>> EOB = gw.SurrogateGW('EOBNRv2/q1_2.rate2048.cycles67')
 
 3) plot this waveform for some value of q_eval
 
