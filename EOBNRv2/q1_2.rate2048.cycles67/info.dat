@@ -1,3 +1,5 @@
+Built on 25-Jan-2014
+
 Training set information: 
 low q = 1.0000000000 
 high q = 2.0000000000 
@@ -25,3 +27,7 @@ L2 error of random waveforms projected onto basis 6.9755e-07
 L2 EIM error (random) 3.8295e-06
 L2 surrogate error (random) 2.3528e-04
 Linf surrogate error (random) 3.4266e-03
+
+
+Extra info: 
+This is q=1-2 example from first surrogate paper.
