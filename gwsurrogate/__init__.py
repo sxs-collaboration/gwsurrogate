@@ -1,19 +1,4 @@
-"""gwsurrogate is the gravitational wave surrogate package
-
-
-1) First load gwsurrogate 
-
-    >>> import gwsurrogate as gw
-
-2) Load a surrogate model 
-
-    >>> EOB = gw.SurrogateGW('EOBNRv2/q1_2.rate2048.cycles67')
-
-3) plot model for some value of q_eval
-
-    >>> EOB.plot(q_eval=1.2)
-
-"""
+"""gwsurrogate is the gravitational wave surrogate package"""
 
 __copyright__ = "Copyright (C) 2014 Scott Field"
 __email__ = "sfield@umd.edu"
