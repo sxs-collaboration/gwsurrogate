@@ -16,7 +16,7 @@ qQMIN_QMAX.rateRATE.cyclesCYCLES
 
 specifies the mass ratio range [QMIN,QMAX] in which the surrogate
 is accurate, sampling rate RATE, and typical number of wave
-cycles CYCLES (see "Specifics").
+cycles CYCLES (see "Specifics" below).
 
 Additional information can be found in surrogate directories. 
 
@@ -65,7 +65,7 @@ Which allows a 2D surrogate for (MTot,q) to be specified through
 i) evaluation of q at some fixed Mtot, ii) using known scaling 
 relations to get MTot. 
 
-The variable sampleRate is either "hard-coded" into the surrogate 
+The variable sampleRate is either hard-codeds into the surrogate 
 or, in other cases, a spline interpolant is used to allow for arbitrary 
 sampling rates. 
 

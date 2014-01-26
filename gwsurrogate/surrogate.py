@@ -3,9 +3,9 @@
 from __future__ import division
 
 __copyright__ = "Copyright (C) 2014 Scott Field"
-__email__ = "sfield@umd.edu"
-__status__ = "testing"
-__author__ = "Scott Field"
+__email__     = "sfield@umd.edu"
+__status__    = "testing"
+__author__    = "Scott Field"
 
 __license__ = """
 This program is free software: you can redistribute it and/or modify
@@ -23,18 +23,26 @@ along with this program.  If not, see U{http://www.gnu.org/licenses/}.
 """
 
 import numpy as np
-from pylab import *
+import const_mks as mks
+from pylab import matplotlib as plt
 
 class SurrogateGW:
     def __init__(self, sdir):
         """initialize surrogate model by loading files from directory sdir"""
 
-        ### Surrogate's sampling rate and mass ratio ###
+        ### Surrogate directory ####
+        self.surrogate_dir = sdir
+
+        ### Surrogate's sampling rate, mass ratio and total mass ###
         self.sample_rate      = np.loadtxt(sdir+'SampleRate.txt')
         self.q_interval       = np.loadtxt(sdir+'qRange.txt')
+        self.Mtot             = np.loadtxt(sdir+'Mtot.txt')
 
         ### greedy points (ordered) ###
         self.greedypts = np.loadtxt(sdir+'greedy_q.txt')
+
+        ### empirical time index ###
+        self.eim_indx = np.loadtxt(sdir+'EIM_indx.txt')
 
         ### Complex B coefficients ###
         B_i    = np.loadtxt(sdir+'B_imag.txt')
@@ -84,11 +92,11 @@ class SurrogateGW:
         """plot surrogate evaluated at q_eval"""
 
         times, hp, hc = self(q_eval)
-        plot(times,hp)
-        hold
-        plot(times,hc)
-        legend(['h plus', 'h cross'])
-        show()
+        plt.pyplot.plot(times,hp)
+        plt.pyplot.hold
+        plt.pyplot.plot(times,hc)
+        plt.pyplot.legend(['h plus', 'h cross'])
+        plt.pyplot.show()
 
     def h_rb(self,i):
         """generate the ith reduced basis waveform"""

@@ -5,11 +5,11 @@
 
     >>> import gwsurrogate as gw
 
-2) Load a prebuilt surrogate model 
+2) Load a surrogate model 
 
     >>> EOB = gw.SurrogateGW('EOBNRv2/q1_2.rate2048.cycles67')
 
-3) plot this waveform for some value of q_eval
+3) plot model for some value of q_eval
 
     >>> EOB.plot(q_eval=1.2)
 
@@ -36,3 +36,6 @@ along with this program.  If not, see U{http://www.gnu.org/licenses/}.
 """
 
 from surrogate import *
+from LALsurrogate import *
+
+
