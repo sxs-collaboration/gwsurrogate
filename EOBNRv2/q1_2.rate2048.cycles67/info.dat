@@ -1,0 +1,27 @@
+Training set information: 
+low q = 1.0000000000 
+high q = 2.0000000000 
+Training size = 501
+Training file name is  EOB_TD_501_q1_2_Mt80_fmin9_1048576_512_modeBoth_MergerAligned
+min wave cycle = 66.2743852021 
+max wave cycle = 68.4284745680 
+
+Training set processing scheme: 
+time alignment is PeakOfShortest
+phase alignment is initial
+phase alignment is NearTerminal
+
+Greedy settings:
+Tolerance = 1.0000e-06
+Basis = 19
+
+
+Quality control diagnostics:
+(Note: Square of L2 errors are almost overlap error)
+L2 surrogate error (training space) 2.0898e-04
+Linf surrogate error (training space) 3.0774e-03
+Random waveform injection file name is EOB_TD_1011_q1_2_Mt80_fmin9_1048576_512_modeBoth_MergerAligned
+L2 error of random waveforms projected onto basis 6.9755e-07
+L2 EIM error (random) 3.8295e-06
+L2 surrogate error (random) 2.3528e-04
+Linf surrogate error (random) 3.4266e-03
