@@ -1,5 +1,7 @@
 """ Gravitational Wave Surrogate class """
 
+from __future__ import division
+
 __copyright__ = "Copyright (C) 2014 Scott Field"
 __email__ = "sfield@umd.edu"
 __status__ = "testing"
@@ -20,7 +22,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see U{http://www.gnu.org/licenses/}.
 """
 
-from __future__ import division
 import numpy as np
 from pylab import *
 

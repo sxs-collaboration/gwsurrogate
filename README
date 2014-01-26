@@ -6,20 +6,20 @@ gwsurrogate is an easy interface to gravitational wave surrogate models.
 Surrogates provide a fast and accurate evaluation mechanism for gravitational
 waveforms which would otherwise be found through solving differential 
 equations. These equations must be solved in the ``building" phase, which 
-was performed using other codes. For details on surrogate building see
+was performed using other codes. For details on surrogate building see:
 
-Scott Field, Chad Galley, Jan Hesthaven, Jason Kaye, and Manuel Tiglio. 
+[1] Scott Field, Chad Galley, Jan Hesthaven, Jason Kaye, and Manuel Tiglio. 
 ``Fast prediction and evaluation of gravitational waveforms using surrogate models” 
 arXiv: gr-qc:1308.3565
 
-ROM WEBSITE HERE
+[2] ROM WEBSITE HERE
 
-1) run ipython from the command line 
 
-2) import the routines with "from EvaluateSurrogate import *"
 
-3) Create instance of surrogate class. Must pass location of data files upon initialization, e.g. "EOB = SurrogateEOB('SurrogateQ1to2/')"
+Getting Started
+---------------
 
-4) Generate EOB waveforms by specifying a q value, e.g "times, hp, hc = EOB(1.2)"
+1) load ipython
+2) import the surrogate model 'import gwsurrogate as gw'
+3) view docstring instructions 'gw?'
 
-5) Directly plot the same EOB waveform with "EOB.Generate(q_eval=1.2)"
