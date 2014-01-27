@@ -22,7 +22,7 @@ Getting Started
 All instructions below assume you have loaded gwsurrogate:
 
 1) startup ipython
-2) import the surrogate model 'import gwsurrogate as gw'
+2) 'import gwsurrogate as gw'
 3) view docstring instructions 'gw?'
 
 
