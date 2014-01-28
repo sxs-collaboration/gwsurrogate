@@ -25,6 +25,7 @@ along with this program.  If not, see U{http://www.gnu.org/licenses/}.
 import numpy as np
 import const_mks as mks
 from pylab import matplotlib as plt
+import time
 
 class SurrogateGW:
     def __init__(self, sdir):
@@ -106,9 +107,25 @@ class SurrogateGW:
         return times, hp, hc
 
     def plot_rb(self,i):
-        "plot the ith reduced basis waveform"""
+        """plot the ith reduced basis waveform"""
 
         self.plot(self.greedypts[i])
+
+    def timer(self,N):
+        """average time to evaluate n waveforms"""
+
+        qmin = self.q_interval[0]
+        qmax = self.q_interval[1]
+        ran = np.random.uniform(qmin,qmax,N)
+        q_ran = 2*(ran - qmin)/(qmax - qmin) - 1;
+
+        tic = time.time()
+        for i in ran:
+            t,hp,hc = self(i)
+
+        toc = time.time()
+        print 'total time = ',toc-tic
+        print 'average tme = ', (toc-tic)/float(N)
 
     def writetxt(self,q_eval,filename='output'):
         """write waveform to text file"""
