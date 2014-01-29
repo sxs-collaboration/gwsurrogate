@@ -35,9 +35,12 @@ class SurrogateGW:
         self.surrogate_dir = sdir
 
         ### Surrogate's sampling rate, mass ratio and total mass ###
-        self.sample_rate      = np.loadtxt(sdir+'SampleRate.txt')
+        sample_rate      = np.loadtxt(sdir+'SampleRate.txt')
         self.q_interval       = np.loadtxt(sdir+'qRange.txt')
         self.Mtot             = np.loadtxt(sdir+'Mtot.txt')
+
+        ### compute delta t from sample rate ###
+        self.dt = 1.0 / sample_rate
 
         ### greedy points (ordered) ###
         self.greedypts = np.loadtxt(sdir+'greedy_q.txt')
@@ -57,6 +60,7 @@ class SurrogateGW:
         ### Coefficients for phase/amp parametric fit (polynomial) ###
         self.PhaseCoeff = np.loadtxt(sdir+'PhasePolyCoeff.txt')
         self.AmpCoeff   = np.loadtxt(sdir+'AmpPolyCoeff.txt')
+
 
     def __call__(self,q_eval):
         """evaluate surrogate at q_eval"""
@@ -85,18 +89,25 @@ class SurrogateGW:
         hc        = surrogate.imag
         hc        = hc.reshape([self.time_samples,])
 
-        times = np.arange(self.time_samples) / self.sample_rate
+        times = np.arange(self.time_samples) * self.dt
 
         return times, hp, hc
 
-    def plot(self,q_eval):
+    def plot(self,q_eval,timeM=False):
         """plot surrogate evaluated at q_eval"""
 
         times, hp, hc = self(q_eval)
+        if(timeM):
+            times = self.solarmass_over_mtot(times)
+            xlab = '$t/M$'
+        else:
+            xlab = '$t$ (sec)'
+
         plt.pyplot.plot(times,hp)
         plt.pyplot.hold
         plt.pyplot.plot(times,hc)
         plt.pyplot.legend(['h plus', 'h cross'])
+        plt.pyplot.xlabel(xlab)
         plt.pyplot.show()
 
     def h_rb(self,i):
@@ -138,3 +149,11 @@ class SurrogateGW:
 
         times, hp, hc = self(q_eval)
         np.save(filename,[times, hp, hc])
+
+    def sec_to_solarmass(self,t):
+        """convert seconds to solar masses"""
+        return t / mks.Msuninsec
+
+    def solarmass_over_mtot(self,t):
+        """convert seconds t to dimensionless t/Mtot"""
+        return self.sec_to_solarmass(t) / self.Mtot
