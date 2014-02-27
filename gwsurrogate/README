@@ -1,1 +1,28 @@
 restart of gwsurrogate
+
+Surrogate data formats and gwsurrogate functions
+================================================
+
+1) Folder name to instantiate Surrogate class:
+
+MODELNAME__qQMIN_QMAX__NoSpin__lenLEN__MultiMode/SingleMode
+
+(MODELNAME = "EOBNRv2", for example)
+
+2) metadata.txt (contains everything describing the surrogate and its generation, mention reference interval for fitting,...)
+
+3) HDF5/TXT contents: (h+ - i hx = Ae^{-i phi}
+	SurrogateID (string, repeat parent directory name)
+	B (complex matrix, basis-by-times)
+	eim_indices (array of integers, labeled from 0)
+	greedy_points (ordered by their selection)
+	dt
+	tmin
+	qmin_fit, qmax_fit (range used for fitting)
+	affine_map = True, False (Boolean; whether affine map to reference interval was used; use as flag for evaluating fits)
+	fit_params (phi, A; coefficients of fitting functions; eim_indices-by-coefficients)
+	V (not its inverse; to reconstruct the rb.basis, E = B V)
+	R (matrix of coefficients relating basis and waveforms, H = E R)
+	
+	
+
