@@ -9,15 +9,16 @@ class File:
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def __init__(self, path, mode='r'):
+		self.path = path
 		self.mode_options = ['r', 'w', 'w+', 'a']
-		self.open(path, mode=mode)
+		self.open(mode=mode)
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def open(self, path, mode):
+	def open(self, mode='r'):
 		if mode in self.mode_options:
 			try: 
-				self.file = h5py.File(path, mode)
+				self.file = h5py.File(self.path, mode)
 				self.flag = 1
 			except IOError:
 				print "Could not open file."
@@ -44,21 +45,88 @@ class HDF5Surrogate(File):
 	"""Evaluate single-mode surrogate in terms of the function's amplitude and phase"""
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def __init__(self, path):
-		File.__init__(self, path, 'r')
-		#self.surrogate_id = self.file['SurrogateID'][()]
-		#surr_name = path.split('/')[-2]
-		#if self.surrogate_id != surr_name:
-		#	print "\n>>> Warning: SurrogateID does not have expected name.\n"
+	def __init__(self, path, mode='r'):
+		self.path = path
+		self.mode = mode
+		File.__init__(self, path, mode=mode)
 		
+		if mode == 'r':
+			try:
+				self.surrogate_id = self.file['SurrogateID'][()]
+				surr_name = path.split('/')[-2]
+				if self.surrogate_id != surr_name:
+					print "\n>>> Warning: SurrogateID does not have expected name.\n"
+			except: 
+				print "\n>>> Warning: No SurrogateID found!\n"
+		
+		self.switch_dict = {
+				'tmin': self.tmin,
+				'tmax': self.tmax,
+				'dt': self.dt,
+				'B': self.B,
+				'eim_indices': self.eim_indices,
+				'greedy_points': self.greedy_points,
+				'V': self.V,
+				'R': self.R,
+				'fit_min': self.fit_min,
+				'fit_max': self.fit_max,
+				'affine_map': self.affine_map,
+				'fitparams_amp': self.fitparams_amp,
+				'fitparams_phase': self.fitparams_phase,
+			}
+		self.options = self.switch_dict.keys()
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def dt(self):
-		if self.isopen():
-			return self.file['dt'][()]
-		pass
+	def __call__(self, option):
+		return self.switch_dict[option]()
 	
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def write_h5(self, t, B, eim_indices, greedy_points, fit_min, fit_max, affine_map, \
+				fitparams_amp, fitparams_phase, V, R):
+		""" Write surrogate data in standard format.
+		
+		Input:
+		======
+			t               -- time series array (only min, max and increment saved)
+			B               -- empirical interpolant operator (`B matrix`)
+			eim_indices     -- indices of empirical nodes from time series array `t`
+			greedy_points   -- parameters selected by reduced basis greedy algorithm
+			V               -- Generalized Vandermonde matrix from empirical 
+			                   interpolation method
+			R               -- matrix coefficients relating the reduced basis to the 
+			                   selected waveforms
+			fit_min         -- min values of parameters used for surrogate fitting
+			fit_max         -- max values of parameters used for surrogate fitting
+			affine_map      -- mapped parameter domain to reference interval for fitting? 
+			                   (True/False)
+			fitparams_amp   -- fitting parameters for waveform amplitude
+			fitparams_phase -- fitting parameters for waveform phase
+		"""
+		
+		if self.isopen() and self.mode == 'w':
+			# NOTE: Need to write SurrogateID to file
+			self.file.create_dataset('tmin', data=t.min(), dtype='double')
+			self.file.create_dataset('tmax', data=t.max(), dtype='double')
+			self.file.create_dataset('dt', data=t[1]-t[0], dtype='double')
+			
+			self.file.create_dataset('B', data=B, dtype=B.dtype, compression='gzip')
+			self.file.create_dataset('eim_indices', data=eim_indices, dtype='int', compression='gzip')
+			self.file.create_dataset('greedy_points', data=greedy_points, dtype='double', compression='gzip')
+			self.file.create_dataset('V', data=V, dtype=V.dtype, compression='gzip')
+			self.file.create_dataset('R', data=R, dtype=R.dtype, compression='gzip')
+			
+			self.file.create_dataset('fit_min', data=fit_min, dtype='double')
+			self.file.create_dataset('fit_max', data=fit_max, dtype='double')
+			self.file.create_dataset('affine_map', data=affine_map, dtype='bool')
+			self.file.create_dataset('fitparams_amp', data=fitparams_amp, dtype='double', compression='gzip')
+			self.file.create_dataset('fitparams_phase', data=fitparams_phase, dtype='double', compression='gzip')
+			
+			self.close()
+		else:
+			raise Exception, "File not in write mode or is closed."
+		pass
+
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def tmin(self):
 		if self.isopen():
@@ -69,6 +137,12 @@ class HDF5Surrogate(File):
 	def tmax(self):
 		if self.isopen():
 			return self.file['tmax'][()]
+		pass
+	
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def dt(self):
+		if self.isopen():
+			return self.file['dt'][()]
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -90,12 +164,23 @@ class HDF5Surrogate(File):
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	# q may not be a parameter for the surrogate (e.g., m1 and m2)...
-	# Maybe put this in the instantiation part since this is independent of the online
-	# call, more or less?
-	def qmin_fit(self):
+	def V(self):
+		if self.isopen():
+			return self.file['V'][:]
 		pass
-	def qmax_fit(self):
+	
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def R(self):
+		if self.isopen():
+			return self.file['R'][:]
+		pass
+	
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def fit_min(self):
+		pass
+
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def fit_max(self):
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -115,19 +200,7 @@ class HDF5Surrogate(File):
 		if self.isopen():
 			return self.file['fitparams_phase'][:]
 		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def vandermonde(self):
-		if self.isopen():
-			return self.file['vandermonde'][:]
-		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def R(self):
-		if self.isopen():
-			return self.file['R'][:]
-		pass
-	
+		
 
 ##############################################
 # Just writing this out to make sure the overall structure is ok/understandable/not screwy...
