@@ -52,14 +52,14 @@ class HDF5Surrogate(File):
 		
 		if mode == 'r':
 			try:
-				self.surrogate_id = self.file['SurrogateID'][()]
 				surr_name = path.split('/')[-2]
-				if self.surrogate_id != surr_name:
+				if self.SurrogateID() != surr_name:
 					print "\n>>> Warning: SurrogateID does not have expected name.\n"
 			except: 
 				print "\n>>> Warning: No SurrogateID found!\n"
 		
 		self.switch_dict = {
+				'SurrogateID': self.SurrogateID,
 				'tmin': self.tmin,
 				'tmax': self.tmax,
 				'dt': self.dt,
@@ -82,12 +82,13 @@ class HDF5Surrogate(File):
 		return self.switch_dict[option]()
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def write_h5(self, t, B, eim_indices, greedy_points, fit_min, fit_max, affine_map, \
+	def write_h5(self, id, t, B, eim_indices, greedy_points, fit_min, fit_max, affine_map, \
 				fitparams_amp, fitparams_phase, V, R):
 		""" Write surrogate data in standard format.
 		
 		Input:
 		======
+			surrogate_id    -- SurrogateID which should match the parent directory name 
 			t               -- time series array (only min, max and increment saved)
 			B               -- empirical interpolant operator (`B matrix`)
 			eim_indices     -- indices of empirical nodes from time series array `t`
@@ -105,7 +106,9 @@ class HDF5Surrogate(File):
 		"""
 		
 		if self.isopen() and self.mode == 'w':
-			# NOTE: Need to write SurrogateID to file
+			surrogate_id = [ord(cc) for cc in id]
+			self.file.create_dataset('SurrogateID', data=surrogate_id, dtype='int')
+			
 			self.file.create_dataset('tmin', data=t.min(), dtype='double')
 			self.file.create_dataset('tmax', data=t.max(), dtype='double')
 			self.file.create_dataset('dt', data=t[1]-t[0], dtype='double')
@@ -127,6 +130,13 @@ class HDF5Surrogate(File):
 			raise Exception, "File not in write mode or is closed."
 		pass
 
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def SurrogateID(self):
+		if self.isopen():
+			id = self.file['SurrogateID'][()]
+			return ''.join(chr(cc) for cc in id)
+		pass
+	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def tmin(self):
 		if self.isopen():
@@ -177,10 +187,14 @@ class HDF5Surrogate(File):
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def fit_min(self):
+		if self.isopen():
+			return self.file['fit_min'][()]
 		pass
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def fit_max(self):
+		if self.isopen():
+			return self.file['fit_max'][()]
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -215,6 +229,7 @@ class EvaluateSurrogate(HDF5Surrogate):	# Include TextSurrogate
 			# TextSurrogate.__init__(self, path)
 			pass
 		
+		self.SurrogateID = self.SurrogateID()
 		self.B = self.B()
 		self.eim_indices = self.eim_indices()
 		self.greedy_points = self.greedy_points()
