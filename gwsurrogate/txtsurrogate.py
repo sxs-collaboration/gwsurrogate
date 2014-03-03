@@ -33,7 +33,7 @@ class TextSurrogate:
 
 
         ### Surrogate directory ####
-        self.surrogate_dir = sdir
+        self.SurrogateID = sdir
 
         ### Surrogate's sampling rate and mass ratio (for fits) ###
         time_info             = np.loadtxt(sdir+'time_info.txt')
