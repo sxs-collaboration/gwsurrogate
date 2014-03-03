@@ -24,5 +24,19 @@ MODELNAME__qQMIN_QMAX__NoSpin__lenLEN__MultiMode/SingleMode
 	V (not its inverse; to reconstruct the rb.basis, E = B V)
 	R (matrix of coefficients relating basis and waveforms, H = E R)
 	
-	
+
+Text-based surrogates
+=====================
+
+All text-based surrogates should come as .tar.gz. To create new ones use
+
+tar -cvzf SURROGATE_NAME.tar.gz SURROGATE_NAME/	
+
+which can be extracted with
+
+tar -xvzf SURROGATE_NAME.tar.gz
+
+
+
+
 
