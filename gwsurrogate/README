@@ -5,9 +5,9 @@ Surrogate data formats and gwsurrogate functions
 
 1) Folder name to instantiate Surrogate class:
 
-MODELNAME__qQMIN_QMAX__NoSpin__lenLEN__MultiMode/SingleMode
+MODELNAME_q[QMIN]_[QMAX]_NoSpin_[Multi(Single)]Mode/l[ELL]_m[M]_len[TIME]M_SurID[RBDIM]poly
 
-(MODELNAME = "EOBNRv2", for example)
+(MODELNAME = "EOBNRv2", for example) and quantities in [] are determined by the surrogate settings
 
 2) metadata.txt (contains everything describing the surrogate and its generation, mention reference interval for fitting,...)
 
@@ -16,11 +16,11 @@ MODELNAME__qQMIN_QMAX__NoSpin__lenLEN__MultiMode/SingleMode
 	B (complex matrix, basis-by-times)
 	eim_indices (array of integers, labeled from 0)
 	greedy_points (ordered by their selection)
-	dt
-	tmin
-	qmin_fit, qmax_fit (range used for fitting)
+	tmin, tmax, dt. (Text surrogates store these in time_info.txt)
+	qmin_fit, qmax_fit (range used for fitting).
 	affine_map = True, False (Boolean; whether affine map to reference interval was used; use as flag for evaluating fits)
-	fit_params (phi, A; coefficients of fitting functions; eim_indices-by-coefficients)
+	fit_coeff_amp 
+	fit_coeff_phase (coefficients of fitting functions; eim_indices-by-coefficients)
 	V (not its inverse; to reconstruct the rb.basis, E = B V)
 	R (matrix of coefficients relating basis and waveforms, H = E R)
 	
