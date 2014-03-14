@@ -32,16 +32,20 @@ found in the accompanying ipython notebooks.)
 surrogate.py
 ------------
 
-Defines the class SurrogateGW. This low-level class is useful for 
-loading, evaluating and plotting surrogate models as they are exported
-from the surrogate building code. As such, these surrogates are limited 
-to a fixed total mass and sampling rate. Evaluations are provided for by 
-specifcying any value of mass ratio q which lies within the range 
-for which the surrogate is valid. To use:
+Defines the classes HDF5Surrogate and TextSurrogate. These are 
+low-level classes for loading, evaluating and plotting 
+surrogate models (stored as text or hdf5 data files) 
+as they are exported from the surrogate building code. 
+As such, these surrogates are limited to a fixed sampling rate. 
+Evaluations are provided for by specifcying any value of mass 
+ratio q which lies within the range for which the surrogate is valid. 
 
-1) EOB = gw.SurrogateGW('EOBNRv2/q1_2.rate2048.cycles67/')
+For example, to load and plot a (3,3)-mode surrogate valid for mass
+ratios between 1 and 2, and of length about 12,000M:
 
-2) EOB.plot(q_eval=1.2)
+1) EOB = gw.TextSurrogate('EOBNRv2/EOBNRv2_q1_2_NoSpin_SingleModes/l3_m3_len12241M_SurID15poly/')
+
+2) EOB.plot(1.2)
 
 
 Surrogate data formats and gwsurrogate functions
@@ -72,14 +76,10 @@ MODELNAME_q[QMIN]_[QMAX]_NoSpin_[Multi(Single)]Mode/l[ELL]_m[M]_len[TIME]M_SurID
 Text-based surrogates
 =====================
 
-All text-based surrogates should come as .tar.gz. To create new ones use
+All text-based surrogates should come as .tar.gz. To create/extra new ones use
 
 tar -cvzf SURROGATE_NAME.tar.gz SURROGATE_NAME/	
-
-which can be extracted with
-
 tar -xvzf SURROGATE_NAME.tar.gz
-
 
 
 
