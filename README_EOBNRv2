@@ -1,0 +1,84 @@
+Overview
+========
+Surrogates produced from EOBNRv2 model as implemented in the 
+LIGO Analysis Library (LAL) Suite version 
+'git hash 59c12886b026c863397f191e6c2ca69ef3498616' with 
+'sSub = 0'. 
+
+Surrogate model waveforms are all peak aligned on a finely
+sampled temporal grid, with the beginning portions of 
+longer waveforms cut off so as to make all waveforms of equal
+length. 
+
+Each directory's name 
+
+qQMIN_QMAX.rateRATE.cyclesCYCLES
+
+specifies the mass ratio range [QMIN,QMAX] in which the surrogate
+is accurate, sampling rate RATE, and typical number of wave
+cycles CYCLES (see "Specifics" below).
+
+Additional information can be found in surrogate directories. 
+
+
+Specifics
+=========
+All surrogate folders are intended to be equivalent to the function call
+
+SimInspiralChooseTDWaveform(phiref, dt, M1, M2,
+        s1x, s1y, s1z, s2x, s2y, s2z, fmin, fref, Dist, incl, lambda1, lambda2,
+        waveFlags, nonGRparams, ampO, phaseO, approx)
+
+where 
+
+phiref      = 0.0
+dt          = 1./sampleRate
+M1          = m1
+M2          = m2
+s1x         = 0.0
+s1y         = 0.0 
+s1z         = 0.0 
+s2x         = 0.0 
+s2y         = 0.0 
+s2z         = 0.0
+fmin        = f0
+fref        = 0.0
+Dist        --> waveforms later normalized such that || h || = 1
+incl        = 0.0
+lambda1     = lambda2 = 0.
+waveFlags   = None
+nonGRparams = None
+ampO        = 0
+phaseO      = 7
+approx      = lalsim.EOBNRv2
+
+
+Surrogate variables
+===================
+In stead of m1 and m2, surrogates are evaluated by 
+supplying values for 
+
+MTot = m1 + m2
+q    = m2/m1,   where m2 >= m1
+
+Which allows a 2D surrogate for (MTot,q) to be specified through 
+i) evaluation of q at some fixed Mtot, ii) using known scaling 
+relations to get MTot. 
+
+The variable sampleRate is either hard-codeds into the surrogate 
+or, in other cases, a spline interpolant is used to allow for arbitrary 
+sampling rates. 
+
+The waveform's length is implicitly set by f0. Surrogates do not 
+currently permit setting (or even knowing) the precise value of f0. 
+Instead, we quote the typical number of wave cycles from start 
+to merger (peak). Future versions are intended to allow for 
+direct specification of f0.
+
+
+Acknowledgements
+================
+We thank Frank Herrmann and Evan Ochsner for providing python wrappers
+for the evaluation of SimInspiralChooseTDWaveform.
+
+
