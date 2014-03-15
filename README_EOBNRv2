@@ -10,15 +10,7 @@ sampled temporal grid, with the beginning portions of
 longer waveforms cut off so as to make all waveforms of equal
 length. 
 
-Each directory's name 
-
-qQMIN_QMAX.rateRATE.cyclesCYCLES
-
-specifies the mass ratio range [QMIN,QMAX] in which the surrogate
-is accurate, sampling rate RATE, and typical number of wave
-cycles CYCLES (see "Specifics" below).
-
-Additional information can be found in surrogate directories. 
+Directory and file/data name conventions are summarized in README
 
 
 Specifics
