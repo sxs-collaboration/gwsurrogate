@@ -25,9 +25,6 @@ All instructions below assume you have loaded gwsurrogate:
 2) 'import gwsurrogate as gw'
 3) view docstring instructions 'gw?'
 
-(Additional examples for text and hdf5 based surrogates can be 
-found in the accompanying ipython notebooks.)
-
 
 surrogate.py
 ------------
@@ -46,6 +43,10 @@ ratios between 1 and 2, and of length about 12,000M:
 1) EOB = gw.TextSurrogate('EOBNRv2/EOBNRv2_q1_2_NoSpin_SingleModes/l3_m3_len12241M_SurID15poly/')
 
 2) EOB.plot(1.2)
+
+
+(Additional examples for text and hdf5 based surrogates can be 
+found in the accompanying ipython notebooks.)
 
 
 Surrogate data formats and gwsurrogate functions
