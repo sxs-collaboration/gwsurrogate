@@ -15,7 +15,7 @@ Directory and file/data name conventions are summarized in README
 
 Specifics
 =========
-All surrogate folders are intended to be equivalent to the function call
+All surrogates are generated from the function call
 
 SimInspiralChooseTDWaveform(phiref, dt, M1, M2,
         s1x, s1y, s1z, s2x, s2y, s2z, fmin, fref, Dist, incl, lambda1, lambda2,
@@ -43,6 +43,9 @@ nonGRparams = None
 ampO        = 0
 phaseO      = 7
 approx      = lalsim.EOBNRv2
+
+values for sampleRate, m1, m2 and f0 are varied. These numbers can be found
+in each surrogates info.dat file or the training set metadata.
 
 
 Surrogate variables
