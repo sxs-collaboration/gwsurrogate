@@ -392,11 +392,11 @@ class TextSurrogate:
 		pass
 
 
-	# TODO: temporal untis below should be implimented in a better way
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def switch_time_to_secs(self,Mtot):
-	"""switch from time units 'TOverMtot' to 's' """
+		"""switch from time units 'TOverMtot' to 's' """
+		# TODO: temporal untis below should be implimented in a better way
 
 		if(self.t_units is 'secs'):
 			print 'times already in seconds'
@@ -407,7 +407,7 @@ class TextSurrogate:
 		
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def switch_time_to_TOverM(self,Mtot):
-	"""switch from time units 's' to 'TOverMtot'"""
+		"""switch from time units 's' to 'TOverMtot'"""
 
 		if(self.t_units is 'TOverMtot'):
 			print 'times alrady in t/M'
