@@ -4,7 +4,6 @@ import numpy, h5py
 import numpy.linalg as la
 from pylab import *
 from surrogate import SurrogateGW
-import const_mks as mks
 
 class Rescaling(SurrogateGW):
     """Class for rescaling a surrogate waveform by the desired total mass. 
