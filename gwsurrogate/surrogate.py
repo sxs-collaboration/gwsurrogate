@@ -24,7 +24,7 @@ along with this program.  If not, see U{http://www.gnu.org/licenses/}.
 
 import numpy as np, h5py
 import const_mks as mks
-from pylab import matplotlib as plt
+import matplotlib.pyplot as plt
 import time
 
 
@@ -36,6 +36,10 @@ class File:
 		self.path = path
 		self.mode_options = ['r', 'w', 'w+', 'a']
 		self.open(mode=mode)
+		
+		# Get all keys (e.g., variable names) in HDF5 file
+		self.keys = self.file.keys()
+		
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -66,7 +70,9 @@ class File:
 
 ##############################################
 class HDF5Surrogate(File):
-	"""Evaluate single-mode surrogate in terms of the function's amplitude and phase"""
+	"""Evaluate single-mode surrogate in terms of the function's amplitude and phase from HDF5 data format"""
+
+	# NOTE: Restructure __call__ to evaluate surrogate from data in memory.
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def __init__(self, path, mode='r'):
@@ -74,6 +80,9 @@ class HDF5Surrogate(File):
 		self.mode = mode
 		File.__init__(self, path, mode=mode)
 		
+		keys = self.file.keys()
+		
+		### Get SurrogateID ####
 		if mode == 'r':
 			try:
 				surr_name = path.split('/')[-2]
@@ -82,28 +91,71 @@ class HDF5Surrogate(File):
 			except: 
 				print "\n>>> Warning: No SurrogateID found!\n"
 		
-		self.switch_dict = {
-				'SurrogateID': self.SurrogateID,
-				'tmin': self.tmin,
-				'tmax': self.tmax,
-				'dt': self.dt,
-				'B': self.B,
-				'eim_indices': self.eim_indices,
-				'greedy_points': self.greedy_points,
-				'V': self.V,
-				'R': self.R,
-				'fit_min': self.fit_min,
-				'fit_max': self.fit_max,
-				'affine_map': self.affine_map,
-				'fitparams_amp': self.fitparams_amp,
-				'fitparams_phase': self.fitparams_phase,
-			}
-		self.options = self.switch_dict.keys()
+		if self.isopen():
+			
+			### Was surrogate built using ROMpy? ###
+			if 'from_rompy' in self.keys:
+				self.from_rompy = self.file['from_rompy'][()]
+			else:
+				self.from_rompy = True 
+			
+			### Unpack time info ###
+			self.tmin = self.file['tmin'][()]
+			self.tmax = self.file['tmax'][()]
+			self.dt = self.file['dt'][()]
+			
+			if 't_units' in self.keys:
+				self.t_units = self.file['t_units'][()]
+			else:
+				self.t_units = 'TOverMtot'
+			
+			### Greedy points (ordered by RB selection) ###
+			self.greedy_points = self.file['greedy_points'][:]
+			
+			### Empirical time index (ordered by EIM selection) ###
+			self.eim_indices = self.file['eim_indices'][:]
+			
+			### Complex B coefficients ###
+			self.B = self.file['B'][:]
+			
+			### Information about phase/amp parametric fit ###
+			self.affine_map = self.file['affine_map'][()]
+			self.fitparams_amp = self.file['fitparams_amp'][:]
+			self.fitparams_phase = self.file['fitparams_phase'][:]
+			self.fit_min = self.file['fit_min'][()]
+			self.fit_max = self.file['fit_max'][()]
+			self.fit_interval = [self.fit_min, self.fit_max]
+		
+			### Vandermonde V such that E (orthogonal basis) is E = BV ###
+			self.V = self.file['V'][:]
+			
+			### R matrix such that waveform basis H = ER ###
+			self.R = self.file['R'][:]
+			
+			### Transpose matrices if surrogate was built using ROMpy ###
+			if self.from_rompy:
+				self.B = np.transpose(self.B)
+				self.V = np.transpose(self.V)
+				self.R = np.transpose(self.R)
+			
+			### Deduce sizes from B ###
+			Bshape = np.shape(self.B)
+			self.dim_rb       = Bshape[1]
+			self.time_samples = Bshape[0]
+			
+		else:
+			raise Exception, "File not in write mode or is closed."		
+		
+		self.close()
+		
 		pass
-	
+		
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def __call__(self, option):
-		return self.switch_dict[option]()
+	def SurrogateID(self):
+		if self.isopen():
+			id = self.file['SurrogateID'][()]
+			return ''.join(chr(cc) for cc in id)
+		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def write_h5(self, id, t, B, eim_indices, greedy_points, fit_min, fit_max, affine_map, \
@@ -154,94 +206,10 @@ class HDF5Surrogate(File):
 			raise Exception, "File not in write mode or is closed."
 		pass
 
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def SurrogateID(self):
-		if self.isopen():
-			id = self.file['SurrogateID'][()]
-			return ''.join(chr(cc) for cc in id)
-		pass
 	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def tmin(self):
-		if self.isopen():
-			return self.file['tmin'][()]
-		pass
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def tmax(self):
-		if self.isopen():
-			return self.file['tmax'][()]
-		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def dt(self):
-		if self.isopen():
-			return self.file['dt'][()]
-		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def B(self):
-		if self.isopen():
-			return self.file['B'][:]
-		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def eim_indices(self):
-		if self.isopen():
-			return self.file['eim_indices'][:]
-		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def greedy_points(self):
-		if self.isopen():
-			return self.file['greedy_points'][:]
-		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def V(self):
-		if self.isopen():
-			return self.file['V'][:]
-		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def R(self):
-		if self.isopen():
-			return self.file['R'][:]
-		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def fit_min(self):
-		if self.isopen():
-			return self.file['fit_min'][()]
-		pass
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def fit_max(self):
-		if self.isopen():
-			return self.file['fit_max'][()]
-		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def affine_map(self):
-		if self.isopen():
-			return self.file['affine_map'][()]
-		pass
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def fitparams_amp(self):
-		if self.isopen():
-			return self.file['fitparams_amp'][:]
-		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def fitparams_phase(self):
-		if self.isopen():
-			return self.file['fitparams_phase'][:]
-		pass
-
-
 ##############################################
 class TextSurrogate:
+	"""Evaluate single-mode surrogate in terms of the function's amplitude and phase from TEXT format"""
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def __init__(self, sdir):
@@ -252,7 +220,7 @@ class TextSurrogate:
 
 		### Surrogate's sampling rate and mass ratio (for fits) ###
 		time_info             = np.loadtxt(sdir+'time_info.txt')
-		self.q_interval       = np.loadtxt(sdir+'q_fit.txt')
+		self.fit_interval       = np.loadtxt(sdir+'q_fit.txt')
 		#self.Mtot             = np.loadtxt(sdir+'Mtot.txt')
 
 		### unpack time info ###
@@ -262,10 +230,10 @@ class TextSurrogate:
 		self.t_units = 'TOverMtot' # TODO: pass this through time_info for flexibility
 
 		### greedy points (ordered by RB selection) ###
-		self.greedypts = np.loadtxt(sdir+'greedy_points.txt')
+		self.greedy_points = np.loadtxt(sdir+'greedy_points.txt')
 
 		### empirical time index (ordered by EIM selection) ###
-		self.eim_indx = np.loadtxt(sdir+'eim_indices.txt')
+		self.eim_indices = np.loadtxt(sdir+'eim_indices.txt')
 
 		### Complex B coefficients ###
 		B_i    = np.loadtxt(sdir+'B_imag.txt')
@@ -293,171 +261,198 @@ class TextSurrogate:
 		
 		pass
 
+#	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#	def switch_time_to_secs(self,Mtot):
+#		"""switch from time units 'TOverMtot' to 's' """
+#		# TODO: temporal untis below should be implimented in a better way
+#
+#		if(self.t_units is 'secs'):
+#			print 'times already in seconds'
+#		else:
+#			self.t_units = 'secs'
+#			self.solarmass_over_mtot_to_s(Mtot)
+#		pass
+#		
+#	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#	def switch_time_to_TOverM(self,Mtot):
+#		"""switch from time units 's' to 'TOverMtot'"""
+#
+#		if(self.t_units is 'TOverMtot'):
+#			print 'times alrady in t/M'
+#		else:
+#			self.t_units = 'TOverMtot'
+#			self.s_to_solarmass_over_mtot(Mtot)
+#		pass
+#
+#	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#	def s_to_solarmass_over_mtot(self,Mtot):
+#		"""convert seconds t to dimensionless t/Mtot"""
+#		self.dt   = (self.dt / mks.Msuninsec) / Mtot
+#		self.tmin = (self.tmin / mks.Msuninsec) / Mtot
+#		self.tmax = (self.tmax / mks.Msuninsec) / Mtot
+#		pass
+#
+#	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#	def solarmass_over_mtot_to_s(self,Mtot):
+#		"""convert dimensionless t/Mtot to seconds"""
+#		self.dt   = (self.dt * mks.Msuninsec) * Mtot
+#		self.tmin = (self.tmin * mks.Msuninsec) * Mtot
+#		self.tmax = (self.tmax * mks.Msuninsec) * Mtot
+#		pass
+#		
+
+
+##############################################
+class EvaluateSurrogate(HDF5Surrogate, TextSurrogate):
+	"""Evaluate single-mode surrogate in terms of the function's amplitude and phase"""
+	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def __call__(self,q_eval):
+	def __init__(self, path):
+		
+		# Load HDF5 or Text surrogate data depending on input file extension
+		ext = path.split('.')[-1]
+		if ext == 'hdf5' or ext == 'h5':
+			HDF5Surrogate.__init__(self, path)
+		else:
+			TextSurrogate.__init__(self, path)	
+		
+		# Time samples
+		self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
+		
+		# Convenience for plotting purposes
+		self.plt = plt
+		
+		pass
+	
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def __call__(self, q_eval):
 		"""evaluate surrogate at q_eval"""
 
-		### Allocate memory for polynomial fit evaluations ###
-		Amp_eval   = np.zeros([self.dim_rb,1])
-		phase_eval = np.zeros([self.dim_rb,1])
-
 		### Map q_eval to the standard interval ?? ###
-		if(self.affine_map):
-			qmin = self.q_interval[0]
-			qmax = self.q_interval[1]
+		if self.affine_map:
+			qmin, qmax = self.fit_interval
 			q_0 = 2*(q_eval - qmin)/(qmax - qmin) - 1;
 		else:
 			q_0 = q_eval
 
 		### Evaluate fits ###
-		for jj in range(self.dim_rb):
-			Amp_eval[jj]     = np.polyval(self.AmpCoeff[jj,0:self.dim_rb],q_0)
-			phase_eval[jj]   = np.polyval(self.PhaseCoeff[jj,0:self.dim_rb],q_0)
+		amp_eval = np.array([ np.polyval(self.fitparams_amp[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
+		phase_eval = np.array([ np.polyval(self.fitparams_phase[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
 
 		### Build dim_RB-vector fit evalution of h ###
-		h_EIM = Amp_eval*np.exp(-1j*phase_eval)
+		h_EIM = amp_eval*np.exp(1j*phase_eval)
 
 		### Surrogate modes hp and hc ###
-		surrogate = np.dot(self.B,h_EIM)
+		surrogate = np.dot(self.B, h_EIM)
 		hp = surrogate.real
 		hp = hp.reshape([self.time_samples,])
 		hc = surrogate.imag
 		hc = hc.reshape([self.time_samples,])
 
-		times = np.arange(self.time_samples) * self.dt
-
-		return times, hp, hc
-
+		return hp, hc
+	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def plot(self,q_eval,timeM=False):
-		"""plot surrogate evaluated at q_eval"""
+	def timer(self, N):
+		"""average time to evaluate n waveforms"""
 
-		times, hp, hc = self(q_eval)
+		qmin, qmax = self.fit_interval
+		ran = np.random.uniform(qmin, qmax, N)
+		q_ran = 2.*(ran - qmin)/(qmax - qmin) - 1.;
+
+		tic = time.time()
+		for i in ran:
+			hp, hc = self(i)
+
+		toc = time.time()
+		print 'total time = ',toc-tic
+		print 'average time = ', (toc-tic)/float(N)
+		pass
+	
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def time(self, units=None):
+		# NOTE: Is Mtot the total mass of the surrogate or the total mass one wants to 
+		# evaluate the time?
+		"""Return time samples in specified units.
+		
+		Options for units:
+		====================
+		None		-- Time in geometric units, G=c=1 (DEFAULT)
+		'solarmass' -- Time in units of solar masses
+		'sec'		-- Time in units of seconds
+		"""
+		t = self.times
+		if units == 'solarmass':
+			t *= mks.Msuninsec
+		elif units == 'sec':
+			t *= mks.Msuninsec
+		return t
+	
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def h_rb(self, i):
+		"""generate a surrogate approximation for the ith reduced basis waveform"""
+		hp, hc = self(self.greedy_points[i])
+		return hp, hc
+	
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def plot_rb(self, i, showQ=True):
+		"""plot the surrogate approximation for the ith reduced basis waveform"""
+		
+		# NOTE: Need to allow for different time units for plotting and labeling
+		
+		# Compute surrogate approximation of RB waveform
+		hp, hc = self.h_rb(i)
+		
+		# Plot waveform
+		fig = self.plt.figure(1)
+		ax = fig.add_subplot(111)
+		self.plt.plot(self.times, hp, 'k-', label='$h_+ (t)$')
+		self.plt.plot(self.times, hc, 'k--', label='$h_\\times (t)$')
+		self.plt.xlabel('Time, $t/M$')
+		self.plt.ylabel('Waveform')
+		self.plt.legend(loc='upper left')
+		
+		if showQ:
+			self.plt.show()
+		
+		# Return figure method to allow for saving plot with fig.savefig
+		return fig
+	
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def plot_sur(self, q_eval, timeM=False, showQ=True):
+		"""plot surrogate evaluated at q_eval"""
+		
+		hp, hc = self(q_eval)
 		if(self.t_units is 'TOverMtot'):
 			#times = self.solarmass_over_mtot(times)
 			xlab = '$t/M$'
 		else:
 			xlab = '$t$ (sec)'
 
-		plt.pyplot.plot(times,hp)
-		plt.pyplot.hold
-		plt.pyplot.plot(times,hc)
-		plt.pyplot.legend(['h plus', 'h cross'])
-		plt.pyplot.xlabel(xlab)
-		plt.pyplot.show()
-		pass
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def h_rb(self,i):
-		"""generate the ith reduced basis waveform"""
-		times, hp, hc = self(self.greedypts[i])
-		return times, hp, hc
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def plot_rb(self,i):
-		"""plot the ith reduced basis waveform"""
-		self.plot(self.greedypts[i])
-		pass
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def timer(self,N):
-		"""average time to evaluate n waveforms"""
-
-		qmin = self.q_interval[0]
-		qmax = self.q_interval[1]
-		ran = np.random.uniform(qmin,qmax,N)
-		q_ran = 2*(ran - qmin)/(qmax - qmin) - 1;
-
-		tic = time.time()
-		for i in ran:
-			t,hp,hc = self(i)
-
-		toc = time.time()
-		print 'total time = ',toc-tic
-		print 'average tme = ', (toc-tic)/float(N)
-		pass
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def writetxt(self,q_eval,filename='output'):
-		"""write waveform to text file"""
-		times, hp, hc = self(q_eval)
-		np.savetxt(filename,[times, hp, hc])
-		pass
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def writebin(self,q_eval,filename='output.txt'):
-		"""write waveform to numpy binary file"""
-		times, hp, hc = self(q_eval)
-		np.save(filename,[times, hp, hc])
-		pass
-
-
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def switch_time_to_secs(self,Mtot):
-		"""switch from time units 'TOverMtot' to 's' """
-		# TODO: temporal untis below should be implimented in a better way
-
-		if(self.t_units is 'secs'):
-			print 'times already in seconds'
-		else:
-			self.t_units = 'secs'
-			self.solarmass_over_mtot_to_s(Mtot)
-		pass
+		# Plot surrogate waveform
+		fig = self.plt.figure(1)
+		ax = fig.add_subplot(111)
+		self.plt.plot(self.times, hp, 'k-', label='$h_+ (t)$')
+		self.plt.plot(self.times, hc, 'k--', label='$h_\\times (t)$')
+		self.plt.xlabel(xlab)
+		self.plt.ylabel('Surrogate waveform')
+		self.plt.legend(loc='upper left')
 		
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def switch_time_to_TOverM(self,Mtot):
-		"""switch from time units 's' to 'TOverMtot'"""
-
-		if(self.t_units is 'TOverMtot'):
-			print 'times alrady in t/M'
-		else:
-			self.t_units = 'TOverMtot'
-			self.s_to_solarmass_over_mtot(Mtot)
-		pass
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def s_to_solarmass_over_mtot(self,Mtot):
-		"""convert seconds t to dimensionless t/Mtot"""
-		self.dt   = (self.dt / mks.Msuninsec) / Mtot
-		self.tmin = (self.tmin / mks.Msuninsec) / Mtot
-		self.tmax = (self.tmax / mks.Msuninsec) / Mtot
-		pass
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def solarmass_over_mtot_to_s(self,Mtot):
-		"""convert dimensionless t/Mtot to seconds"""
-		self.dt   = (self.dt * mks.Msuninsec) * Mtot
-		self.tmin = (self.tmin * mks.Msuninsec) * Mtot
-		self.tmax = (self.tmax * mks.Msuninsec) * Mtot
-		pass
+		if showQ:
+			self.plt.show()
 		
-
-##############################################
-class EvaluateSurrogate(HDF5Surrogate, TextSurrogate):
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def __init__(self, path):
-		ext = path.split('.')[-1]
-		if ext == 'hdf5' or ext == 'h5':
-			HDF5Surrogate.__init__(self, path)
-		else:
-			TextSurrogate.__init__(self, path)
-			pass
-		
-		self.SurrogateID = self.SurrogateID()
-		self.B = self.B()
-		self.eim_indices = self.eim_indices()
-		self.greedy_points = self.greedy_points()
-		self.dt = self.dt()
-		self.tmin = self.tmin()
-		self.tmax = self.tmax()
-		self.affine_map = self.affine_map()
-		self.fitparams_amp = self.fitparams_amp()
-		self.fitparams_phase = self.fitparams_phase()
-		pass
+		# Return figure method to allow for saving plot with fig.savefig
+		return fig
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def time(self):
-		return np.arange(self.tmin, self.tmax+self.dt, self.dt)
+	def writetxt(self, q_eval, filename='output'):
+		"""write waveform to text file"""
+		hp, hc = self(q_eval)
+		np.savetxt(filename, [self.times, hp, hc])
+		pass
 
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def writebin(self, q_eval, filename='output.txt'): # .txt for binary?
+		"""write waveform to numpy binary file"""
+		hp, hc = self(q_eval)
+		np.save(filename, [self.times, hp, hc])
+		pass
