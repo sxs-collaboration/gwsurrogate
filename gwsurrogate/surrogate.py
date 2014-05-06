@@ -323,9 +323,13 @@ class EvaluateSurrogate(HDF5Surrogate, TextSurrogate):
 		self.plt = plt
 		
 		pass
-	
+
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def __call__(self, q_eval):
+		return self.h_sur(q_eval)
+	
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def h_sur(self, q_eval):
 		"""evaluate surrogate at q_eval"""
 
 		### Map q_eval to the standard interval ?? ###
