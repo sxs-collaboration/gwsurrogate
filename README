@@ -9,8 +9,8 @@ equations. These equations must be solved in the ``building" phase, which
 was performed using other codes. For details on surrogate building see:
 
 [1] Scott Field, Chad Galley, Jan Hesthaven, Jason Kaye, and Manuel Tiglio. 
-``Fast prediction and evaluation of gravitational waveforms using surrogate models” 
-arXiv: gr-qc:1308.3565
+``Fast prediction and evaluation of gravitational waveforms using surrogate 
+models”, arXiv: gr-qc:1308.3565
 
 [2] ROM WEBSITE HERE
 
@@ -24,6 +24,10 @@ All instructions below assume you have loaded gwsurrogate:
 1) startup ipython
 2) 'import gwsurrogate as gw'
 3) view docstring instructions 'gw?'
+
+(Additional examples for text and hdf5 based surrogates can be 
+found in the accompanying ipython notebooks.)
+
 
 
 surrogate.py
@@ -45,12 +49,9 @@ ratios between 1 and 2, and of length about 12,000M:
 2) EOB.plot(1.2)
 
 
-(Additional examples for text and hdf5 based surrogates can be 
-found in the accompanying ipython notebooks.)
-
 
 Surrogate data formats and gwsurrogate functions
-================================================
+------------------------------------------------
 
 1) Folder name to instantiate Surrogate class:
 
@@ -60,28 +61,29 @@ MODELNAME_q[QMIN]_[QMAX]_NoSpin_[Multi(Single)]Mode/l[ELL]_m[M]_len[TIME]M_SurID
 
 2) metadata.txt or info.data contains a description of the surrogate and its generation
 
-3) HDF5/TXT contents: ( h+ - i hx = Ae^{-i phi} )
+3) HDF5/TXT contents: ( h_+ + i h_x = Ae^{i phi} )
 	SurrogateID (string, repeat parent directory name)
 	B (complex matrix, basis-by-times)
 	eim_indices (array of integers, labeled from 0)
 	greedy_points (ordered by their selection)
 	tmin, tmax, dt. (Text surrogates store these in time_info.txt)
 	qmin_fit, qmax_fit (range used for fitting).
-	affine_map = True, False (Boolean; whether affine map to reference interval was used; use as flag for evaluating fits)
+	affine_map (Boolean; whether affine map to reference interval was 
+                    used; use as flag for evaluating fits)
 	fit_coeff_amp 
 	fit_coeff_phase (coefficients of fitting functions; eim_indices-by-coefficients)
-	V (not its inverse; to reconstruct the rb.basis, E = B V)
+	V (not its inverse; to reconstruct the the orthonormal reduced basis E = B V)
 	R (matrix of coefficients relating basis and waveforms, H = E R)
-	
+
+
 
 Text-based surrogates
-=====================
+---------------------
 
 All text-based surrogates should come as .tar.gz. To create/extra new ones use
 
 tar -cvzf SURROGATE_NAME.tar.gz SURROGATE_NAME/	
 tar -xvzf SURROGATE_NAME.tar.gz
-
 
 
 
