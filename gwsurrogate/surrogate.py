@@ -245,9 +245,9 @@ class TextSurrogate:
 		self.time_samples = B_r.shape[0]
 
 		### Information about phase/amp parametric fit ###
-		self.PhaseCoeff = np.loadtxt(sdir+'fit_coeff_phase.txt')
-		self.AmpCoeff   = np.loadtxt(sdir+'fit_coeff_amp.txt')
-		self.affine_map = bool(np.loadtxt(sdir+'affine_map.txt'))
+		self.fitparams_phase = np.loadtxt(sdir+'fit_coeff_phase.txt')
+		self.fitparams_amp   = np.loadtxt(sdir+'fit_coeff_amp.txt')
+		self.affine_map      = bool(np.loadtxt(sdir+'affine_map.txt'))
 
 		### Vandermonde V such that E (orthogonal basis) is E = BV ###
 		V_i    = np.loadtxt(sdir+'V_imag.txt')
@@ -344,7 +344,11 @@ class EvaluateSurrogate(HDF5Surrogate, TextSurrogate):
 		phase_eval = np.array([ np.polyval(self.fitparams_phase[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
 
 		### Build dim_RB-vector fit evalution of h ###
-		h_EIM = amp_eval*np.exp(1j*phase_eval)
+		### HACK TO KEEP SURROGATES BACKWARDS COMPATIBLE ###
+		if ( phase_eval[-1] < 0 ): # assumption that phase is monotonically decreasing
+			h_EIM = amp_eval*np.exp(-1j*phase_eval)
+		else:
+			h_EIM = amp_eval*np.exp(1j*phase_eval)
 
 		### Surrogate modes hp and hc ###
 		surrogate = np.dot(self.B, h_EIM)
