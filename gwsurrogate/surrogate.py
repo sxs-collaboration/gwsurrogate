@@ -396,28 +396,59 @@ class EvaluateSurrogate(HDF5Surrogate, TextSurrogate):
 		return t
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def h_rb(self, i):
-		"""generate a surrogate approximation for the ith reduced basis waveform"""
-		hp, hc = self(self.greedy_points[i])
-		return hp, hc
+	def basis(self, i, flavor='waveform'):
+		"""compute the ith cardinal, orthogonal, or (exact, as opposed to 
+                   its surrogate approximate) waveform basis."""
+
+		if flavor == 'cardinal':
+			basis = self.B[:,i]
+		elif flavor == 'orthogonal':
+			basis = np.dot(self.B,self.V)[:,i]
+		elif flavor == 'waveform':
+			E = np.dot(self.B,self.V)
+			basis = np.dot(E,self.R)[:,i]
+		else:
+			ValueError, "ERROR. %s not valid basis type" % flavor
+
+		return basis
+
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def plot_pretty(self, time, hp, hc, fignum=1, flavor='regular'):
+		"""create a waveform figure with nice formatting and labels.
+		returns figure method for saving, plotting, etc."""
+
+		# Plot waveform
+		fig = self.plt.figure(fignum)
+		ax = fig.add_subplot(111)
+
+		if flavor == 'regular':
+			self.plt.plot(self.times, hp, 'k-', label='$h_+ (t)$')
+			self.plt.plot(self.times, hc, 'k--', label='$h_\\times (t)$')
+		elif flavor == 'semilogy':
+			self.plt.semilogy(self.times, hp, 'k-', label='$h_+ (t)$')
+			self.plt.semilogy(self.times, hc, 'k--', label='$h_\\times (t)$')
+		else:
+			ValueError, "Error.  %s not valid basis type" % flavor
+
+		self.plt.xlabel('Time, $t/M$')
+		self.plt.ylabel('Waveform')
+		self.plt.legend(loc='upper left')
+
+		return fig
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def plot_rb(self, i, showQ=True):
-		"""plot the surrogate approximation for the ith reduced basis waveform"""
+		"""plot the ith reduced basis waveform"""
 		
 		# NOTE: Need to allow for different time units for plotting and labeling
 		
 		# Compute surrogate approximation of RB waveform
-		hp, hc = self.h_rb(i)
+		basis = self.basis(i)
+		hp    = basis.real
+		hc    = basis.imag
 		
 		# Plot waveform
-		fig = self.plt.figure(1)
-		ax = fig.add_subplot(111)
-		self.plt.plot(self.times, hp, 'k-', label='$h_+ (t)$')
-		self.plt.plot(self.times, hc, 'k--', label='$h_\\times (t)$')
-		self.plt.xlabel('Time, $t/M$')
-		self.plt.ylabel('Waveform')
-		self.plt.legend(loc='upper left')
+		fig = self.plot_pretty(self.times,hp,hc)
 		
 		if showQ:
 			self.plt.show()
@@ -437,13 +468,9 @@ class EvaluateSurrogate(HDF5Surrogate, TextSurrogate):
 			xlab = '$t$ (sec)'
 
 		# Plot surrogate waveform
-		fig = self.plt.figure(1)
-		ax = fig.add_subplot(111)
-		self.plt.plot(self.times, hp, 'k-', label='$h_+ (t)$')
-		self.plt.plot(self.times, hc, 'k--', label='$h_\\times (t)$')
+		fig = self.plot_pretty(self.times,hp,hc)
 		self.plt.xlabel(xlab)
 		self.plt.ylabel('Surrogate waveform')
-		self.plt.legend(loc='upper left')
 		
 		if showQ:
 			self.plt.show()
