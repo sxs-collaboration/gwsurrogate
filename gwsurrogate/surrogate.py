@@ -35,19 +35,19 @@ class File:
 	def __init__(self, path, mode='r'):
 		self.path = path
 		self.mode_options = ['r', 'w', 'w+', 'a']
-		self.open(mode=mode)
 		
 		# Get all keys (e.g., variable names) in HDF5 file
 		if mode == 'r':
+			self.open(self.path, mode=mode)
 			self.keys = self.file.keys()
 		
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def open(self, mode='r'):
+	def open(self, path, mode='r'):
 		if mode in self.mode_options:
 			try: 
-				self.file = h5py.File(self.path, mode)
+				self.file = h5py.File(path, mode)
 				self.flag = 1
 			except IOError:
 				print "Could not open file."
@@ -173,29 +173,31 @@ class HDF5Surrogate(File):
 			fitparams_phase -- fitting parameters for waveform phase
 		"""
 		
-		if self.isopen() and self.mode == 'w':
-			surrogate_id = [ord(cc) for cc in id]
-			self.file.create_dataset('SurrogateID', data=surrogate_id, dtype='int')
-			
-			self.file.create_dataset('tmin', data=t.min(), dtype='double')
-			self.file.create_dataset('tmax', data=t.max(), dtype='double')
-			self.file.create_dataset('dt', data=t[1]-t[0], dtype='double')
-			
-			self.file.create_dataset('B', data=B, dtype=B.dtype, compression='gzip')
-			self.file.create_dataset('eim_indices', data=eim_indices, dtype='int', compression='gzip')
-			self.file.create_dataset('greedy_points', data=greedy_points, dtype='double', compression='gzip')
-			self.file.create_dataset('V', data=V, dtype=V.dtype, compression='gzip')
-			self.file.create_dataset('R', data=R, dtype=R.dtype, compression='gzip')
-			
-			self.file.create_dataset('fit_min', data=fit_min, dtype='double')
-			self.file.create_dataset('fit_max', data=fit_max, dtype='double')
-			self.file.create_dataset('affine_map', data=affine_map, dtype='bool')
-			self.file.create_dataset('fitparams_amp', data=fitparams_amp, dtype='double', compression='gzip')
-			self.file.create_dataset('fitparams_phase', data=fitparams_phase, dtype='double', compression='gzip')
-			
-			self.close()
-		else:
-			raise Exception, "File not in write mode or is closed."
+		# Open file for writing. Filename based on surrogate ID.
+		self.open(self.path+str(id)+'.h5', mode='w')
+		
+		# Write surrogate data to file
+		surrogate_id = [ord(cc) for cc in id]
+		self.file.create_dataset('SurrogateID', data=surrogate_id, dtype='int')
+		
+		self.file.create_dataset('tmin', data=t.min(), dtype='double')
+		self.file.create_dataset('tmax', data=t.max(), dtype='double')
+		self.file.create_dataset('dt', data=t[1]-t[0], dtype='double')
+		
+		self.file.create_dataset('B', data=B, dtype=B.dtype, compression='gzip')
+		self.file.create_dataset('eim_indices', data=eim_indices, dtype='int', compression='gzip')
+		self.file.create_dataset('greedy_points', data=greedy_points, dtype='double', compression='gzip')
+		self.file.create_dataset('V', data=V, dtype=V.dtype, compression='gzip')
+		self.file.create_dataset('R', data=R, dtype=R.dtype, compression='gzip')
+		
+		self.file.create_dataset('fit_min', data=fit_min, dtype='double')
+		self.file.create_dataset('fit_max', data=fit_max, dtype='double')
+		self.file.create_dataset('affine_map', data=affine_map, dtype='bool')
+		self.file.create_dataset('fitparams_amp', data=fitparams_amp, dtype='double', compression='gzip')
+		self.file.create_dataset('fitparams_phase', data=fitparams_phase, dtype='double', compression='gzip')
+		
+		self.close()
+		
 		pass
 
 	
@@ -393,11 +395,11 @@ class ExportSurrogate(HDF5Surrogate, TextSurrogate):
 
 
 ##############################################
-class EvaluateSurrogate(HDF5Surrogate, TextSurrogate):
+class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 	"""Evaluate single-mode surrogate in terms of the function's amplitude and phase"""
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def __init__(self, path):
+	def __init__(self, path, mode='r'):
 		
 		# Load HDF5 or Text surrogate data depending on input file extension
 		ext = path.split('.')[-1]
@@ -405,9 +407,24 @@ class EvaluateSurrogate(HDF5Surrogate, TextSurrogate):
 			HDF5Surrogate.__init__(self, path)
 		else:
 			TextSurrogate.__init__(self, path,'r')	
-		
-		# Time samples
+
+
 		self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
+
+
+		### THIS IS CHADS EDIT -- WHICH IS SIMILAR IN SPIRIT TO EXPORTSURROGATE CLASS ###
+		#if mode == 'r':
+		#	ext = path.split('.')[-1]
+		#	if ext == 'hdf5' or ext == 'h5':
+		#		HDF5Surrogate.__init__(self, path, mode=mode)
+		#	else:
+		#		TextSurrogate.__init__(self, path)	
+		#		
+		#	# Time samples
+		#	self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
+		#
+		#else:
+		#	File.__init__(self, path, mode=mode)
 		
 		# Convenience for plotting purposes
 		self.plt = plt
