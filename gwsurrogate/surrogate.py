@@ -91,12 +91,6 @@ class HDF5Surrogate(File):
 		
 			if self.isopen():
 				
-				### Was surrogate built using ROMpy? ###
-				if 'from_rompy' in self.keys:
-					self.from_rompy = self.file['from_rompy'][()]
-				else:
-					self.from_rompy = True 
-				
 				### Unpack time info ###
 				self.tmin = self.file['tmin'][()]
 				self.tmax = self.file['tmax'][()]
@@ -114,7 +108,7 @@ class HDF5Surrogate(File):
 				self.eim_indices = self.file['eim_indices'][:]
 				
 				### Complex B coefficients ###
-				self.B = self.file['B'][:]
+				self.B = self.file['B'][:]	
 				
 				### Information about phase/amp parametric fit ###
 				self.affine_map = self.file['affine_map'][()]
@@ -131,15 +125,15 @@ class HDF5Surrogate(File):
 				self.R = self.file['R'][:]
 				
 				### Transpose matrices if surrogate was built using ROMpy ###
-				if self.from_rompy:
+				Bshape = np.shape(self.B)
+				if Bshape[0] < Bshape[1]:
 					self.B = np.transpose(self.B)
 					self.V = np.transpose(self.V)
 					self.R = np.transpose(self.R)
 				
 				### Deduce sizes from B ###
-				Bshape = np.shape(self.B)
-				self.dim_rb       = Bshape[1]
 				self.time_samples = Bshape[0]
+				self.dim_rb       = Bshape[1]
 				
 			else:
 				raise Exception, "File not in write mode or is closed."		
