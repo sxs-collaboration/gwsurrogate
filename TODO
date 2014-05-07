@@ -1,0 +1,7 @@
+Some features to add
+
+1) file for relevant fit info, would include affine_map boolean, string specifying which functions fit coefficients are to be associated with (or user defined ones), and calling functions from rompy
+
+2) how to best impliment surrogate-specific fits? from python file? string interpreted symbolically?
+
+3) setup.py to automate paths
