@@ -504,7 +504,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 			E = np.dot(self.B,self.V)
 			basis = np.dot(E,self.R)[:,i]
 		else:
-			ValueError, "ERROR. %s not valid basis type" % flavor
+			raise ValueError("Not a valid basis type")
 
 		return basis
 
@@ -524,7 +524,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 			self.plt.semilogy(self.times, hp, 'k-', label='$h_+ (t)$')
 			self.plt.semilogy(self.times, hc, 'k--', label='$h_\\times (t)$')
 		else:
-			ValueError, "Error.  %s not valid basis type" % flavor
+			raise ValueError("Not a valid plot type")
 
 		self.plt.xlabel('Time, $t/M$')
 		self.plt.ylabel('Waveform')
@@ -556,9 +556,8 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 	def plot_sur(self, q_eval, timeM=False, showQ=True):
 		"""plot surrogate evaluated at q_eval"""
 		
-		# NOTE: Need to allow for different time units for plotting and labeling
-		
 		hp, hc = self(q_eval)
+
 		if self.t_units == 'TOverMtot':
 			#times = self.solarmass_over_mtot(times)
 			xlab = 'Time, $t/M$'
