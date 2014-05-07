@@ -204,7 +204,25 @@ class HDF5Surrogate(File):
 ##############################################
 class TextSurrogate:
 	"""Load or export a single-mode surrogate in terms of the function's amplitude and phase from TEXT format"""
-	
+
+	### Files which define a text-based surrogate (both read and write) ###
+
+	#_VariableName_file   = file_name
+	_time_info_file       = 'time_info.txt'
+	_fit_interval_file    = 'q_fit.txt'
+	_greedy_points_file   = 'greedy_points.txt'
+	_eim_indices_file     = 'eim_indices.txt'
+	_B_i_file             = 'B_imag.txt'
+	_B_r_file             = 'B_real.txt'
+	_fitparams_phase_file = 'fit_coeff_phase.txt'
+	_fitparams_amp_file   = 'fit_coeff_amp.txt'
+	_affine_map_file      = 'affine_map.txt'
+	_V_i_file             = 'V_imag.txt'
+	_V_r_file             = 'V_real.txt'
+	_R_i_file             = 'R_im.txt'
+	_R_r_file             = 'R_re.txt'
+
+
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def __init__(self, sdir, mode='r'):
 		"""initialize single-mode surrogate defined by text files located in directory sdir"""
@@ -217,9 +235,9 @@ class TextSurrogate:
 		if mode == 'r':
 
 			### Surrogate's sampling rate and mass ratio (for fits) ###
-			time_info             = np.loadtxt(sdir+'time_info.txt')
-			self.fit_interval       = np.loadtxt(sdir+'q_fit.txt')
-			#self.Mtot             = np.loadtxt(sdir+'Mtot.txt')
+			time_info         = np.loadtxt(sdir+self._time_info_file)
+			self.fit_interval = np.loadtxt(sdir+self._fit_interval_file)
+			#self.Mtot        = np.loadtxt(sdir+'Mtot.txt')
 
 			### unpack time info ###
 			self.dt      = time_info[2]
@@ -228,14 +246,14 @@ class TextSurrogate:
 			self.t_units = 'TOverMtot' # TODO: pass this through time_info for flexibility
 
 			### greedy points (ordered by RB selection) ###
-			self.greedy_points = np.loadtxt(sdir+'greedy_points.txt')
+			self.greedy_points = np.loadtxt(sdir+self._greedy_points_file)
 
 			### empirical time index (ordered by EIM selection) ###
-			self.eim_indices = np.loadtxt(sdir+'eim_indices.txt')
+			self.eim_indices = np.loadtxt(sdir+self._eim_indices_file)
 
 			### Complex B coefficients ###
-			B_i    = np.loadtxt(sdir+'B_imag.txt')
-			B_r    = np.loadtxt(sdir+'B_real.txt')
+			B_i    = np.loadtxt(sdir+self._B_i_file)
+			B_r    = np.loadtxt(sdir+self._B_r_file)
 			self.B = B_r + (1j)*B_i
 
 			### Deduce sizes from B ###
@@ -243,18 +261,18 @@ class TextSurrogate:
 			self.time_samples = B_r.shape[0]
 
 			### Information about phase/amp parametric fit ###
-			self.fitparams_phase = np.loadtxt(sdir+'fit_coeff_phase.txt')
-			self.fitparams_amp   = np.loadtxt(sdir+'fit_coeff_amp.txt')
-			self.affine_map      = bool(np.loadtxt(sdir+'affine_map.txt'))
+			self.fitparams_phase = np.loadtxt(sdir+self._fitparams_phase_file)
+			self.fitparams_amp   = np.loadtxt(sdir+self._fitparams_amp_file)
+			self.affine_map      = bool(np.loadtxt(sdir+self._affine_map_file))
 
 			### Vandermonde V such that E (orthogonal basis) is E = BV ###
-			V_i    = np.loadtxt(sdir+'V_imag.txt')
-			V_r    = np.loadtxt(sdir+'V_real.txt')
+			V_i    = np.loadtxt(sdir+self._V_i_file)
+			V_r    = np.loadtxt(sdir+self._V_r_file)
 			self.V = V_r + (1j)*V_i
 
 			### R matrix such that waveform basis H = ER ###
-			R_i    = np.loadtxt(sdir+'R_im.txt')
-			R_r    = np.loadtxt(sdir+'R_re.txt')
+			R_i    = np.loadtxt(sdir+self._R_i_file)
+			R_r    = np.loadtxt(sdir+self._R_r_file)
 			self.R = R_r + (1j)*R_i
 
 		elif mode == 'w':
@@ -302,37 +320,25 @@ class TextSurrogate:
 
 		if (self.write_ok and self.mode == 'w'):
 
-			### mass ratio interval (for fits) ###
-			q_fit = [fit_min, fit_max]
-			np.savetxt(self.SurrogateID+'q_fit.txt',q_fit)
-
-			### pack and write time info ###
-			dt = t[3] - t[2]
+			### pack mass ratio interval (for fits) and time info ###
+			q_fit     = [fit_min, fit_max]
+			dt        = t[3] - t[2]
 			time_info = [t[0], t[-1], dt] # tmin, tmax, dt
-			np.savetxt(self.SurrogateID+'time_info.txt',time_info)
 
-			### greedy points (ordered by RB selection) ###
-			np.savetxt(self.SurrogateID+'greedy_points.txt',greedy_points)
 
-			### empirical time index (ordered by EIM selection) ###
-			np.savetxt(self.SurrogateID+'eim_indices.txt',eim_indices)
-
-			### Complex B coefficients ###
-			np.savetxt(self.SurrogateID+'B_imag.txt',B.imag)
-			np.savetxt(self.SurrogateID+'B_real.txt',B.real)
-
-			### Information about phase/amp parametric fit ###
-			np.savetxt(self.SurrogateID+'fit_coeff_phase.txt',fitparams_phase)
-			np.savetxt(self.SurrogateID+'fit_coeff_amp.txt',fitparams_amp)
-			np.savetxt(self.SurrogateID+'affine_map.txt',np.array([int(affine_map)]) )
-
-			### Vandermonde V such that E (orthogonal basis) is E = BV ###
-			np.savetxt(self.SurrogateID+'V_imag.txt',V.imag)
-			np.savetxt(self.SurrogateID+'V_real.txt',V.real)
-
-			### R matrix such that waveform basis H = ER ###
-			np.savetxt(self.SurrogateID+'R_im.txt',R.imag)
-			np.savetxt(self.SurrogateID+'R_re.txt',R.real)
+			np.savetxt(self.SurrogateID+self._fit_interval_file,q_fit)
+			np.savetxt(self.SurrogateID+self._time_info_file,time_info)
+			np.savetxt(self.SurrogateID+self._greedy_points_file,greedy_points)
+			np.savetxt(self.SurrogateID+self._eim_indices_file,eim_indices)
+			np.savetxt(self.SurrogateID+self._B_i_file,B.imag)
+			np.savetxt(self.SurrogateID+self._B_r_file,B.real)
+			np.savetxt(self.SurrogateID+self._fitparams_phase_file,fitparams_phase)
+			np.savetxt(self.SurrogateID+self._fitparams_amp_file,fitparams_amp)
+			np.savetxt(self.SurrogateID+self._affine_map_file,np.array([int(affine_map)]) )
+			np.savetxt(self.SurrogateID+self._V_i_file,V.imag)
+			np.savetxt(self.SurrogateID+self._V_r_file,V.real)
+			np.savetxt(self.SurrogateID+self._R_i_file,R.imag)
+			np.savetxt(self.SurrogateID+self._R_r_file,R.real)
 
 		pass
 
