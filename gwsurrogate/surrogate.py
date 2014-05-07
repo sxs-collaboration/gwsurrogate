@@ -200,14 +200,14 @@ class HDF5Surrogate(File):
 		
 		pass
 
-	
+
 ##############################################
 class TextSurrogate:
 	"""Load or export a single-mode surrogate in terms of the function's amplitude and phase from TEXT format"""
 
 	### Files which define a text-based surrogate (both read and write) ###
 
-	#_VariableName_file   = file_name
+	#variable_name_file   = file_name
 	_time_info_file       = 'time_info.txt'
 	_fit_interval_file    = 'q_fit.txt'
 	_greedy_points_file   = 'greedy_points.txt'
@@ -224,76 +224,67 @@ class TextSurrogate:
 
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def __init__(self, sdir, mode='r'):
+	def __init__(self, sdir):
 		"""initialize single-mode surrogate defined by text files located in directory sdir"""
 
-		### record initialization values, sdir is defined to the the surrogate's ID ###
-		self.mode = mode
+		### sdir is defined to the the surrogate's ID ###e
 		self.SurrogateID = sdir
 
-		### determine of surrogate in read or write mode ###
-		if mode == 'r':
 
-			### Surrogate's sampling rate and mass ratio (for fits) ###
-			time_info         = np.loadtxt(sdir+self._time_info_file)
-			self.fit_interval = np.loadtxt(sdir+self._fit_interval_file)
-			#self.Mtot        = np.loadtxt(sdir+'Mtot.txt')
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def load_text(self):
 
-			### unpack time info ###
-			self.dt      = time_info[2]
-			self.tmin    = time_info[0]
-			self.tmax    = time_info[1]
-			self.t_units = 'TOverMtot' # TODO: pass this through time_info for flexibility
+		sdir = self.SurrogateID
 
-			### greedy points (ordered by RB selection) ###
-			self.greedy_points = np.loadtxt(sdir+self._greedy_points_file)
+		### Surrogate's sampling rate and mass ratio (for fits) ###
+		time_info         = np.loadtxt(sdir+self._time_info_file)
+		self.fit_interval = np.loadtxt(sdir+self._fit_interval_file)
+		#self.Mtot        = np.loadtxt(sdir+'Mtot.txt')
 
-			### empirical time index (ordered by EIM selection) ###
-			self.eim_indices = np.loadtxt(sdir+self._eim_indices_file)
+		### unpack time info ###
+		self.dt      = time_info[2]
+		self.tmin    = time_info[0]
+		self.tmax    = time_info[1]
+		self.t_units = 'TOverMtot' # TODO: pass this through time_info for flexibility
 
-			### Complex B coefficients ###
-			B_i    = np.loadtxt(sdir+self._B_i_file)
-			B_r    = np.loadtxt(sdir+self._B_r_file)
-			self.B = B_r + (1j)*B_i
+		### greedy points (ordered by RB selection) ###
+		self.greedy_points = np.loadtxt(sdir+self._greedy_points_file)
 
-			### Deduce sizes from B ###
-			self.dim_rb       = B_r.shape[1]
-			self.time_samples = B_r.shape[0]
+		### empirical time index (ordered by EIM selection) ###
+		self.eim_indices = np.loadtxt(sdir+self._eim_indices_file)
 
-			### Information about phase/amp parametric fit ###
-			self.fitparams_phase = np.loadtxt(sdir+self._fitparams_phase_file)
-			self.fitparams_amp   = np.loadtxt(sdir+self._fitparams_amp_file)
-			self.affine_map      = bool(np.loadtxt(sdir+self._affine_map_file))
+		### Complex B coefficients ###
+		B_i    = np.loadtxt(sdir+self._B_i_file)
+		B_r    = np.loadtxt(sdir+self._B_r_file)
+		self.B = B_r + (1j)*B_i
 
-			### Vandermonde V such that E (orthogonal basis) is E = BV ###
-			V_i    = np.loadtxt(sdir+self._V_i_file)
-			V_r    = np.loadtxt(sdir+self._V_r_file)
-			self.V = V_r + (1j)*V_i
+		### Deduce sizes from B ###
+		self.dim_rb       = B_r.shape[1]
+		self.time_samples = B_r.shape[0]
 
-			### R matrix such that waveform basis H = ER ###
-			R_i    = np.loadtxt(sdir+self._R_i_file)
-			R_r    = np.loadtxt(sdir+self._R_r_file)
-			self.R = R_r + (1j)*R_i
+		### Information about phase/amp parametric fit ###
+		self.fitparams_phase = np.loadtxt(sdir+self._fitparams_phase_file)
+		self.fitparams_amp   = np.loadtxt(sdir+self._fitparams_amp_file)
+		self.affine_map      = bool(np.loadtxt(sdir+self._affine_map_file))
 
-		elif mode == 'w':
+		### Vandermonde V such that E (orthogonal basis) is E = BV ###
+		V_i    = np.loadtxt(sdir+self._V_i_file)
+		V_r    = np.loadtxt(sdir+self._V_r_file)
+		self.V = V_r + (1j)*V_i
 
-			if( not(sdir[-1:] is '/') ):
-                                raise Exception, "path name should end in /"
+		### R matrix such that waveform basis H = ER ###
+		R_i    = np.loadtxt(sdir+self._R_i_file)
+		R_r    = np.loadtxt(sdir+self._R_r_file)
+		self.R = R_r + (1j)*R_i
 
-			try:
-				os.mkdir(sdir)
-				print "Successfully created a surrogate directory...use write_text to export your surrogate!"
-				self.write_ok = True
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def np_savetxt_safe(self,fname,data):
+		""" numpys savetext without overwrites """
 
-			except OSError:
-				print "Could not create a surrogate directory. Not ready to export"
-				self.write_ok = False
-
-		else:
-			raise ValueError, "invalid mode"
-		
-
-		pass
+		if os.path.isfile(fname):
+			raise Exception, "file already exists"
+		else: 
+			np.savetxt(fname,data)
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def write_text(self, t, B, eim_indices, greedy_points, fit_min, fit_max, affine_map, \
@@ -318,27 +309,25 @@ class TextSurrogate:
 			fitparams_phase -- fitting parameters for waveform phase
 		"""
 
-		if (self.write_ok and self.mode == 'w'):
-
-			### pack mass ratio interval (for fits) and time info ###
-			q_fit     = [fit_min, fit_max]
-			dt        = t[3] - t[2]
-			time_info = [t[0], t[-1], dt] # tmin, tmax, dt
+		### pack mass ratio interval (for fits) and time info ###
+		q_fit     = [fit_min, fit_max]
+		dt        = t[3] - t[2]
+		time_info = [t[0], t[-1], dt] # tmin, tmax, dt
 
 
-			np.savetxt(self.SurrogateID+self._fit_interval_file,q_fit)
-			np.savetxt(self.SurrogateID+self._time_info_file,time_info)
-			np.savetxt(self.SurrogateID+self._greedy_points_file,greedy_points)
-			np.savetxt(self.SurrogateID+self._eim_indices_file,eim_indices)
-			np.savetxt(self.SurrogateID+self._B_i_file,B.imag)
-			np.savetxt(self.SurrogateID+self._B_r_file,B.real)
-			np.savetxt(self.SurrogateID+self._fitparams_phase_file,fitparams_phase)
-			np.savetxt(self.SurrogateID+self._fitparams_amp_file,fitparams_amp)
-			np.savetxt(self.SurrogateID+self._affine_map_file,np.array([int(affine_map)]) )
-			np.savetxt(self.SurrogateID+self._V_i_file,V.imag)
-			np.savetxt(self.SurrogateID+self._V_r_file,V.real)
-			np.savetxt(self.SurrogateID+self._R_i_file,R.imag)
-			np.savetxt(self.SurrogateID+self._R_r_file,R.real)
+		self.np_savetxt_safe(self.SurrogateID+self._fit_interval_file,q_fit)
+		self.np_savetxt_safe(self.SurrogateID+self._time_info_file,time_info)
+		self.np_savetxt_safe(self.SurrogateID+self._greedy_points_file,greedy_points)
+		self.np_savetxt_safe(self.SurrogateID+self._eim_indices_file,eim_indices)
+		self.np_savetxt_safe(self.SurrogateID+self._B_i_file,B.imag)
+		self.np_savetxt_safe(self.SurrogateID+self._B_r_file,B.real)
+		self.np_savetxt_safe(self.SurrogateID+self._fitparams_phase_file,fitparams_phase)
+		self.np_savetxt_safe(self.SurrogateID+self._fitparams_amp_file,fitparams_amp)
+		self.np_savetxt_safe(self.SurrogateID+self._affine_map_file,np.array([int(affine_map)]) )
+		self.np_savetxt_safe(self.SurrogateID+self._V_i_file,V.imag)
+		self.np_savetxt_safe(self.SurrogateID+self._V_r_file,V.real)
+		self.np_savetxt_safe(self.SurrogateID+self._R_i_file,R.imag)
+		self.np_savetxt_safe(self.SurrogateID+self._R_r_file,R.real)
 
 		pass
 
@@ -395,9 +384,17 @@ class ExportSurrogate(HDF5Surrogate, TextSurrogate):
 		if ext == 'hdf5' or ext == 'h5':
 			HDF5Surrogate.__init__(self, path)
 		else:
-			TextSurrogate.__init__(self, path,'w')	
-		
-		pass
+
+			if( not(path[-1:] is '/') ):
+                                raise Exception, "path name should end in /"
+
+			try:
+				os.mkdir(path)
+				print "Successfully created a surrogate directory...use write_text to export your surrogate!"
+				TextSurrogate.__init__(self, path)	
+
+			except OSError:
+				print "Could not create a surrogate directory. Not ready to export, please try again."
 
 
 ##############################################
@@ -405,33 +402,19 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 	"""Evaluate single-mode surrogate in terms of the function's amplitude and phase"""
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def __init__(self, path, mode='r'):
+	def __init__(self, path):
 		
 		# Load HDF5 or Text surrogate data depending on input file extension
 		ext = path.split('.')[-1]
 		if ext == 'hdf5' or ext == 'h5':
 			HDF5Surrogate.__init__(self, path)
 		else:
-			TextSurrogate.__init__(self, path,'r')	
+			TextSurrogate.__init__(self, path)
+			self.load_text()
 
 
 		self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
 
-
-		### THIS IS CHADS EDIT -- WHICH IS SIMILAR IN SPIRIT TO EXPORTSURROGATE CLASS ###
-		#if mode == 'r':
-		#	ext = path.split('.')[-1]
-		#	if ext == 'hdf5' or ext == 'h5':
-		#		HDF5Surrogate.__init__(self, path, mode=mode)
-		#	else:
-		#		TextSurrogate.__init__(self, path)	
-		#		
-		#	# Time samples
-		#	self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
-		#
-		#else:
-		#	File.__init__(self, path, mode=mode)
-		
 		# Convenience for plotting purposes
 		self.plt = plt
 		
