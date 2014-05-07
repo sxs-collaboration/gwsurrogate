@@ -2,7 +2,7 @@
 
 from __future__ import division
 
-__copyright__ = "Copyright (C) 2014 GW surrogate group"
+__copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@umd.edu, crgalley@tapir.caltech.edu"
 __status__    = "testing"
 __author__    = "Scott Field, Chad Galley"
@@ -79,8 +79,6 @@ class HDF5Surrogate(File):
 		self.path = path
 		self.mode = mode
 		File.__init__(self, path, mode=mode)
-		
-		keys = self.file.keys()
 		
 		### Get SurrogateID ####
 		if mode == 'r':
