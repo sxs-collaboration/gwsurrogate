@@ -2,7 +2,7 @@
 
 from __future__ import division
 
-__copyright__ = "Copyright (C) 2014 GW surrogate group"
+__copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@umd.edu, crgalley@tapir.caltech.edu"
 __status__    = "testing"
 __author__    = "Scott Field, Chad Galley"
@@ -38,7 +38,8 @@ class File:
 		self.open(mode=mode)
 		
 		# Get all keys (e.g., variable names) in HDF5 file
-		self.keys = self.file.keys()
+		if mode == 'r':
+			self.keys = self.file.keys()
 		
 		pass
 	
@@ -72,18 +73,15 @@ class File:
 class HDF5Surrogate(File):
 	"""Evaluate single-mode surrogate in terms of the function's amplitude and phase from HDF5 data format"""
 
-	# NOTE: Restructure __call__ to evaluate surrogate from data in memory.
-
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def __init__(self, path, mode='r'):
 		self.path = path
 		self.mode = mode
 		File.__init__(self, path, mode=mode)
 		
-		keys = self.file.keys()
-		
-		### Get SurrogateID ####
 		if mode == 'r':
+			
+			### Get SurrogateID ####
 			try:
 				surr_name = path.split('/')[-2]
 				if self.SurrogateID() != surr_name:
@@ -91,63 +89,63 @@ class HDF5Surrogate(File):
 			except: 
 				print "\n>>> Warning: No SurrogateID found!\n"
 		
-		if self.isopen():
+			if self.isopen():
+				
+				### Was surrogate built using ROMpy? ###
+				if 'from_rompy' in self.keys:
+					self.from_rompy = self.file['from_rompy'][()]
+				else:
+					self.from_rompy = True 
+				
+				### Unpack time info ###
+				self.tmin = self.file['tmin'][()]
+				self.tmax = self.file['tmax'][()]
+				self.dt = self.file['dt'][()]
+				
+				if 't_units' in self.keys:
+					self.t_units = self.file['t_units'][()]
+				else:
+					self.t_units = 'TOverMtot'
+				
+				### Greedy points (ordered by RB selection) ###
+				self.greedy_points = self.file['greedy_points'][:]
+				
+				### Empirical time index (ordered by EIM selection) ###
+				self.eim_indices = self.file['eim_indices'][:]
+				
+				### Complex B coefficients ###
+				self.B = self.file['B'][:]
+				
+				### Information about phase/amp parametric fit ###
+				self.affine_map = self.file['affine_map'][()]
+				self.fitparams_amp = self.file['fitparams_amp'][:]
+				self.fitparams_phase = self.file['fitparams_phase'][:]
+				self.fit_min = self.file['fit_min'][()]
+				self.fit_max = self.file['fit_max'][()]
+				self.fit_interval = [self.fit_min, self.fit_max]
 			
-			### Was surrogate built using ROMpy? ###
-			if 'from_rompy' in self.keys:
-				self.from_rompy = self.file['from_rompy'][()]
+				### Vandermonde V such that E (orthogonal basis) is E = BV ###
+				self.V = self.file['V'][:]
+				
+				### R matrix such that waveform basis H = ER ###
+				self.R = self.file['R'][:]
+				
+				### Transpose matrices if surrogate was built using ROMpy ###
+				if self.from_rompy:
+					self.B = np.transpose(self.B)
+					self.V = np.transpose(self.V)
+					self.R = np.transpose(self.R)
+				
+				### Deduce sizes from B ###
+				Bshape = np.shape(self.B)
+				self.dim_rb       = Bshape[1]
+				self.time_samples = Bshape[0]
+				
 			else:
-				self.from_rompy = True 
+				raise Exception, "File not in write mode or is closed."		
 			
-			### Unpack time info ###
-			self.tmin = self.file['tmin'][()]
-			self.tmax = self.file['tmax'][()]
-			self.dt = self.file['dt'][()]
+			self.close()
 			
-			if 't_units' in self.keys:
-				self.t_units = self.file['t_units'][()]
-			else:
-				self.t_units = 'TOverMtot'
-			
-			### Greedy points (ordered by RB selection) ###
-			self.greedy_points = self.file['greedy_points'][:]
-			
-			### Empirical time index (ordered by EIM selection) ###
-			self.eim_indices = self.file['eim_indices'][:]
-			
-			### Complex B coefficients ###
-			self.B = self.file['B'][:]
-			
-			### Information about phase/amp parametric fit ###
-			self.affine_map = self.file['affine_map'][()]
-			self.fitparams_amp = self.file['fitparams_amp'][:]
-			self.fitparams_phase = self.file['fitparams_phase'][:]
-			self.fit_min = self.file['fit_min'][()]
-			self.fit_max = self.file['fit_max'][()]
-			self.fit_interval = [self.fit_min, self.fit_max]
-		
-			### Vandermonde V such that E (orthogonal basis) is E = BV ###
-			self.V = self.file['V'][:]
-			
-			### R matrix such that waveform basis H = ER ###
-			self.R = self.file['R'][:]
-			
-			### Transpose matrices if surrogate was built using ROMpy ###
-			if self.from_rompy:
-				self.B = np.transpose(self.B)
-				self.V = np.transpose(self.V)
-				self.R = np.transpose(self.R)
-			
-			### Deduce sizes from B ###
-			Bshape = np.shape(self.B)
-			self.dim_rb       = Bshape[1]
-			self.time_samples = Bshape[0]
-			
-		else:
-			raise Exception, "File not in write mode or is closed."		
-		
-		self.close()
-		
 		pass
 		
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -335,7 +333,7 @@ class EvaluateSurrogate(HDF5Surrogate, TextSurrogate):
 		### Map q_eval to the standard interval ?? ###
 		if self.affine_map:
 			qmin, qmax = self.fit_interval
-			q_0 = 2*(q_eval - qmin)/(qmax - qmin) - 1;
+			q_0 = 2.*(q_eval - qmin)/(qmax - qmin) - 1.;
 		else:
 			q_0 = q_eval
 
@@ -345,7 +343,7 @@ class EvaluateSurrogate(HDF5Surrogate, TextSurrogate):
 
 		### Build dim_RB-vector fit evalution of h ###
 		### HACK TO KEEP SURROGATES BACKWARDS COMPATIBLE ###
-		if ( phase_eval[-1] < 0 ): # assumption that phase is monotonically decreasing
+		if phase_eval[-1] < 0: # assumption that phase is monotonically decreasing
 			h_EIM = amp_eval*np.exp(-1j*phase_eval)
 		else:
 			h_EIM = amp_eval*np.exp(1j*phase_eval)
@@ -460,12 +458,14 @@ class EvaluateSurrogate(HDF5Surrogate, TextSurrogate):
 	def plot_sur(self, q_eval, timeM=False, showQ=True):
 		"""plot surrogate evaluated at q_eval"""
 		
+		# NOTE: Need to allow for different time units for plotting and labeling
+		
 		hp, hc = self(q_eval)
-		if(self.t_units is 'TOverMtot'):
+		if self.t_units == 'TOverMtot':
 			#times = self.solarmass_over_mtot(times)
-			xlab = '$t/M$'
+			xlab = 'Time, $t/M$'
 		else:
-			xlab = '$t$ (sec)'
+			xlab = 'Time, $t$ (sec)'
 
 		# Plot surrogate waveform
 		fig = self.plot_pretty(self.times,hp,hc)
