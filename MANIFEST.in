@@ -1,0 +1,6 @@
+# in addition to standard files included by distutils setup.py, include these files 
+include LICENSE
+include README_EOBNRv2
+include notebooks/EOBLAL.ipynb
+include notebooks/h5surrogate_ex1.ipynb
+include notebooks/textSurrogate.ipynb
