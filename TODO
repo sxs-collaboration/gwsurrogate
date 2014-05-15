@@ -4,4 +4,4 @@ Some features to add
 
 2) how to best impliment surrogate-specific fits? from python file? string interpreted symbolically?
 
-3) setup.py to automate paths
+3) add more meta-data to setup.py
