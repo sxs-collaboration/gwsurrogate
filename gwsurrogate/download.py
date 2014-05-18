@@ -39,7 +39,11 @@ def get(surr_name,sdir='surrogate_downloads/'):
 	###TODO: check that surr_name is valid. anything else to check? 
 	os.system('wget --directory-prefix='+sdir+' '+_surrogate_world[surr_name])
 
-def unzip(surr_name):
+def unzip(surr_name,sdir='surrogate_downloads/'):
 
 	### TODO: check that surr_name exists
-	os.system('tar -xvzf '+surr_name+'.tar.gz')
+	os.system('tar -xvzf '+sdir+surr_name+'.tar.gz')
+	os.system('mv '+surr_name+ ' '+sdir)
+
+	# returns location of unziped surrogate
+	return os.getcwd()+'/'+sdir+surr_name+'/'
