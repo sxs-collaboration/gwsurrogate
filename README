@@ -6,113 +6,75 @@ gwsurrogate is an easy interface to gravitational wave surrogate models.
 Surrogates provide a fast and accurate evaluation mechanism for gravitational
 waveforms which would otherwise be found through solving differential 
 equations. These equations must be solved in the ``building" phase, which 
-was performed using other codes. For details on surrogate building see:
+was performed using other codes. For details see:
 
 [1] Scott Field, Chad Galley, Jan Hesthaven, Jason Kaye, and Manuel Tiglio. 
 ``Fast prediction and evaluation of gravitational waveforms using surrogate 
 models”, arXiv: gr-qc:1308.3565
 
-[2] ROM WEBSITE HERE
+If you find this package useful in your work, please cite refernce [1] and, 
+if available, the relevant paper describing the specific surrogate used.
 
+gwsurrogate url: ADD CODE'S COORDINATES HERE
+
+
+Installation
+------------
+
+gwsurrogate is a pure-Python module, thus installation is very easy. 
+
+From pip: 
+
+The python package pip supports installing from PyPI (the Python Package 
+Index). gwsurrogate can be installed to the standard location 
+(e.g. /usr/local/lib/pythonX.X/dist-packages) with
+
+>>> pip install gwsurrogate
+
+From source: 
+
+Download and unpack gwsurrogate-X.X.tar.gz to any folder gws_folder of your 
+choosing. The gwsurrogate module can be used immeadiately by adding
+
+  import sys
+  sys.path.append('absolute_path_to_gws_folder')
+
+at the beginning of any script/notebook which uses gwsurrogate. 
+
+Alternatively, if you are a bash or sh user, edit your .profile 
+(or .bash_profile) file and add the line
+
+  export PYTHONPATH=~absolute_path_to_gws_folder:$PYTHONPATH
+
+For a "proper" installation into gws_folder run
+
+>>> python setup.py install --prefix=absolute_path_to_gws_folder
+
+and edit the PYTHONPATH enviornment variable as described above.
 
 
 Getting Started
 ---------------
 
-All instructions below assume you have loaded gwsurrogate:
+Please read the gwsurrogate docstring found in the __init__.py file
+or from ipython with
 
-1) startup ipython
-2) 'import gwsurrogate as gw'
-3) view docstring instructions 'gw?'
+>>> import gwsurrogate as gw
+>>> gw?
 
 (Additional examples for text and hdf5 based surrogates can be 
 found in the accompanying ipython notebooks.)
 
 
+Planned Development
+-------------------
 
-surrogate.py
-------------
+1) Surrogate-specific parametric fitting functions. 
 
-Defines the classes HDF5Surrogate and TextSurrogate. These are 
-low-level classes for loading, evaluating and plotting 
-surrogate models (stored as text or hdf5 data files) 
-as they are exported from the surrogate building code. 
-As such, these surrogates are limited to a fixed sampling rate. 
-Evaluations are provided for by specifcying any value of mass 
-ratio q which lies within the range for which the surrogate is valid. 
+2) Better inferface with rompy
 
-For example, to load and plot a (3,3)-mode surrogate valid for mass
-ratios between 1 and 2, and of length about 12,000M:
+3) More meta-data to setup.py
 
-1) EOB = gw.TextSurrogate('EOBNRv2/EOBNRv2_q1_2_NoSpin_SingleModes/l3_m3_len12241M_SurID15poly/')
+4) mutli-mode surrogates with summations over tensor spherical harmonics
 
-2) EOB.plot(1.2)
-
-
-
-Surrogate data formats and gwsurrogate functions
-------------------------------------------------
-
-1) Folder name to instantiate Surrogate class:
-
-MODELNAME_q[QMIN]_[QMAX]_NoSpin_[Multi(Single)]Mode/l[ELL]_m[M]_len[TIME]M_SurID[RBDIM]poly
-
-(MODELNAME = "EOBNRv2", for example) and quantities in [] are determined by the surrogate settings
-
-2) metadata.txt or info.data contains a description of the surrogate and its generation
-
-3) HDF5/TXT contents: ( h_+ + i h_x = Ae^{i phi} )
-	SurrogateID (string, repeat parent directory name)
-	B (complex matrix, basis-by-times)
-	eim_indices (array of integers, labeled from 0)
-	greedy_points (ordered by their selection)
-	tmin, tmax, dt. (Text surrogates store these in time_info.txt)
-	qmin_fit, qmax_fit (range used for fitting).
-	affine_map (Boolean; whether affine map to reference interval was 
-                    used; use as flag for evaluating fits)
-	fit_coeff_amp 
-	fit_coeff_phase (coefficients of fitting functions; eim_indices-by-coefficients)
-	V (not its inverse; to reconstruct the the orthonormal reduced basis E = B V)
-	R (matrix of coefficients relating basis and waveforms, H = E R)
-
-
-
-Text-based surrogates
----------------------
-
-All text-based surrogates should come as .tar.gz. To create/extra new ones use
-
-tar -cvzf SURROGATE_NAME.tar.gz SURROGATE_NAME/	
-tar -xvzf SURROGATE_NAME.tar.gz
-
-
-
-==== NOTES BELOW THIS LINE ARE OUTDATED, KEEP FOR NOW =======
-
-
-LALsurrogate.py
----------------
-Defines the class LALSurrogateEOB. Similar to SurrogateGW excpet that 
-surrogates can be generated from interpolants for waveforms with different 
-total masses while sampled at the same rate. [NOTE: Unnormalized amplitude 
-dependence on parameters is not yet implemented.] To use:
-
-
-1) Import the routines from "import EvaluateSurrogate_v2" or "from EvaluateSurrogate_v2 import *"
-
-To interpolate the matrix of reduced basis functions:
-
-1) Create instance of InterpolateB class. Must pass location of data files upon initialization, e.g., "interp = InterpolateB('SurrogateQ1to2/')"
-
-2) Generate and save basis function interpolants to hdf5 format with "interp.save_interp('SurrogateQ1to2/')". Options include compressQ, which if True will compress the data using gzip and if False will do no compression. Interpolants will be stored in 'SurrogateQ1to2/B_interp.hdf5'.
-
-
-To generate an EOB surrogate waveform for a given total mass Mtot and mass ratio q:
-
-1) Create instance of LALSurrogateEOB class. Must pass location of data files upon initialization, e.g., "eob = LALSurrogateEOB('SurrogateQ1to2/')"
-
-2) Generate EOB waveforms by specifying a q and Mtot value (in solar masses), e.g., "t, hp, hc = eob(1.2, 60.)"
-
-3) Plot the same EOB waveform with, e.g., "eob.plot_surrogate(1.2, 60.)"
-
-4) Plot multiple surrogate waveforms with, e.g., "eob.plot_surrogates([[1.2, 60.], [1.2, 80.], [1.2, 100.]])". Options "hpQ" and "hcQ" allow for the plus and/or cross polarizations to be plotted. Default values are "hpQ=True", "hcQ=False".
+5) Amplitude and phase surrogates of the kind described in (CITE MICHAEL AND BLACKMAN)
