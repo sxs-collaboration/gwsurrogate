@@ -15,7 +15,7 @@ Directory and file/data name conventions are summarized in README
 
 Specifics
 =========
-All surrogates are generated from the function call
+Waveform training sets are generated from the function call
 
 SimInspiralChooseTDWaveform(phiref, dt, M1, M2,
         s1x, s1y, s1z, s2x, s2y, s2z, fmin, fref, Dist, incl, lambda1, lambda2,
@@ -44,25 +44,35 @@ ampO        = 0
 phaseO      = 7
 approx      = lalsim.EOBNRv2
 
-values for sampleRate, m1, m2 and f0 are varied. These numbers can be found
-in each surrogates info.dat file or the training set metadata.
+The values sampleRate, m1, m2 and f0 are free parameters which define each
+surrogates range of validity. Instead of m1 and m2, training set 
+waveforms (and surrogates) are described as function of 
+
+  MTot = m1 + m2
+  q    = m2/m1,   where m2 >= m1
+
+It is well-known that GWs posses a simple scaling with Mtot, and so
+time-domain surrogates are built for dimensionless time 
+
+  t/Mtot
+
+from which h(m1,m2) can be recovered. 
+
+These numbers can be found in each surrogate's info.dat file 
+or from the training set metadata.
 
 
 Surrogate variables
 ===================
-In stead of m1 and m2, surrogates are evaluated by 
-supplying values for 
+Instead of m1 and m2, surrogates are defined by 
 
-MTot = m1 + m2
-q    = m2/m1,   where m2 >= m1
+  MTot = m1 + m2
+  q    = m2/m1,   where m2 >= m1
 
-Which allows a 2D surrogate for (MTot,q) to be specified through 
+This allows a 2D surrogate for (MTot,q) to be specified from 
 i) evaluation of q at some fixed Mtot, ii) using known scaling 
-relations to get MTot. 
+relations to get (MTot,q) 
 
-The variable sampleRate is either hard-codeds into the surrogate 
-or, in other cases, a spline interpolant is used to allow for arbitrary 
-sampling rates. 
 
 The waveform's length is implicitly set by f0. Surrogates do not 
 currently permit setting (or even knowing) the precise value of f0. 

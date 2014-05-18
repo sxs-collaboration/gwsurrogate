@@ -251,7 +251,7 @@ class TextSurrogate:
 		self.greedy_points = np.loadtxt(sdir+self._greedy_points_file)
 
 		### empirical time index (ordered by EIM selection) ###
-		self.eim_indices = np.loadtxt(sdir+self._eim_indices_file)
+		self.eim_indices = np.loadtxt(sdir+self._eim_indices_file,dtype=int)
 
 		### Complex B coefficients ###
 		B_i    = np.loadtxt(sdir+self._B_i_file)
