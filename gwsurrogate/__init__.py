@@ -123,5 +123,5 @@ along with this program.  If not, see U{http://www.gnu.org/licenses/}.
 """
 
 from surrogate import *
-
+import download as surrogate_repo
 
