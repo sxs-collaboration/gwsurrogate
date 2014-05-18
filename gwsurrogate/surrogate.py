@@ -309,6 +309,8 @@ class TextSurrogate:
 			fitparams_phase -- fitting parameters for waveform phase
 		"""
 
+		# TODO: flag to zip folder with tar -cvzf SURROGATE_NAME.tar.gz SURROGATE_NAME/
+
 		### pack mass ratio interval (for fits) and time info ###
 		q_fit     = [fit_min, fit_max]
 		dt        = t[3] - t[2]

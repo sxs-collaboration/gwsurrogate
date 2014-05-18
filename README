@@ -12,7 +12,7 @@ was performed using other codes. For details see:
 ``Fast prediction and evaluation of gravitational waveforms using surrogate 
 models”, arXiv: gr-qc:1308.3565
 
-If you find this package useful in your work, please cite refernce [1] and, 
+If you find this package useful in your work, please cite reference [1] and, 
 if available, the relevant paper describing the specific surrogate used.
 
 gwsurrogate url: ADD CODE'S COORDINATES HERE
@@ -34,7 +34,7 @@ Index). gwsurrogate can be installed to the standard location
 From source: 
 
 Download and unpack gwsurrogate-X.X.tar.gz to any folder gws_folder of your 
-choosing. The gwsurrogate module can be used immeadiately by adding
+choosing. The gwsurrogate module can be used immediately by adding
 
   import sys
   sys.path.append('absolute_path_to_gws_folder')
@@ -50,7 +50,7 @@ For a "proper" installation into gws_folder run
 
 >>> python setup.py install --prefix=absolute_path_to_gws_folder
 
-and edit the PYTHONPATH enviornment variable as described above.
+and edit the PYTHONPATH environment variable as described above.
 
 
 Getting Started
@@ -69,12 +69,18 @@ found in the accompanying ipython notebooks.)
 Planned Development
 -------------------
 
-1) Surrogate-specific parametric fitting functions. 
+-- Surrogate-specific parametric fitting functions. 
 
-2) Better inferface with rompy
+-- Better interface with rompy
 
-3) More meta-data to setup.py
+-- More meta-data to setup.py
 
-4) mutli-mode surrogates with summations over tensor spherical harmonics
+-- Mutli-mode surrogates with summations over tensor spherical harmonics
 
-5) Amplitude and phase surrogates of the kind described in (CITE MICHAEL AND BLACKMAN)
+-- Amplitude and phase surrogates of the kind described in (CITE MICHAEL AND BLACKMAN)
+
+-- More descriptive surrogate names: EOBNRv2_q1to2_sA_0to0_0to0_0to0_sB_0to0_0to0_0to0_SingleModes
+
+-- Mult-mode surrogates defined on a common temporal grid (text-based ones build mode-by-mode, and each mode could possibly have a different length depending on the alignment.
+
+-- adherence to pep standards
