@@ -34,11 +34,10 @@ def list():
 	for surr_id, surr_url in _surrogate_world.iteritems():
 		print surr_id+' is located at '+surr_url
 
-def get(surr_name):
+def get(surr_name,sdir='surrogate_downloads/'):
 
 	###TODO: check that surr_name is valid. anything else to check? 
-	os.system('wget '+_surrogate_world[surr_name])
-
+	os.system('wget --directory-prefix='+sdir+' '+_surrogate_world[surr_name])
 
 def unzip(surr_name):
 
