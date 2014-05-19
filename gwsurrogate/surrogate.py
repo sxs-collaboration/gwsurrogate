@@ -520,11 +520,11 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		ax = fig.add_subplot(111)
 
 		if flavor == 'regular':
-			self.plt.plot(self.times, hp, 'k-', label='$h_+ (t)$')
-			self.plt.plot(self.times, hc, 'k--', label='$h_\\times (t)$')
+			self.plt.plot(time, hp, 'k-', label='$h_+ (t)$')
+			self.plt.plot(time, hc, 'k--', label='$h_\\times (t)$')
 		elif flavor == 'semilogy':
-			self.plt.semilogy(self.times, hp, 'k-', label='$h_+ (t)$')
-			self.plt.semilogy(self.times, hc, 'k--', label='$h_\\times (t)$')
+			self.plt.semilogy(time, hp, 'k-', label='$h_+ (t)$')
+			self.plt.semilogy(time, hc, 'k--', label='$h_\\times (t)$')
 		else:
 			raise ValueError("Not a valid plot type")
 
