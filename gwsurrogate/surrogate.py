@@ -221,6 +221,7 @@ class TextSurrogate:
 	_V_r_file             = 'V_real.txt'
 	_R_i_file             = 'R_im.txt'
 	_R_r_file             = 'R_re.txt'
+	_fitparams_norm_file  = 'fit_coeff_norm.txt'
 
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -262,9 +263,10 @@ class TextSurrogate:
 		self.dim_rb       = B_r.shape[1]
 		self.time_samples = B_r.shape[0]
 
-		### Information about phase/amp parametric fit ###
+		### Information about phase/amp/norm parametric fits ###
 		self.fitparams_phase = np.loadtxt(sdir+self._fitparams_phase_file)
 		self.fitparams_amp   = np.loadtxt(sdir+self._fitparams_amp_file)
+		self.fitparams_norm  = np.loadtxt(sdir+self._fitparams_norm_file)
 		self.affine_map      = bool(np.loadtxt(sdir+self._affine_map_file))
 
 		### Vandermonde V such that E (orthogonal basis) is E = BV ###
@@ -288,7 +290,7 @@ class TextSurrogate:
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def write_text(self, t, B, eim_indices, greedy_points, fit_min, fit_max, affine_map, \
-				fitparams_amp, fitparams_phase, V, R):
+				fitparams_amp, fitparams_phase, fitparams_norm, V, R):
 		""" Write surrogate data (text) in standard format.
 		
 		Input:
@@ -307,6 +309,7 @@ class TextSurrogate:
 			                   (True/False)
 			fitparams_amp   -- fitting parameters for waveform amplitude
 			fitparams_phase -- fitting parameters for waveform phase
+			fitparams_norm  -- fitting parameters for waveform norm
 		"""
 
 		# TODO: flag to zip folder with tar -cvzf SURROGATE_NAME.tar.gz SURROGATE_NAME/
@@ -330,6 +333,7 @@ class TextSurrogate:
 		self.np_savetxt_safe(self.SurrogateID+self._V_r_file,V.real)
 		self.np_savetxt_safe(self.SurrogateID+self._R_i_file,R.imag)
 		self.np_savetxt_safe(self.SurrogateID+self._R_r_file,R.real)
+		self.np_savetxt_safe(self.SurrogateID+self._fitparams_norm_file,fitparams_norm)
 
 		pass
 
@@ -424,6 +428,9 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def __call__(self, q_eval):
+
+		# TODO: if input is (m1,m2,distance) then use scalings and norm fit to get mode
+
 		return self.h_sur(q_eval)
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -437,9 +444,10 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		else:
 			q_0 = q_eval
 
-		### Evaluate fits ###
-		amp_eval = np.array([ np.polyval(self.fitparams_amp[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
+		### Evaluate amp/phase/norm fits ###
+		amp_eval   = np.array([ np.polyval(self.fitparams_amp[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
 		phase_eval = np.array([ np.polyval(self.fitparams_phase[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
+		norm_eval  = np.array([ np.polyval(self.fitparams_norm, q_0) ])
 
 		### Build dim_RB-vector fit evalution of h ###
 		### HACK TO KEEP SURROGATES BACKWARDS COMPATIBLE ###
@@ -450,6 +458,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 
 		### Surrogate modes hp and hc ###
 		surrogate = np.dot(self.B, h_EIM)
+		surrogate = norm_eval * surrogate
 		hp = surrogate.real
 		hp = hp.reshape([self.time_samples,])
 		hc = surrogate.imag
