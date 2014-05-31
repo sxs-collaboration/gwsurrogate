@@ -1,4 +1,4 @@
-Built on 27-May-2014
+Built on 31-May-2014
 
 WARNINGS:
 Nothing to report
@@ -35,7 +35,7 @@ Surrogate settings:
 Polynomial fits for amplitude and phase
 Training data used for best fit selection
 RB used in surrogate basis + fitting = 19
-Accuracy in recovering waveform basis h by BVR = 5.5639e-16
+Accuracy in recovering waveform basis h by BVR = 7.8181e-16
 
 
 Quality control diagnostics:
@@ -43,17 +43,14 @@ Quality control diagnostics:
 L2 surrogate error (training space) 2.0898e-04
 Linf surrogate error (training space) 3.0774e-03
 maximum relative error of ||rh|| fit 6.8461e-06
-Random waveform injection file name is EOB_TD_1011_q1_2_Mt80_fmin9_1048576_512_modeBoth_MergerAligned
-L2 basis error (random) 6.9755e-07
-L2 EIM error (random) 3.8295e-06
-L2 surrogate error (random) 2.3528e-04
-Linf surrogate error (random) 3.4266e-03
+
+Random error sampling not carried out
 
 Timing numbers (per waveform averages):
 Total waveforms generated in timing study = 10
-Time (secs) to evaluate all amplitude and phase fits = 2.932000e-04
-Time (secs) to build empirical interpolant = 1.880000e-04
-Time (secs) to evaluate surrogate (sum of two previous numbers) = 4.812000e-04
+Time (secs) to evaluate all amplitude and phase fits = 3.237000e-04
+Time (secs) to build empirical interpolant = 4.123000e-04
+Time (secs) to evaluate surrogate (sum of two previous numbers) = 7.360000e-04
 
 
 Extra info:

@@ -19,8 +19,8 @@ surrogate_rb = 'all'
 
 %%% Monte Carlo study of representation errors %%%
 % Note: if true, MC_files must have a location
-MC_errors = true
-% MC_errors = false
+% MC_errors = true
+MC_errors = false
 
 %%% Use subset of training set (useful for convergence studies) %%%
 subset = 'None'
@@ -116,6 +116,7 @@ elseif(strcmp(modelName,'EOBNRv2'))
     
     %%% all training waveforms generated at 1 mega PS %%%
     MegaPS_TS = 1; % use GetPhysicalConstants('LAL_MKS');
+    ts_units = 'LAL_MKS';
     
 
     %%% absolute path where hdf5 file is located %%%

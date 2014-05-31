@@ -338,46 +338,6 @@ class TextSurrogate:
 		pass
 
 
-#	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#	def switch_time_to_secs(self,Mtot):
-#		"""switch from time units 'TOverMtot' to 's' """
-#		# TODO: temporal untis below should be implimented in a better way
-#
-#		if(self.t_units is 'secs'):
-#			print 'times already in seconds'
-#		else:
-#			self.t_units = 'secs'
-#			self.solarmass_over_mtot_to_s(Mtot)
-#		pass
-#		
-#	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#	def switch_time_to_TOverM(self,Mtot):
-#		"""switch from time units 's' to 'TOverMtot'"""
-#
-#		if(self.t_units is 'TOverMtot'):
-#			print 'times alrady in t/M'
-#		else:
-#			self.t_units = 'TOverMtot'
-#			self.s_to_solarmass_over_mtot(Mtot)
-#		pass
-#
-#	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#	def s_to_solarmass_over_mtot(self,Mtot):
-#		"""convert seconds t to dimensionless t/Mtot"""
-#		self.dt   = (self.dt / mks.Msuninsec) / Mtot
-#		self.tmin = (self.tmin / mks.Msuninsec) / Mtot
-#		self.tmax = (self.tmax / mks.Msuninsec) / Mtot
-#		pass
-#
-#	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#	def solarmass_over_mtot_to_s(self,Mtot):
-#		"""convert dimensionless t/Mtot to seconds"""
-#		self.dt   = (self.dt * mks.Msuninsec) * Mtot
-#		self.tmin = (self.tmin * mks.Msuninsec) * Mtot
-#		self.tmax = (self.tmax * mks.Msuninsec) * Mtot
-#		pass
-#		
-
 ##############################################
 class ExportSurrogate(HDF5Surrogate, TextSurrogate):
 	"""Export single-mode surrogate"""
@@ -427,27 +387,59 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		pass
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def __call__(self, q_eval):
+	def __call__(self, q_eval, M_eval=-1, dist_eval=-1):
+		"""Surrogate evaluation for dimensionless waveform (q) or physical waveform (M_eval in solar masses and R in mega parsecs) """
 
-		# TODO: if input is (m1,m2,distance) then use scalings and norm fit to get mode
+		### (q,M,distance) then use scalings and norm fit to get mode ###
+		if( M_eval > 0.0 and dist_eval > 0.0):
+			amp0    = ((M_eval * mks.Msun ) / (dist_eval * mks.Mpcinm )) * ( mks.G / np.power(mks.c,2.0) )
+			t_scale = mks.Msuninsec * M_eval
+		else:
+			amp0    = 1.0
+			t_scale = 1.0
 
-		return self.h_sur(q_eval)
-	
+		hp, hc = self.h_sur(q_eval)
+		hp     = amp0 * hp
+		hc     = amp0 * hc
+		t      = self.time()
+		t      = t_scale * t  
+
+		return t, hp, hc
+
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def h_sur(self, q_eval):
-		"""evaluate surrogate at q_eval"""
+	def affine_mapper(self, q_eval):
+		"""map q_eval to the standard interval [-1,1]"""
 
-		### Map q_eval to the standard interval ?? ###
 		if self.affine_map:
 			qmin, qmax = self.fit_interval
 			q_0 = 2.*(q_eval - qmin)/(qmax - qmin) - 1.;
 		else:
 			q_0 = q_eval
 
+		return q_0
+
+
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def norm_eval(self, q_0,affine_mapped=True):
+		"""evaluate norm fit"""
+
+		if( not(affine_mapped) ):
+			q_0 = self.affine_mapper(q_0)
+
+		nrm_eval  = np.array([ np.polyval(self.fitparams_norm, q_0) ])
+		return nrm_eval
+
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def h_sur(self, q_eval):
+		"""evaluate surrogate at q_eval"""
+
+		### Map q_eval to the standard interval ###
+		q_0 = self.affine_mapper(q_eval)
+
 		### Evaluate amp/phase/norm fits ###
 		amp_eval   = np.array([ np.polyval(self.fitparams_amp[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
 		phase_eval = np.array([ np.polyval(self.fitparams_phase[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
-		norm_eval  = np.array([ np.polyval(self.fitparams_norm, q_0) ])
+		nrm_eval   = self.norm_eval(q_0)
 
 		### Build dim_RB-vector fit evalution of h ###
 		### HACK TO KEEP SURROGATES BACKWARDS COMPATIBLE ###
@@ -458,7 +450,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 
 		### Surrogate modes hp and hc ###
 		surrogate = np.dot(self.B, h_EIM)
-		surrogate = norm_eval * surrogate
+		surrogate = nrm_eval * surrogate
 		hp = surrogate.real
 		hp = hp.reshape([self.time_samples,])
 		hc = surrogate.imag
@@ -484,6 +476,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	# TODO: this routine might not serve a useful purpose -- think about it
 	def time(self, units=None):
 		# NOTE: Is Mtot the total mass of the surrogate or the total mass one wants to 
 		# evaluate the time?
@@ -567,7 +560,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 	def plot_sur(self, q_eval, timeM=False, showQ=True):
 		"""plot surrogate evaluated at q_eval"""
 		
-		hp, hc = self(q_eval)
+		t, hp, hc = self(q_eval)
 
 		if self.t_units == 'TOverMtot':
 			#times = self.solarmass_over_mtot(times)
@@ -576,7 +569,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 			xlab = 'Time, $t$ (sec)'
 
 		# Plot surrogate waveform
-		fig = self.plot_pretty(self.times,hp,hc)
+		fig = self.plot_pretty(t,hp,hc)
 		self.plt.xlabel(xlab)
 		self.plt.ylabel('Surrogate waveform')
 		
