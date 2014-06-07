@@ -1,0 +1,73 @@
+Overview
+========
+
+This README discusses waveform generation used to populate a training space.
+
+Surrogates produced from EOBNRv2 model as implemented in the 
+LIGO Analysis Library (LAL) Suite version 
+'git hash 59c12886b026c863397f191e6c2ca69ef3498616'. For more details, see
+
+ Scott Field, Chad Galley, Jan Hesthaven, Jason Kaye, and Manuel Tiglio.
+``Fast prediction and evaluation of gravitational waveforms using surrogate
+models”, arXiv: gr-qc:1308.3565
+
+
+Specifics
+=========
+
+Training waveforms are generated from the function call
+
+SimInspiralChooseTDWaveform(phiref, dt, M1, M2,
+        s1x, s1y, s1z, s2x, s2y, s2z, fmin, fref, Dist, incl, lambda1, lambda2,
+        waveFlags, nonGRparams, ampO, phaseO, approx)
+
+where 
+
+phiref      = 0.0
+dt          = 1./sampleRate
+M1          = m1
+M2          = m2
+s1x         = 0.0
+s1y         = 0.0 
+s1z         = 0.0 
+s2x         = 0.0 
+s2y         = 0.0 
+s2z         = 0.0
+fmin        = f0
+fref        = 0.0
+Dist        = 1.0 megaparsec
+incl        = 0.0
+lambda1     = lambda2 = 0.
+waveFlags   = None
+nonGRparams = None
+ampO        = 0
+phaseO      = 7
+approx      = lalsim.EOBNRv2
+
+The values sampleRate, m1, m2 and f0 are free parameters which define each
+surrogate's range of validity. Instead of m1 and m2, training set 
+waveforms (and surrogates) are built as functions of 
+
+  MTot = m1 + m2
+  q    = m2/m1,   where m2 >= m1
+  T    = t/Mtot
+
+so that any time-domain surrogate h(m1,m2) can be recovered from 
+a dimensionless one h(T;q) by i) evaluation of q at some fixed Mtot, 
+ii) using known scaling relations to get (MTot,q).
+
+Values for q, M, sampleRate, and f0 can be found in each surrogate's info.dat
+file or from the training set metadata.
+
+The waveform's length is implicitly set by f0. Surrogates do not 
+currently permit setting (or even knowing) the precise value of f0. 
+Instead, we quote the typical duration. Surrogate's do ensure, however,
+that a desired f_low has been achieved.
+
+
+Acknowledgements
+================
+We thank Frank Herrmann and Evan Ochsner for providing python wrappers
+for the evaluation of SimInspiralChooseTDWaveform.
+
+
