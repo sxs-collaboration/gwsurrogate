@@ -407,11 +407,16 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		return t, hp, hc
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def affine_mapper(self, q_eval):
-		"""map q_eval to the standard interval [-1,1]"""
+	def affine_mapper_checker(self, q_eval):
+		"""map q_eval to the standard interval [-1,1] if necessary. Also check is q_eval within training interval"""
+
+		qmin, qmax = self.fit_interval
+
+		if( q_eval < qmin or q_eval > qmax):
+			raise ValueError("Surrogate not trainined at requested parameter value")
+
 
 		if self.affine_map:
-			qmin, qmax = self.fit_interval
 			q_0 = 2.*(q_eval - qmin)/(qmax - qmin) - 1.;
 		else:
 			q_0 = q_eval
@@ -424,7 +429,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		"""evaluate norm fit"""
 
 		if( not(affine_mapped) ):
-			q_0 = self.affine_mapper(q_0)
+			q_0 = self.affine_mapper_checker(q_0)
 
 		nrm_eval  = np.array([ np.polyval(self.fitparams_norm, q_0) ])
 		return nrm_eval
@@ -433,8 +438,8 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 	def h_sur(self, q_eval):
 		"""evaluate surrogate at q_eval"""
 
-		### Map q_eval to the standard interval ###
-		q_0 = self.affine_mapper(q_eval)
+		### Map q_eval to the standard interval and check parameter validity ###
+		q_0 = self.affine_mapper_checker(q_eval)
 
 		### Evaluate amp/phase/norm fits ###
 		amp_eval   = np.array([ np.polyval(self.fitparams_amp[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
