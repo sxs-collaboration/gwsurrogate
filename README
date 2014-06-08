@@ -86,3 +86,5 @@ Planned Development
 -- adherence to pep standards
 
 -- log files for all downloaded surrogates, and tools for viewing them
+
+-- paramter array inputs for generating multiple surrogate evaluations

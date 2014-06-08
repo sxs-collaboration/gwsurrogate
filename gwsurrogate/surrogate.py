@@ -448,6 +448,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 
 		### Build dim_RB-vector fit evalution of h ###
 		### HACK TO KEEP SURROGATES BACKWARDS COMPATIBLE ###
+		# TODO: remove this once all surrogates have been updated for new convention
 		if phase_eval[-1] < 0: # assumption that phase is monotonically decreasing
 			h_EIM = amp_eval*np.exp(-1j*phase_eval)
 		else:
@@ -469,15 +470,15 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 
 		qmin, qmax = self.fit_interval
 		ran = np.random.uniform(qmin, qmax, N)
-		q_ran = 2.*(ran - qmin)/(qmax - qmin) - 1.;
 
 		tic = time.time()
 		for i in ran:
-			hp, hc = self(i)
+			t, hp, hc = self(i)
 
 		toc = time.time()
-		print 'total time = ',toc-tic
-		print 'average time = ', (toc-tic)/float(N)
+		print 'Timing results...'
+		print 'Total time = ',toc-tic
+		print 'Average time = ', (toc-tic)/float(N)
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
