@@ -15,6 +15,7 @@ models”, arXiv: gr-qc:1308.3565
 If you find this package useful in your work, please cite reference [1] and, 
 if available, the relevant paper describing the specific surrogate used.
 
+
 gwsurrogate url: ADD CODE'S COORDINATES HERE
 
 
@@ -62,8 +63,18 @@ or from ipython with
 >>> import gwsurrogate as gw
 >>> gw?
 
-(Additional examples for text and hdf5 based surrogates can be 
-found in the accompanying ipython notebooks.)
+Additional examples can be found in the accompanying ipython notebooks.
+
+
+NSF Support
+-----------
+
+This package is based upon work supported by the National Science Foundation 
+under PHY-1316424 and PHY-1208861.
+
+Any opinions, findings, and conclusions or recommendations expressed in 
+gwsurrogate are those of the authors and do not necessarily reflect the 
+views of the National Science Foundation.
 
 
 Planned Development
