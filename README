@@ -84,15 +84,11 @@ Planned Development
 
 -- Better interface with rompy
 
--- More meta-data to setup.py
-
--- Mutli-mode surrogates with summations over tensor spherical harmonics
-
 -- Amplitude and phase surrogates of the kind described in (Michael AND Blackman papers)
 
 -- More descriptive surrogate names: EOBNRv2_q1to2_sA_0to0_0to0_0to0_sB_0to0_0to0_0to0_SingleModes
 
--- Mult-mode surrogates defined on a common temporal grid (text-based ones build mode-by-mode, and each mode could possibly have a different length depending on the alignment.
+-- Direct generation of multi-mode surrogates which tesnor harmonic weighting
 
 -- adherence to pep standards
 
