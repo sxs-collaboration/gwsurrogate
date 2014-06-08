@@ -387,11 +387,12 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		pass
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def __call__(self, q_eval, M_eval=-1, dist_eval=-1):
-		"""Surrogate evaluation for dimensionless waveform (q) or physical waveform (M_eval in solar masses and R in mega parsecs) """
+	def __call__(self, q_eval, M_eval, dist_eval, f_low=None):
+		"""Return surrogate evaluation for mass ratio q, total mass M (solar masses) and binary distance R (megaparsecs).
+                   Optional: if f_low supplied will check if this has been achieved (garuntees f_start < f_low) """
 
 		### (q,M,distance) then use scalings and norm fit to get mode ###
-		if( M_eval > 0.0 and dist_eval > 0.0):
+		if( M_eval is not None and dist_eval is not None):
 			amp0    = ((M_eval * mks.Msun ) / (dist_eval * mks.Mpcinm )) * ( mks.G / np.power(mks.c,2.0) )
 			t_scale = mks.Msuninsec * M_eval
 		else:
@@ -402,7 +403,10 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		hp     = amp0 * hp
 		hc     = amp0 * hc
 		t      = self.time()
-		t      = t_scale * t  
+		t      = t_scale * t
+
+		if f_low is not None:
+			self.find_instant_freq(hp, hc, t, f_low)
 
 		return t, hp, hc
 
@@ -436,7 +440,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def h_sur(self, q_eval):
-		"""evaluate surrogate at q_eval"""
+		"""evaluate surrogate at q_eval. This returns dimensionless rh/M waveforms in units of t/M."""
 
 		### Map q_eval to the standard interval and check parameter validity ###
 		q_0 = self.affine_mapper_checker(q_eval)
@@ -464,6 +468,31 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 
 		return hp, hc
 	
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def find_instant_freq(self, hp, hc, t, f_low = None):
+		"""instantaneous frequency at t_start for 
+
+                   h = A(t) exp(2 * pi * i * f(t) * t), 
+
+                   where \partial_t A ~ \partial_t f ~ 0. If f_low passed will check its been achieved."""
+
+		h    = hp + 1j*hc
+		dt   = t[1] - t[0]
+		hdot = (h[2] - h[0]) / (2 * dt) # 2nd order derivative approximation at t[1]
+
+		f_instant = hdot / (2 * np.pi * 1j * h[1])
+		f_instant = f_instant.real
+
+		if f_low is None:
+			return f_instant
+		else:
+
+			if f_instant > f_low:
+				raise Warning, "starting frequency is "+str(f_instant)
+			else:
+				pass
+
+
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def timer(self, N):
 		"""average time to evaluate n waveforms"""
