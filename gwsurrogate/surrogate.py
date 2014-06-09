@@ -494,20 +494,20 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def timer(self, N):
-		"""average time to evaluate n waveforms"""
+	def timer(self):
+		"""average time to evaluate waveforms"""
 
 		qmin, qmax = self.fit_interval
-		ran = np.random.uniform(qmin, qmax, N)
+		ran = np.random.uniform(qmin, qmax, 1000)
 
 		tic = time.time()
 		for i in ran:
-			t, hp, hc = self(i)
+			hp, hc = self.h_sur(i)
 
 		toc = time.time()
-		print 'Timing results...'
-		print 'Total time = ',toc-tic
-		print 'Average time = ', (toc-tic)/float(N)
+		print 'Timing results (results quoted in seconds)...'
+		print 'Total time to generate 1000 waveforms = ',toc-tic
+		print 'Average time to generate a single waveform = ', (toc-tic)/1000.0
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
