@@ -417,7 +417,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		qmin, qmax = self.fit_interval
 
 		if( q_eval < qmin or q_eval > qmax):
-			raise ValueError("Surrogate not trainined at requested parameter value")
+			raise Warning("Surrogate not trainined at requested parameter value")
 
 
 		if self.affine_map:
@@ -595,7 +595,8 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 	def plot_sur(self, q_eval, timeM=False, showQ=True):
 		"""plot surrogate evaluated at q_eval"""
 		
-		t, hp, hc = self(q_eval)
+		hp, hc = self.h_sur(q_eval)
+		t      = self.time()
 
 		if self.t_units == 'TOverMtot':
 			#times = self.solarmass_over_mtot(times)

@@ -24,11 +24,13 @@ along with this program.  If not, see U{http://www.gnu.org/licenses/}.
 
 import os
 
+### Naming convention: dictionary KEY (e.g. EOBNRv2) should match file KEY.tar.gz (e.g. EOBNRv2.tar.gz) ###
+
 ### dictionary of all known surrogates -- download location ###
-_surrogate_world = {'EOBNRv2_1':'https://www.dropbox.com/s/4dpiw0zzh1wddmq/EOBNRv2.tar.gz'}
+_surrogate_world = {'EOBNRv2':'https://www.dropbox.com/s/4dpiw0zzh1wddmq/EOBNRv2.tar.gz'}
 
 ### dictionary of all known surrogates -- information ###
-_surrogate_world_info = {'EOBNRv2_1':'add info here'}
+_surrogate_world_info = {'EOBNRv2':'add info here'}
 
 def download_path():
 	'''return the default path for downloaded surrogates'''
@@ -57,11 +59,16 @@ def get(surr_name,sdir=None):
 	else:
 		raise ValueError("No surrogate package exits")
 
-def unzip(surr_name,sdir='surrogate_downloads/'):
+def unzip(surr_name,sdir=None):
 
 	### TODO: check that surr_name exists
-	os.system('tar -xvzf '+sdir+surr_name+'.tar.gz')
-	os.system('mv '+surr_name+ ' '+sdir)
+	if ( sdir is None):
+		unzip_me = download_path()
+	else:
+		unzip_me = sdir
+
+	os.system('tar -xvzf '+unzip_me+surr_name+'.tar.gz')
+	os.system('mv '+surr_name+ ' '+unzip_me)
 
 	# returns location of unziped surrogate
-	return os.getcwd()+'/'+sdir+surr_name+'/'
+	return unzip_me+surr_name+'/'
