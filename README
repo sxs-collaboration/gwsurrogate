@@ -16,7 +16,7 @@ If you find this package useful in your work, please cite reference [1] and,
 if available, the relevant paper describing the specific surrogate used.
 
 
-gwsurrogate url: ADD CODE'S COORDINATES HERE
+gwsurrogate is available at https://pypi.python.org
 
 
 Installation
@@ -60,8 +60,8 @@ Getting Started
 Please read the gwsurrogate docstring found in the __init__.py file
 or from ipython with
 
->>> import gwsurrogate as gw
->>> gw?
+>>> import gwsurrogate as gws
+>>> gws?
 
 Additional examples can be found in the accompanying ipython notebooks.
 
@@ -80,18 +80,10 @@ views of the National Science Foundation.
 Planned Development
 -------------------
 
--- Surrogate-specific parametric fitting functions. 
-
--- Better interface with rompy
-
--- Amplitude and phase surrogates of the kind described in (Michael AND Blackman papers)
-
+-- Surrogate-specific parametric fitting functions
+-- Amplitude and phase based surrogates 
 -- More descriptive surrogate names: EOBNRv2_q1to2_sA_0to0_0to0_0to0_sB_0to0_0to0_0to0_SingleModes
-
 -- Direct generation of multi-mode surrogates with tesnor harmonic weighting
-
 -- adherence to pep standards
-
 -- log files for all downloaded surrogates, and tools for viewing them
-
 -- paramter array inputs for generating multiple surrogate evaluations
