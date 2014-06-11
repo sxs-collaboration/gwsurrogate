@@ -1,7 +1,7 @@
-Welcome to gwsurrogate!
+Welcome to GWSurrogate!
 -----------------------
 
-gwsurrogate is an easy to use interface to gravitational wave surrogate models.
+GWSurrogate is an easy to use interface to gravitational wave surrogate models.
 
 Surrogates provide a fast and accurate evaluation mechanism for gravitational
 waveforms which would otherwise be found through solving differential 
@@ -80,6 +80,8 @@ views of the National Science Foundation.
 Planned Development
 -------------------
 
+-- Set phase at merger
+-- Set sampling rate
 -- Surrogate-specific parametric fitting functions
 -- Amplitude and phase based surrogates 
 -- More descriptive surrogate names: EOBNRv2_q1to2_sA_0to0_0to0_0to0_sB_0to0_0to0_0to0_SingleModes

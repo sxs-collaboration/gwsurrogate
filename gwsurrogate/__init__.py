@@ -1,8 +1,8 @@
-"""gwsurrogate
+"""GWSurrogate
    ===========
 
 Provides 
-  1. An easy interface to gravitational wave surrogate models
+  1. An to use easy interface to gravitational wave surrogate models
   2. Up-to-date database of surrogates and tools for downloading them
   3. Helper routines required for basic data analysis tasks
 
@@ -10,15 +10,13 @@ Provides
 Example usage
 -------------
 
-To plot an EOBNRv2 surrogate valid for mass ratios between 1 and 2, and of 
-length about 12,000M
+To plot the EOBNRv2 surrogate included with this package (others available for download)
 
   ipmort gwsurrogate as gw
-  EOB = gw.TextSurrogate('EOBNRv2/EOBNRv2_q1_2_NoSpin_SingleModes/l3_m3_len12241M_SurID15poly/')
-  EOB.plot(1.2)
+  EOB = gws.EvaluateSurrogate('gwsurrogate/tutorial/EOBNRv2_example/EOBNRv2_q1_2_NoSpin_SingleModes/l2_m2_len12239M_SurID19poly/')
+  EOB.plot_sur(q_eval = 1.3)
 
-(Additional examples for text and hdf5 based surrogates can be 
-found in the accompanying ipython notebooks.)
+Additional examples can be found in the accompanying ipython notebooks.
 
 
 Surrogate data format
@@ -61,65 +59,40 @@ where, for example, MODELNAME = "EOBNRv2" and []-quantities are determined by th
 surrogate.py
 ------------
 
-Defines the classes HDF5Surrogate and TextSurrogate. These are 
-low-level classes for loading, evaluating and plotting 
-surrogate models (stored as text or hdf5 data files) 
-as they are exported from the surrogate building code. 
-As such, these surrogates are limited to a fixed sampling rate. 
-Evaluations are provided for by specifcying any value of mass 
-ratio q which lies within the range for which the surrogate is valid. 
+Defines the classes HDF5Surrogate and TextSurrogate. These are low-level 
+classes for loading, evaluating and plotting surrogate models (stored 
+as text or hdf5 data files) as they are exported from the surrogate building 
+code; these surrogates are limited to a fixed sampling rate and are dimensionless.
 
-
-==== NOTES BELOW THIS LINE ARE OUTDATED, KEEP FOR NOW =======
-
-
-LALsurrogate.py
----------------
-Defines the class LALSurrogateEOB. Similar to SurrogateGW excpet that 
-surrogates can be generated from interpolants for waveforms with different 
-total masses while sampled at the same rate. [NOTE: Unnormalized amplitude 
-dependence on parameters is not yet implemented.] To use:
-
-
-1) Import the routines from "import EvaluateSurrogate_v2" or "from EvaluateSurrogate_v2 import *"
-
-To interpolate the matrix of reduced basis functions:
-
-1) Create instance of InterpolateB class. Must pass location of data files upon initialization, e.g., "interp = InterpolateB('SurrogateQ1to2/')"
-
-2) Generate and save basis function interpolants to hdf5 format with "interp.save_interp('SurrogateQ1to2/')". Options include compressQ, which if True will compress the data using gzip and if False will do no compression. Interpolants will be stored in 'SurrogateQ1to2/B_interp.hdf5'.
-
-
-To generate an EOB surrogate waveform for a given total mass Mtot and mass ratio q:
-
-1) Create instance of LALSurrogateEOB class. Must pass location of data files upon initialization, e.g., "eob = LALSurrogateEOB('SurrogateQ1to2/')"
-
-2) Generate EOB waveforms by specifying a q and Mtot value (in solar masses), e.g., "t, hp, hc = eob(1.2, 60.)"
-
-3) Plot the same EOB waveform with, e.g., "eob.plot_surrogate(1.2, 60.)"
-
-4) Plot multiple surrogate waveforms with, e.g., "eob.plot_surrogates([[1.2, 60.], [1.2, 80.], [1.2, 100.]])". Options "hpQ" and "hcQ" allow for the plus and/or cross polarizations to be plotted. Default values are "hpQ=True", "hcQ=False".
+The EvaluateSurrogate class can be used to generate astrophysical surrogates
+depending on the masses, distance to the source another other parameters 
+of interest.
 
 """
 
-__copyright__ = "Copyright (C) 2014 GW surrogate group"
+__copyright__ = "Copyright (C) 2014 Scott Field, Chad Galley"
 __email__ = "sfield@umd.edu"
 __status__ = "testing"
 __author__ = "Scott Field, Chad Galley"
 
 __license__ = """
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see U{http://www.gnu.org/licenses/}.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 """
 
 from surrogate import *
