@@ -499,6 +499,21 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def phase(self,h):
+        	"""Get phase of waveform, h = A*exp(i*phi)"""
+
+		amp = self.amp(h);
+		return np.unwrap( np.real( -1j * np.log( h/amp ) ) )
+
+
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def amp(self,h):
+        	"""Get amplitude of waveform, h = A*exp(i*phi)"""
+
+	        return np.abs(h)
+
+
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def timer(self):
 		"""average time to evaluate waveforms"""
 
