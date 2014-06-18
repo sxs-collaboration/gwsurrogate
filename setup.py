@@ -8,7 +8,7 @@ setup(name='gwsurrogate',
       packages=['gwsurrogate'],
       license='MIT',
       description='an easy to use interface to gravitational wave surrogate models',
-      install_requires=["numpy","matplotlib","h5py"],
+      install_requires=["numpy","matplotlib"],
       classifiers=[
                 'Intended Audience :: Other Audience',
                 'Intended Audience :: Science/Research',

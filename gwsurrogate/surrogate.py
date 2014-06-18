@@ -27,11 +27,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-import numpy as np, h5py
+import numpy as np
 import const_mks as mks
 import matplotlib.pyplot as plt
 import time
 import os as os
+
+try:
+	import h5py
+	h5py_enabled = True
+except ImportError:
+	h5py_enabled = False
+
 
 ##############################################
 class File:
