@@ -452,7 +452,8 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		qmin, qmax = self.fit_interval
 
 		if( q_eval < qmin or q_eval > qmax):
-			raise Warning("Surrogate not trainined at requested parameter value")
+			print "Warning: Surrogate not trained at requested parameter value" # needed to display in ipython notebook
+			Warning("Surrogate not trained at requested parameter value")
 
 
 		if self.affine_map:
@@ -485,12 +486,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		phase_eval = np.array([ np.polyval(self.fitparams_phase[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
 		nrm_eval   = self.norm_eval(q_0)
 
-		### Build dim_RB-vector fit evalution of h ###
-		### HACK TO KEEP SURROGATES BACKWARDS COMPATIBLE ###
-		# TODO: remove this once all surrogates have been updated for new convention
-		#if phase_eval[-1] < 0: # assumption that phase is monotonically decreasing
-		#	h_EIM = amp_eval*np.exp(-1j*phase_eval)
-		#else:
+		### Build dim_RB-vector fit evaluation of h ###
 		h_EIM = amp_eval*np.exp(1j*phase_eval)
 
 		### Surrogate modes hp and hc ###
@@ -498,6 +494,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 			surrogate = np.dot(self.B, h_EIM)
 		else:
 			surrogate = np.dot(self.resample_B(samples), h_EIM)
+
 		surrogate = nrm_eval * surrogate
 		hp = surrogate.real
 		#hp = hp.reshape([self.time_samples,])

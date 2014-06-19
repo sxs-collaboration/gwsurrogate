@@ -1,8 +1,8 @@
 # in addition to standard files included by distutils setup.py, include these files 
 include LICENSE
 include surrogate_downloads/README
-include gwsurrogate/tutorial/notebooks/example1.ipynb
-recursive-include gwsurrogate/tutorial/EOBNRv2_example/EOBNRv2_q1_2_NoSpin_SingleModes/l2_m2_len12239M_SurID19poly *.txt *.dat
-include gwsurrogate/tutorial/README
+include tutorial/notebooks/example1.ipynb
+recursive-include tutorial/EOBNRv2_example/EOBNRv2_q1_2_NoSpin_SingleModes/l2_m2_len12239M_SurID19poly *.txt *.dat
+include tutorial/README
 exclude gwsurrogate/test2.py
 exclude gwsurrogate/LALsurrogate.py
