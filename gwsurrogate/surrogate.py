@@ -556,15 +556,19 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		return ( h*np.exp(-1.0j *phiadj) )
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def timer(self):
-		"""average time to evaluate waveforms"""
+	def timer(self,M_eval=None,dist_eval=None,phi_ref=None,f_low=None,samples=None):
+		"""average time to evaluate surrogate waveforms. """
 
 		qmin, qmax = self.fit_interval
 		ran = np.random.uniform(qmin, qmax, 1000)
 
 		tic = time.time()
-		for i in ran:
-			hp, hc = self.h_sur(i)
+		if M_eval is None:
+			for i in ran:
+				hp, hc = self.h_sur(i)
+		else:
+			for i in ran:
+				t, hp, hc = self.__call__(i,M_eval,dist_eval,phi_ref,f_low,samples)
 
 		toc = time.time()
 		print 'Timing results (results quoted in seconds)...'
