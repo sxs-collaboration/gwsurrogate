@@ -3,7 +3,7 @@
 from __future__ import division
 
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
-__email__     = "sfield@umd.edu, crgalley@tapir.caltech.edu"
+__email__     = "sfield@astro.cornell.edu, crgalley@tapir.caltech.edu"
 __status__    = "testing"
 __author__    = "Scott Field, Chad Galley"
 
