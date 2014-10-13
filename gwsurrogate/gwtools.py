@@ -28,6 +28,8 @@ THE SOFTWARE.
 """
 
 import numpy as np
+from scipy.interpolate import interp1d
+from scipy.optimize import minimize
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def amp_phase(h):
@@ -107,4 +109,76 @@ def simple_align_params(t1,h1,t2,h2):
     deltaPhi = phase1[np.argmax( amp1 )] - phase2[np.argmax( amp2 )]
 
     return deltaT, deltaPhi
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def generate_parameterized_norm(t,h1_interp,h2_eval,mynorm):
+    """ 
+Input: t is an array of times such that h2_eval = h2[t]
+       h2_eval is an array of waveform evaluations
+       h1_interp is an interpolant of a waveform 
+       mynorm is a function s.t. mynorm(f,dt) is a discrete norm
+
+Output: this routine will return a parameterized norm 
+
+           || h1(deltaT,deltaPhi) - h2_eval || 
+
+which can be minimized over (deltaT,deltaPhi). If deltaT = deltaPhi = 0 then 
+the norm is exactly 
+
+                   || h1_eval - h2_eval ||   for h1_eval = h1_interp[t]
+
+Input expecations: h1_interp should be defined on a larger temporal grid 
+than t and, hence, h2_eval.  When looking for the minimum h1_interp
+will be evaluated at times t + deltaT. t should be viewed as the 
+"common set of times" on which both h1 and h2 are known. """
+
+    dt = 1.0 # we optimize the relative errors, factors of dt cancel for Euclidean norm
+    
+    def ParameterizedNorm(x):
+
+        deltaT_off   = x[0]
+        deltaPhi_off = x[1]
+        
+        t_offset = coordinate_time_shift(t,-deltaT_off)
+        h1_eval  = h1_interp(t_offset)
+        h1_trial = modify_phase(h1_eval,-deltaPhi_off)
+
+        err_h          = h1_trial - h2_eval
+        overlap_errors = mynorm(err_h,dt)/mynorm(h1_trial,dt)
+    
+        return overlap_errors
+    
+    return ParameterizedNorm
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def minimize_norm_error(t1,h1,t2,h2,mynorm,t_low_adj=.1,t_up_adj=.1,method='nelder-mead'):
+
+    t1, h1 = remove_amplitude_zero(t1,h1)
+    t2, h2 = remove_amplitude_zero(t2,h2)
+
+    deltaT, deltaPhi = simple_align_params(t1,h1,t2,h2)
+    h1               = modify_phase(h1,-deltaPhi)
+    t1               = coordinate_time_shift(t1,-deltaT)
+
+    h1_interp = interp1d(t1,h1)
+    h2_interp = interp1d(t2,h2)
+
+    common_dt      = (t1[2] - t1[1])
+    t_start, t_end = find_common_time_window(t1,t2)
+    common_times   = np.arange(t_start+t_low_adj,t_end-t_up_adj,common_dt) # small buffer needed 
+
+    h1_eval = h1_interp(common_times)
+    h2_eval = h2_interp(common_times)
+
+    ParameterizedNorm = generate_parameterized_norm(common_times,h1_interp,h2_eval,mynorm)
+    print "Preliminary guess: %e" %(ParameterizedNorm([0.0,0.0]))
+
+    if method == 'nelder-mead':
+        print "optimization with nelder-mead..."
+        res_nm = minimize(ParameterizedNorm, [0.0,0.0], method='nelder-mead',tol=1e-12,options={'disp': True})
+
+        print "(NM) the global minimizer is  %e , %e " %(res_nm.x[0],res_nm.x[1])
+        print "(NM) for which the objective functional is %e " %ParameterizedNorm([ res_nm.x[0], res_nm.x[1]])
+    else:
+        raise ValueError("not a valid minimization method")
 
