@@ -4,11 +4,11 @@ import sys
 setup(name='gwsurrogate',
       version='0.2.1',
       author='Scott Field, Chad Galley',
-      author_email='sfield@umd.edu',
+      author_email='sfield@astro.cornell.edu',
       packages=['gwsurrogate'],
       license='MIT',
       description='an easy to use interface to gravitational wave surrogate models',
-      install_requires=["numpy","matplotlib"],
+      install_requires=["numpy","matplotlib","scipy"],
       classifiers=[
                 'Intended Audience :: Other Audience',
                 'Intended Audience :: Science/Research',
