@@ -56,13 +56,13 @@ so that any time-domain surrogate h(m1,m2) can be recovered from
 a dimensionless one h(T;q) by i) evaluation of q at some fixed Mtot, 
 ii) using known scaling relations to get (MTot,q).
 
-Values for q, M, sampleRate, and f0 can be found in each surrogate's info.dat
-file or from the training set metadata.
+Values for q, M, sampleRate, and f0 can be found in each surrogate's 
+info.dat file or from the training set metadata.
 
-The waveform's length is implicitly set by f0. Surrogates do not 
-currently permit setting (or even knowing) the precise value of f0. 
-Instead, we quote the typical duration. Surrogate's do ensure, however,
-that a desired f_low has been achieved.
+The waveform's length is implicitly set by f0. A particular surrogate 
+model with will have a range of starting f0. Instead, we quote the typical 
+duration. Surrogate's do ensure, however, that a desired f_low has been 
+achieved by passing it as an argument to its evaluation
 
 
 Acknowledgements

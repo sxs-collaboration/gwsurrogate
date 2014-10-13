@@ -1,7 +1,8 @@
-Built on 07-Jun-2014
+Built on 11-Oct-2014
 
 WARNINGS:
-Nothing to report
+* Dimensionless time information exported using solar masses = 80.0000000000 
+* All quantities (ie basis, errors, V, R etc) computed on physical grid in seconds.
 
 Training set information: 
 lowest mass ratio = 1.0000000000 
@@ -17,10 +18,7 @@ Training file name is  EOB_TD_501_q1_2_Mt80_fmin9_1048576_512_modeBoth_MergerAli
 Training directory name is  /home/balzani57/Desktop/Data_and_experiments/HDF5MatlabData/NewData/TwoMode/
 min wave cycle = 66.2743852021 
 max wave cycle = 68.4284745680 
-Distance (in megaparseces) at which TS waveforms were generated = 1.000000000000000e+00
-
-Dimensionless time information exported using solar masses = 80.0000000000 
-WARNING: All quantities (ie basis, errors, V, R etc) computed on physical grid in second.
+Distance (in megaparseces) at which TS waveforms were generated = 1.585330919042505e+00
 
 Training set processing scheme: 
 Time alignment: PeakOfShortest
@@ -34,11 +32,15 @@ Tolerance = 1.0000e-06
 Basis = 19
 
 
+Quadrature settings:
+Euclidean inner product was used
+
+
 Surrogate settings:
 Polynomial fits for amplitude and phase
 Training data used for best fit selection
 RB used in surrogate basis + fitting = 19
-Accuracy in recovering waveform basis h by BVR = 7.8181e-16
+Accuracy in recovering waveform basis h by BVR = 5.8758e-16
 
 
 Quality control diagnostics:

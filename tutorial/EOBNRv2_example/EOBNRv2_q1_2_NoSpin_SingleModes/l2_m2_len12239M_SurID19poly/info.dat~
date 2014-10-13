@@ -1,0 +1,67 @@
+Built on 11-Oct-2014
+
+WARNINGS:
+* Dimensionless time information exported using solar masses = 80.0000000000 
+* All quantities (ie basis, errors, V, R etc) computed on physical grid in seconds.
+
+Training set information: 
+lowest mass ratio = 1.0000000000 
+highest mass ratio  = 2.0000000000 
+total mass = 80.0000000000 
+dt  = 0.0004882812 
+if TS name is fminYYY_XXX, then peak resolved to 1/xxx
+Single mode surrogate
+ell mode = 2
+m mode = 2
+Training size = 501
+Training file name is  EOB_TD_501_q1_2_Mt80_fmin9_1048576_512_modeBoth_MergerAligned
+Training directory name is  /home/balzani57/Desktop/Data_and_experiments/HDF5MatlabData/NewData/TwoMode/
+min wave cycle = 66.2743852021 
+max wave cycle = 68.4284745680 
+Distance (in megaparseces) at which TS waveforms were generated = 1.585330919042505e+00
+
+Training set processing scheme: 
+Time alignment: PeakOfShortest
+Phase alignment: initial
+Seconds removed from waveforms start: 0
+Rule for removing waveforms end: NearTerminal
+Number of waveforms samples cut post-align: 1
+
+Greedy settings:
+Tolerance = 1.0000e-06
+Basis = 19
+
+
+Quadrature settings:
+Euclidean inner product was used
+
+
+Surrogate settings:
+Polynomial fits for amplitude and phase
+Training data used for best fit selection
+RB used in surrogate basis + fitting = 19
+Accuracy in recovering waveform basis h by BVR = 5.8758e-16
+
+
+Quality control diagnostics:
+(Note: Square of L2 errors are almost overlap error)
+L2 surrogate error (training space) 2.0898e-04
+Linf surrogate error (training space) 3.0774e-03
+maximum relative error of ||rh|| fit 6.8461e-06
+Random waveform injection file name is EOB_TD_1011_q1_2_Mt80_fmin9_1048576_512_modeBoth_MergerAligned
+L2 basis error (random) 6.9755e-07
+L2 EIM error (random) 3.8295e-06
+L2 surrogate error (random) 2.3528e-04
+Linf surrogate error (random) 3.4266e-03
+
+Timing numbers (per waveform averages):
+Total waveforms generated in timing study = 10
+Time (secs) to evaluate all amplitude and phase fits = 2.296000e-04
+Time (secs) to build empirical interpolant = 1.839000e-04
+Time (secs) to evaluate surrogate (sum of two previous numbers) = 4.135000e-04
+
+
+Extra info:
+Surrogates built using the definition hp(t) + i*hc(t) = A(t) exp(i*phi(t)) where phi >=0
+
+Case 1 A from paper Fast prediction and evaluation of gravitational waveforms using surrogate models
