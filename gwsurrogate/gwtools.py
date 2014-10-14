@@ -153,6 +153,7 @@ will be evaluated at times t + deltaT. t should be viewed as the
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def minimize_norm_error(t1,h1,t2,h2,mynorm,t_low_adj=.1,t_up_adj=.1,method='nelder-mead'):
 
+
     t1, h1 = remove_amplitude_zero(t1,h1)
     t2, h2 = remove_amplitude_zero(t2,h2)
 
@@ -171,14 +172,20 @@ def minimize_norm_error(t1,h1,t2,h2,mynorm,t_low_adj=.1,t_up_adj=.1,method='neld
     h2_eval = h2_interp(common_times)
 
     ParameterizedNorm = generate_parameterized_norm(common_times,h1_interp,h2_eval,mynorm)
-    print "Preliminary guess: %e" %(ParameterizedNorm([0.0,0.0]))
+    guessed = ParameterizedNorm([0.0,0.0])
+    #print "Preliminary guess: %e" %(ParameterizedNorm([0.0,0.0]))
 
     if method == 'nelder-mead':
-        print "optimization with nelder-mead..."
-        res_nm = minimize(ParameterizedNorm, [0.0,0.0], method='nelder-mead',tol=1e-12,options={'disp': True})
+        #print "optimization with nelder-mead..."
+        res_nm = minimize(ParameterizedNorm, [0.0,0.0], method='nelder-mead',tol=1e-12)
 
-        print "(NM) the global minimizer is  %e , %e " %(res_nm.x[0],res_nm.x[1])
-        print "(NM) for which the objective functional is %e " %ParameterizedNorm([ res_nm.x[0], res_nm.x[1]])
+        #print "(NM) the global minimizer is  %e , %e " %(res_nm.x[0],res_nm.x[1])
+        #print "(NM) for which the objective functional is %e " %ParameterizedNorm([ res_nm.x[0], res_nm.x[1]])
+        tc       = res_nm.x[0] + deltaT
+        phic     = res_nm.x[1] + deltaPhi
+        min_norm = ParameterizedNorm([ res_nm.x[0], res_nm.x[1]])
     else:
         raise ValueError("not a valid minimization method")
 
+
+    return guessed, min_norm, tc, phic
