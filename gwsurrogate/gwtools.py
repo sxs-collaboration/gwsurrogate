@@ -32,12 +32,25 @@ from scipy.interpolate import interp1d
 from scipy.optimize import minimize
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def phase(h):
+	"""Get phase of waveform, h = A*exp(i*phi)"""
+	
+	if np.shape(h):
+		# Compute the phase only for non-zero values of h, otherwise set phase to zero.
+		nonzero_h = h[np.abs(h) > 1e-300]
+		phase = np.zeros(len(h), dtype='double')
+		phase[:len(nonzero_h)] = np.unwrap(np.real(-1j*np.log(nonzero_h/np.abs(nonzero_h))))
+	else:
+		nonzero_h = h
+		phase = np.real(-1j*np.log(nonzero_h/np.abs(nonzero_h)))
+	return phase
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def amp_phase(h):
     """Get amplitude and phase of waveform, h = A*exp(i*phi)"""
 
-    # TODO: check for nans returned by phase computation
     amp = np.abs(h);
-    return amp, np.unwrap( np.real( -1j * np.log( h/amp ) ) )
+    return amp, phase(h)
 
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
