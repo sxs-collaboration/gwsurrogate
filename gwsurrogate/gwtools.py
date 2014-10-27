@@ -66,6 +66,22 @@ def remove_amplitude_zero(t,h):
 
     return t[where_non_zero], h[where_non_zero]
 
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def M1M2_from_M_q(M,q):
+    """ returns m1 and m2, assuming m2 >= m1 (q>=1) """
+    return M/(q+1), M*q/(q+1)
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def dimensionless_time(M,t):
+    """ input time and mass in seconds. return dimensionless time """
+    #tmp = lal.LAL_MSUN_SI * lal.LAL_G_SI / np.power(lal.LAL_C_SI,3.0)
+    #return ( t / tmp ) / M
+    return t/M
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def euclidean_norm_sqrd(f,dx):
+    return (np.sum(f*np.conj(f)) * dx).real
+
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def modify_phase(h,offset):
@@ -120,28 +136,28 @@ Input: t is an array of times such that h2_eval = h2[t]
 
 Output: this routine will return a parameterized norm 
 
-           || h1(deltaT,deltaPhi) - h2_eval || 
+     N(deltaT,deltaPhi) = || h1(deltaT,deltaPhi) - h2_eval || 
 
 which can be minimized over (deltaT,deltaPhi). If deltaT = deltaPhi = 0 then 
-the norm is exactly 
+the norm is simply
 
                    || h1_eval - h2_eval ||   for h1_eval = h1_interp[t]
 
-Input expecations: h1_interp should be defined on a larger temporal grid 
-than t and, hence, h2_eval.  When looking for the minimum h1_interp
-will be evaluated at times t + deltaT. t should be viewed as the 
-"common set of times" on which both h1 and h2 are known. """
+Input expecations: (i) h1_interp should be defined on a larger temporal grid 
+                       than t and, hence, h2_eval. Why? When looking for the 
+                       minimum, h1_interp will be evaluated at times t + deltaT. 
+                       t should be viewed as the "common set of times" on which both 
+                       h1 and h2 are known. """
 
-    dt = 1.0 # we optimize the relative errors, factors of dt cancel for Euclidean norm
+    dt = 1.0 # we optimize the relative errors, factors of dt cancel
     
     def ParameterizedNorm(x):
 
         deltaT_off   = x[0]
         deltaPhi_off = x[1]
         
-        t_offset = coordinate_time_shift(t,-deltaT_off)
-        h1_eval  = h1_interp(t_offset)
-        h1_trial = modify_phase(h1_eval,-deltaPhi_off)
+        h1_trial = h1_interp( coordinate_time_shift(t,deltaT_off) ) #differing sign from minimize_norm_error is correct
+        h1_trial = modify_phase(h1_trial,-deltaPhi_off)
 
         err_h          = h1_trial - h2_eval
         overlap_errors = mynorm(err_h,dt)/mynorm(h1_trial,dt)
@@ -152,14 +168,29 @@ will be evaluated at times t + deltaT. t should be viewed as the
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def minimize_norm_error(t1,h1,t2,h2,mynorm,t_low_adj=.1,t_up_adj=.1,method='nelder-mead'):
+    """
+Input: time/waveform pairs (t1,h1) and (t2,h2), which are vectors sampled at equally spaced times
+       mynorm is a norm function (e.g. euclidean_norm_sqrd(f,dx) ) which takes a vector f
+       t_low and t_up adjusments are to "clip" the start and end portions of the pre-aligned waveforms
 
+Output: guessed is relative norm error with discrete "guess" for tc and phic offsets
+        min_norm, tc, phic are the relative norm error and time/phase offsets by solving 2D minimization problem
+
+Input expectations: (i)  t1 and t2 should be equally spaced grid of times. 
+                    (ii) for waveforms of different length, (t1,h1) pair should be longer 
+
+Output caveats: (i) evaluating the norm with values of (tc,phic) might give slightly different answers
+                    depending on the order of shifts/interpolants etc."""
 
     t1, h1 = remove_amplitude_zero(t1,h1)
     t2, h2 = remove_amplitude_zero(t2,h2)
 
+    if( (t1[-1] - t1[0]) < (t2[-1] - t2[0]) ):
+        raise ValueError('first waveform should be longer')
+
     deltaT, deltaPhi = simple_align_params(t1,h1,t2,h2)
     h1               = modify_phase(h1,-deltaPhi)
-    t1               = coordinate_time_shift(t1,-deltaT)
+    t1               = coordinate_time_shift(t1,-deltaT) # different sign from generate parameterize norm is correct
 
     h1_interp = interp1d(t1,h1)
     h2_interp = interp1d(t2,h2)
@@ -173,19 +204,19 @@ def minimize_norm_error(t1,h1,t2,h2,mynorm,t_low_adj=.1,t_up_adj=.1,method='neld
 
     ParameterizedNorm = generate_parameterized_norm(common_times,h1_interp,h2_eval,mynorm)
     guessed = ParameterizedNorm([0.0,0.0])
-    #print "Preliminary guess: %e" %(ParameterizedNorm([0.0,0.0]))
 
     if method == 'nelder-mead':
-        #print "optimization with nelder-mead..."
         res_nm = minimize(ParameterizedNorm, [0.0,0.0], method='nelder-mead',tol=1e-12)
 
-        #print "(NM) the global minimizer is  %e , %e " %(res_nm.x[0],res_nm.x[1])
-        #print "(NM) for which the objective functional is %e " %ParameterizedNorm([ res_nm.x[0], res_nm.x[1]])
         tc       = res_nm.x[0] + deltaT
         phic     = res_nm.x[1] + deltaPhi
+
         min_norm = ParameterizedNorm([ res_nm.x[0], res_nm.x[1]])
+
+        h1_align = h1_interp( coordinate_time_shift(common_times,res_nm.x[0]))
+        h1_align = modify_phase(h1_align,-res_nm.x[1])
     else:
         raise ValueError("not a valid minimization method")
 
 
-    return guessed, min_norm, tc, phic
+    return [guessed, min_norm], [tc, phic], [common_times, h1_align, h2_eval]
