@@ -165,8 +165,10 @@ class HDF5Surrogate(File):
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def write_h5(self, id, t, B, eim_indices, greedy_points, fit_min, fit_max, affine_map, \
-				fitparams_amp, fitparams_phase, V, R):
+	#def write_h5(self, id, t, B, eim_indices, greedy_points, fit_min, fit_max, affine_map, \
+	#			fitparams_amp, fitparams_phase, V, R=None):
+	def write_h5(self, id, t, B, eim_indices, greedy_points, eim_amp, eim_phase, \
+				fitparams_amp, fitparams_phase, V, R=None):
 		""" Write surrogate data in standard format.
 		
 		Input:
@@ -197,17 +199,21 @@ class HDF5Surrogate(File):
 		
 		self.file.create_dataset('tmin', data=t.min(), dtype='double')
 		self.file.create_dataset('tmax', data=t.max(), dtype='double')
-		self.file.create_dataset('dt', data=t[1]-t[0], dtype='double')
+		#self.file.create_dataset('dt', data=t[1]-t[0], dtype='double')
+		self.file.create_dataset('t', data=t, dtype='double')
 		
 		self.file.create_dataset('B', data=B, dtype=B.dtype, compression='gzip')
 		self.file.create_dataset('eim_indices', data=eim_indices, dtype='int', compression='gzip')
 		self.file.create_dataset('greedy_points', data=greedy_points, dtype='double', compression='gzip')
 		self.file.create_dataset('V', data=V, dtype=V.dtype, compression='gzip')
-		self.file.create_dataset('R', data=R, dtype=R.dtype, compression='gzip')
+		if R != None:
+			self.file.create_dataset('R', data=R, dtype=R.dtype, compression='gzip')
 		
-		self.file.create_dataset('fit_min', data=fit_min, dtype='double')
-		self.file.create_dataset('fit_max', data=fit_max, dtype='double')
-		self.file.create_dataset('affine_map', data=affine_map, dtype='bool')
+		#self.file.create_dataset('fit_min', data=fit_min, dtype='double')
+		#self.file.create_dataset('fit_max', data=fit_max, dtype='double')
+		#self.file.create_dataset('affine_map', data=affine_map, dtype='bool')
+		self.file.create_dataset('eim_amp', data=eim_amp, dtype='double', compression='gzip')
+		self.file.create_dataset('eim_phase', data=eim_phase, dtype='double', compression='gzip')
 		self.file.create_dataset('fitparams_amp', data=fitparams_amp, dtype='double', compression='gzip')
 		self.file.create_dataset('fitparams_phase', data=fitparams_phase, dtype='double', compression='gzip')
 		
@@ -362,8 +368,10 @@ class ExportSurrogate(HDF5Surrogate, TextSurrogate):
 		
 		# export HDF5 or Text surrogate data depending on input file extension
 		ext = path.split('.')[-1]
+		print ext
 		if ext == 'hdf5' or ext == 'h5':
-			HDF5Surrogate.__init__(self, path)
+			print ext
+			HDF5Surrogate.__init__(self, path, mode='w')
 		else:
 
 			if( not(path[-1:] is '/') ):
