@@ -112,7 +112,10 @@ class HDF5Surrogate(File):
 				self.tmin = self.file['tmin'][()]
 				self.tmax = self.file['tmax'][()]
 				self.dt = self.file['dt'][()]
-				
+
+				# Time samples associated with the original data used to build the surrogate
+				self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
+	
 				if 't_units' in self.keys:
 					self.t_units = self.file['t_units'][()]
 				else:
@@ -229,7 +232,7 @@ class TextSurrogate:
 	### Files which define a text-based surrogate (both read and write) ###
 
 	#variable_name_file   = file_name
-	_time_info_file       = 'time_info.txt'
+	_time_info_file       = 'time_info.txt' # either tuple (ti,tf,dt) or Nx2 matrix for N times and weights
 	_fit_interval_file    = 'q_fit.txt'
 	_greedy_points_file   = 'greedy_points.txt'
 	_eim_indices_file     = 'eim_indices.txt'
@@ -254,7 +257,7 @@ class TextSurrogate:
 
 		### sdir is defined to the the surrogate's ID ###e
 		self.SurrogateID = sdir
-
+		self.load_text()
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def load_text(self):
@@ -267,9 +270,20 @@ class TextSurrogate:
 		#self.Mtot        = np.loadtxt(sdir+'Mtot.txt')
 
 		### unpack time info ###
-		self.dt      = time_info[2]
-		self.tmin    = time_info[0]
-		self.tmax    = time_info[1]
+		if(time_info.size == 3):
+			self.dt      = time_info[2]
+			self.tmin    = time_info[0]
+			self.tmax    = time_info[1]
+
+			# Time samples associated with the original data used to build the surrogate
+			self.times              = np.arange(self.tmin, self.tmax+self.dt, self.dt)
+			# TODO: these are not the weights were the basis are ortho (see basis.ipynb)
+			self.quadrature_weights = self.dt * np.ones(self.times.shape)
+		
+		else:
+			self.times              = time_info[:,0]
+			self.quadrature_weights = time_info[:,1]
+
 		self.t_units = 'TOverMtot' # TODO: pass this through time_info for flexibility
 
 		### greedy points (ordered by RB selection) ###
@@ -421,11 +435,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 			HDF5Surrogate.__init__(self, path)
 		else:
 			TextSurrogate.__init__(self, path)
-			self.load_text()
 
-		# Time samples associated with the original data used to build the surrogate
-		self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
-		
 		# Interpolate columns of the empirical interpolant operator, B, using cubic spline
 		self.reB_spline_params = [splrep(self.times, self.B[:,jj].real, k=deg) for jj in range(self.dim_rb)]
 		self.imB_spline_params = [splrep(self.times, self.B[:,jj].imag, k=deg) for jj in range(self.dim_rb)]
