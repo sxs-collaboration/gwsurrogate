@@ -165,10 +165,8 @@ class HDF5Surrogate(File):
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	#def write_h5(self, id, t, B, eim_indices, greedy_points, fit_min, fit_max, affine_map, \
-	#			fitparams_amp, fitparams_phase, V, R=None):
-	def write_h5(self, id, t, B, eim_indices, greedy_points, eim_amp, eim_phase, \
-				fitparams_amp, fitparams_phase, V, R=None):
+	def write_h5(self, id, t, B, eim_indices, greedy_points, fit_min, fit_max, \
+				fitparams_amp, fitparams_phase, V=None, R=None, affine_map=False):
 		""" Write surrogate data in standard format.
 		
 		Input:
@@ -178,16 +176,16 @@ class HDF5Surrogate(File):
 			B               -- empirical interpolant operator (`B matrix`)
 			eim_indices     -- indices of empirical nodes from time series array `t`
 			greedy_points   -- parameters selected by reduced basis greedy algorithm
+			fit_min         -- min values of parameters used for surrogate fitting
+			fit_max         -- max values of parameters used for surrogate fitting
+			affine_map      -- mapped parameter domain to reference interval for fitting? 
+			                   (default is False)
+			fitparams_amp   -- fitting parameters for waveform amplitude
+			fitparams_phase -- fitting parameters for waveform phase
 			V               -- Generalized Vandermonde matrix from empirical 
 			                   interpolation method
 			R               -- matrix coefficients relating the reduced basis to the 
 			                   selected waveforms
-			fit_min         -- min values of parameters used for surrogate fitting
-			fit_max         -- max values of parameters used for surrogate fitting
-			affine_map      -- mapped parameter domain to reference interval for fitting? 
-			                   (True/False)
-			fitparams_amp   -- fitting parameters for waveform amplitude
-			fitparams_phase -- fitting parameters for waveform phase
 		"""
 		
 		# Open file for writing. Filename based on surrogate ID.
@@ -209,9 +207,9 @@ class HDF5Surrogate(File):
 		if R != None:
 			self.file.create_dataset('R', data=R, dtype=R.dtype, compression='gzip')
 		
-		#self.file.create_dataset('fit_min', data=fit_min, dtype='double')
-		#self.file.create_dataset('fit_max', data=fit_max, dtype='double')
-		#self.file.create_dataset('affine_map', data=affine_map, dtype='bool')
+		self.file.create_dataset('fit_min', data=fit_min, dtype='double')
+		self.file.create_dataset('fit_max', data=fit_max, dtype='double')
+		self.file.create_dataset('affine_map', data=affine_map, dtype='bool')
 		self.file.create_dataset('eim_amp', data=eim_amp, dtype='double', compression='gzip')
 		self.file.create_dataset('eim_phase', data=eim_phase, dtype='double', compression='gzip')
 		self.file.create_dataset('fitparams_amp', data=fitparams_amp, dtype='double', compression='gzip')
