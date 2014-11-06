@@ -35,6 +35,7 @@ import gwtools as gwtools
 import matplotlib.pyplot as plt
 import time
 import os as os
+from parametric_funcs import function_dict as my_funcs
 
 try:
 	import h5py
@@ -85,6 +86,7 @@ class File:
 
 
 ##############################################
+# TODO: need data for fit_type_phase, fit_type_amp, fit_type_norm
 class HDF5Surrogate(File):
 	"""Load or export a single-mode surrogate in terms of the function's amplitude and phase from HDF5 data format"""
 
@@ -241,6 +243,9 @@ class TextSurrogate:
 	_R_i_file             = 'R_im.txt'
 	_R_r_file             = 'R_re.txt'
 	_fitparams_norm_file  = 'fit_coeff_norm.txt'
+	_fit_type_phase_file  = 'fit_type_phase.txt'
+	_fit_type_amp_file    = 'fit_type_amp.txt'
+        _fit_type_norm_file   = 'fit_type_norm.txt'
 
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -287,6 +292,13 @@ class TextSurrogate:
 		self.fitparams_amp   = np.loadtxt(sdir+self._fitparams_amp_file)
 		self.fitparams_norm  = np.loadtxt(sdir+self._fitparams_norm_file)
 		self.affine_map      = bool(np.loadtxt(sdir+self._affine_map_file))
+                self.fit_type_phase  = self.get_string_key(sdir+self._fit_type_phase_file)
+                self.fit_type_amp    = self.get_string_key(sdir+self._fit_type_amp_file)
+                self.fit_type_norm   = self.get_string_key(sdir+self._fit_type_norm_file)
+
+		self.norm_fit_func  = my_funcs[self.fit_type_norm]
+		self.phase_fit_func = my_funcs[self.fit_type_phase]
+		self.amp_fit_func   = my_funcs[self.fit_type_amp]
 
 		### Vandermonde V such that E (orthogonal basis) is E = BV ###
 		V_i    = np.loadtxt(sdir+self._V_i_file)
@@ -297,6 +309,14 @@ class TextSurrogate:
 		R_i    = np.loadtxt(sdir+self._R_i_file)
 		R_r    = np.loadtxt(sdir+self._R_r_file)
 		self.R = R_r + (1j)*R_i
+
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def get_string_key(self,fname):
+		""" return a single word string from file """
+
+		fp = open(fname,'r')
+		keyword = fp.readline()
+		return keyword[0:-1]
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def np_savetxt_safe(self,fname,data):
@@ -329,6 +349,9 @@ class TextSurrogate:
 			fitparams_amp   -- fitting parameters for waveform amplitude
 			fitparams_phase -- fitting parameters for waveform phase
 			fitparams_norm  -- fitting parameters for waveform norm
+                	fit_type_phase  -- key to select parametric fitting function (phase)
+			fit_type_amp    -- key to select parametric fitting function (amp)
+			fit_type_norm   -- key to select parametric fitting function (norm)
 		"""
 
 		# TODO: flag to zip folder with tar -cvzf SURROGATE_NAME.tar.gz SURROGATE_NAME/
@@ -353,6 +376,7 @@ class TextSurrogate:
 		self.np_savetxt_safe(self.SurrogateID+self._R_i_file,R.imag)
 		self.np_savetxt_safe(self.SurrogateID+self._R_r_file,R.real)
 		self.np_savetxt_safe(self.SurrogateID+self._fitparams_norm_file,fitparams_norm)
+		# TODO: add fit_type keys....
 
 		pass
 
@@ -478,7 +502,7 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		if( not(affine_mapped) ):
 			q_0 = self.affine_mapper_checker(q_0)
 
-		nrm_eval  = np.array([ np.polyval(self.fitparams_norm, q_0) ])
+		nrm_eval  = np.array([ self.norm_fit_func(self.fitparams_norm, q_0) ])
 		return nrm_eval
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -489,8 +513,9 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		q_0 = self.affine_mapper_checker(q_eval)
 
 		### Evaluate amp/phase/norm fits ###
-		amp_eval   = np.array([ np.polyval(self.fitparams_amp[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
-		phase_eval = np.array([ np.polyval(self.fitparams_phase[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
+
+		amp_eval   = np.array([ self.amp_fit_func(self.fitparams_amp[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
+		phase_eval = np.array([ self.phase_fit_func(self.fitparams_phase[jj, 0:self.dim_rb], q_0) for jj in range(self.dim_rb) ])
 		nrm_eval   = self.norm_eval(q_0)
 
 		### Build dim_RB-vector fit evaluation of h ###
