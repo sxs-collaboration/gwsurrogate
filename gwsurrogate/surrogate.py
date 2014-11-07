@@ -44,6 +44,13 @@ except ImportError:
 	h5py_enabled = False
 
 
+# needed to search for single mode surrogate directories 
+def list_folders(path,prefix):
+        '''returns all folders which begin with some prefix'''
+        for f in os.listdir(path):
+                if f.startswith(prefix):
+                        yield f
+
 ##############################################
 class File:
 	
@@ -736,3 +743,54 @@ class EvaluateSurrogate(File, HDF5Surrogate, TextSurrogate):
 		pass
 
 
+##############################################
+class EvaluateSurrogateMultiMode(EvaluateSurrogate): 
+# TODO: inherated from EvalSurrogate to gain access to some functions. this should be better structured
+	"""Evaluate multi-mode surrogates"""
+	
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def __init__(self, path, deg=3):
+
+
+		# Convenience for plotting purposes
+		self.plt = plt
+
+		### fill up dictionary of single mode surrogate class ###
+		self.single_modes = dict()
+
+		# Load HDF5 or Text surrogate data depending on input file extension
+		ext = path.split('.')[-1]
+		if ext == 'hdf5' or ext == 'h5':
+			raise ValueError('Not coded yet')
+		else:
+			### compile list of available modes ###
+			# assumes (i) single mode folder format l#_m#_ (ii) ell<=9, m>=0
+			for single_mode in list_folders(path,'l'):
+				mode_key = single_mode[0:5]
+				print "loading surrogate mode... "+mode_key
+				self.single_modes[mode_key] = EvaluateSurrogate(path+single_mode+'/')
+
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def __call__(self, q, M=None, dist=None, phi_ref=None, f_low=None, samples=None, ell=None, m=None):
+		"""Return surrogate evaluation for...
+			q    = mass ratio (dimensionless) 
+			M    = total mass (solar masses) 
+			dist = distance to binary system (megaparsecs)
+			phir = mode's phase at peak amplitude
+			flow = instantaneous initial frequency, will check if flow_surrogate < flow 
+			ell = list or array of N ell modes to evaluate for (if none, all modes are returned)
+			m   = for each ell, supply a matching m value 
+
+                    NOTE: if only requesting one mode, this should be ell=[2],m=[2]"""
+
+		if ell is None:
+			raise ValueError('code me')
+		else:
+			if len(ell) > 1:
+				raise ValueError('sum over modes not coded yet')
+			modes = [(x, y) for x in ell for y in m]
+			for ell,m in modes:
+				mode_key = 'l'+str(ell)+'_m'+str(m)
+				t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
+
+		return t_mode, hp_mode, hc_mode
