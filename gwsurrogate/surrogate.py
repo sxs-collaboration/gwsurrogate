@@ -93,92 +93,145 @@ class File:
 
 
 ##############################################
+# TODO: Lots of things...
 # TODO: need data for fit_type_phase, fit_type_amp, fit_type_norm
-class HDF5Surrogate(File):
+class HDF5Surrogate:
 	"""Load or export a single-mode surrogate in terms of the function's amplitude and phase from HDF5 data format"""
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def __init__(self, path, mode='r'):
-		self.path = path
-		self.mode = mode
-		File.__init__(self, path, mode=mode)
+	def __init__(self, file, mode=None):
+		
+		### Check file mode if specified ###
+		if mode in ['r', 'w', 'r+', 'a']:
+			self.mode = mode
+		else:
+			raise Exception, "File mode not recognized. Must be 'r', 'w', 'r+', 'a'."
+		
+		### Check if file is a pointer or path name (string) and open if in 'r' mode ###
+		self.type = type(file)
+		if self.type == str:
+			if mode == 'r':
+				try:
+					self.file = h5py.File(file, 'r')
+				except:
+					pass
+		elif self.type == h5py._hl.files.File:
+			if mode == 'r' or mode == 'w':
+				self.file = file
+		
+		### Get data keys listing all available surrogate data ###
+		self.keys = self.file.keys()
 		
 		if mode == 'r':
-			
+						
 			### Get SurrogateID ####
 			try:
-				surr_name = path.split('/')[-2]
-				if self.SurrogateID() != surr_name:
-					print "\n>>> Warning: SurrogateID does not have expected name.\n"
-			except: 
-				print "\n>>> Warning: No SurrogateID found!\n"
-		
-			if self.isopen():
-				
-				### Unpack time info ###
-				self.tmin = self.file['tmin'][()]
-				self.tmax = self.file['tmax'][()]
-				self.dt = self.file['dt'][()]
-
-				# Time samples associated with the original data used to build the surrogate
-				self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
-	
-				if 't_units' in self.keys:
-					self.t_units = self.file['t_units'][()]
+				if self.type == str:
+					surr_name = self.file.split('/')[-2]
+					if 'SurrogateID' in self.keys:
+						id = self.file['SurrogateID'][()]
+						if self.chars_to_string(id) != surr_name:
+							print "\n>>> Warning: SurrogateID does not have expected name."
 				else:
-					self.t_units = 'TOverMtot'
-				
-				### Greedy points (ordered by RB selection) ###
-				self.greedy_points = self.file['greedy_points'][:]
-				
-				### Empirical time index (ordered by EIM selection) ###
-				self.eim_indices = self.file['eim_indices'][:]
-				
-				### Complex B coefficients ###
-				self.B = self.file['B'][:]	
-				
-				### Information about phase/amp parametric fit ###
-				self.affine_map = self.file['affine_map'][()]
-				self.fitparams_amp = self.file['fitparams_amp'][:]
-				self.fitparams_phase = self.file['fitparams_phase'][:]
-				self.fit_min = self.file['fit_min'][()]
-				self.fit_max = self.file['fit_max'][()]
-				self.fit_interval = [self.fit_min, self.fit_max]
-			
-				### Vandermonde V such that E (orthogonal basis) is E = BV ###
-				self.V = self.file['V'][:]
-				
-				### R matrix such that waveform basis H = ER ###
-				self.R = self.file['R'][:]
-				
-				### Transpose matrices if surrogate was built using ROMpy ###
-				Bshape = np.shape(self.B)
-				if Bshape[0] < Bshape[1]:
-					self.B = np.transpose(self.B)
-					self.V = np.transpose(self.V)
-					self.R = np.transpose(self.R)
-				
-				### Deduce sizes from B ###
-				self.time_samples = Bshape[0]
-				self.dim_rb       = Bshape[1]
-				
-			else:
-				raise Exception, "File not in write mode or is closed."		
-			
-			self.close()
-			
-		pass
+					"\n>>> Warning: No surrogate ID found."
+			except: 
+				print "\n>>> Warning: No surrogate ID found."
 		
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def SurrogateID(self):
-		if self.isopen():
-			id = self.file['SurrogateID'][()]
-			return ''.join(chr(cc) for cc in id)
+			### Unpack time info ###
+			self.tmin = self.file['tmin'][()]
+			self.tmax = self.file['tmax'][()]
+			if 'times' in self.keys:
+				self.times = self.file['times'][:]
+			if 'quadrature_weights' in self.keys:
+				self.quadrature_weights = self.file['quadrature_weights'][:]
+			if 'dt' in self.keys:
+				self.dt = self.file['dt'][()]
+				self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
+				self.quadrature_weights = self.dt * np.ones(self.times.shape)
+			
+			if 'times' not in self.__dict__.keys():
+				print "\n>>> Warning: No time samples found or generated."
+			
+			if 'quadrature_weights' not in self.__dict__.keys():
+				print "\n>>> Warning: No quadrature weights found or generated."
+			
+			if 't_units' in self.keys:
+				self.t_units = self.file['t_units'][()]
+			else:
+				self.t_units = 'TOverMtot'
+			
+			### Greedy points (ordered by RB selection) ###
+			self.greedy_points = self.file['greedy_points'][:]
+			
+			### Empirical time index (ordered by EIM selection) ###
+			self.eim_indices = self.file['eim_indices'][:]
+			
+			### Complex B coefficients ###
+			self.B = self.file['B'][:]	
+			
+			### Information about phase/amp parametric fit ###
+			self.affine_map = self.file['affine_map'][()]
+			self.fitparams_amp = self.file['fitparams_amp'][:]
+			self.fitparams_phase = self.file['fitparams_phase'][:]
+			self.fit_min = self.file['fit_min'][()]
+			self.fit_max = self.file['fit_max'][()]
+			self.fit_interval = [self.fit_min, self.fit_max]
+			
+			# Remove if statements once data can be written to HDF5 in write_h5
+			if 'fit_type_norm' in self.keys:
+				self.fit_type_norm = self.make_string(self.file['fit_type_norm'][()])
+				self.norm_fit_func  = my_funcs[self.fit_type_norm]
+			if 'fit_type_amp' in self.keys:
+				self.fit_type_amp = self.make_string(self.file['fit_type_amp'][()])
+				self.amp_fit_func   = my_funcs[self.fit_type_amp]
+			if 'fit_type_phase' in self.keys:
+				self.fit_type_phase = self.make_string(self.file['fit_type_phase'][()])
+				self.phase_fit_func = my_funcs[self.fit_type_phase]
+				
+			### Transpose matrices if surrogate was built using ROMpy ###
+			Bshape = np.shape(self.B)
+			if Bshape[0] < Bshape[1]:
+				transposeB = True
+				self.B = np.transpose(self.B)
+			
+			### Vandermonde V such that E (orthogonal basis) is E = BV ###
+			if 'V' in self.keys:
+				self.V = file['V'][:]
+				if transposeB:
+					self.V = np.transpose(self.V)
+
+			### R matrix such that waveform basis H = ER ###
+			if 'R' in self.keys:
+				self.R = file['R'][:]
+				if transposeB:
+					self.R = np.transpose(self.R)
+			
+			### Deduce sizes from B ###
+			self.dim_rb       = Bshape[0]
+			self.time_samples = Bshape[1]
+			
+			self.file.close()
+		
+		### Make list of required data for reading/writing surrogate data ###
+		self.required = ['tmin', 'tmax', 'greedy_points', 'eim_indices', 'B', \
+						'affine_map', 'fitparams_amp', 'fitparams_phase', \
+						'fit_min', 'fit_max', 'fit_type_norm', 'fit_type_amp', \
+						'fit_type_phase']
+		
 		pass
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def write_h5(self, id, t, B, eim_indices, greedy_points, fit_min, fit_max, \
-				fitparams_amp, fitparams_phase, V=None, R=None, affine_map=False):
+	def chars_to_string(self, chars):
+		return "".join(chr(cc) for cc in chars)
+
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	def string_to_chars(self, string):
+		return [ord(cc) for cc in string]
+		
+	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	#def write_h5(self, id, t, B, eim_indices, greedy_points, fit_min, fit_max, \
+	#			fitparams_amp, fitparams_phase, V=None, R=None, affine_map=False):
+	def write_h5(self, data_dict):
 		""" Write surrogate data in standard format.
 		
 		Input:
@@ -200,11 +253,21 @@ class HDF5Surrogate(File):
 			                   selected waveforms
 		"""
 		
+		print "\nGWSurrogate requires data for the following:"
+		print [kk for kk in self.required]
+		
+		keys = data_dict.keys()
+		for kk in self.required:
+			if kk not in keys:
+				raise Exception, "\nGWSurrogate requires data for "+kk
+		
 		# Open file for writing. Filename based on surrogate ID.
-		self.open(self.path+str(id)+'.h5', mode='w')
+		if self.type == str:
+			self.file = h5py.File(file, 'w')
+		#self.open(self.path+str(id)+'.h5', mode='w')
 		
 		# Write surrogate data to file
-		surrogate_id = [ord(cc) for cc in id]
+		surrogate_id = self.string_to_chars(id)
 		self.file.create_dataset('SurrogateID', data=surrogate_id, dtype='int')
 		
 		self.file.create_dataset('tmin', data=t.min(), dtype='double')
@@ -215,8 +278,9 @@ class HDF5Surrogate(File):
 		self.file.create_dataset('B', data=B, dtype=B.dtype, compression='gzip')
 		self.file.create_dataset('eim_indices', data=eim_indices, dtype='int', compression='gzip')
 		self.file.create_dataset('greedy_points', data=greedy_points, dtype='double', compression='gzip')
-		self.file.create_dataset('V', data=V, dtype=V.dtype, compression='gzip')
-		if R != None:
+		if V is not None:
+			self.file.create_dataset('V', data=V, dtype=V.dtype, compression='gzip')
+		if R is not None:
 			self.file.create_dataset('R', data=R, dtype=R.dtype, compression='gzip')
 		
 		self.file.create_dataset('fit_min', data=fit_min, dtype='double')
@@ -255,7 +319,7 @@ class TextSurrogate:
 	_fitparams_norm_file  = 'fit_coeff_norm.txt'
 	_fit_type_phase_file  = 'fit_type_phase.txt'
 	_fit_type_amp_file    = 'fit_type_amp.txt'
-        _fit_type_norm_file   = 'fit_type_norm.txt'
+	_fit_type_norm_file   = 'fit_type_norm.txt'
 
 
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -313,10 +377,10 @@ class TextSurrogate:
 		self.fitparams_amp   = np.loadtxt(sdir+self._fitparams_amp_file)
 		self.fitparams_norm  = np.loadtxt(sdir+self._fitparams_norm_file)
 		self.affine_map      = bool(np.loadtxt(sdir+self._affine_map_file))
-                self.fit_type_phase  = self.get_string_key(sdir+self._fit_type_phase_file)
-                self.fit_type_amp    = self.get_string_key(sdir+self._fit_type_amp_file)
-                self.fit_type_norm   = self.get_string_key(sdir+self._fit_type_norm_file)
-
+		self.fit_type_phase  = self.get_string_key(sdir+self._fit_type_phase_file)
+		self.fit_type_amp    = self.get_string_key(sdir+self._fit_type_amp_file)
+		self.fit_type_norm   = self.get_string_key(sdir+self._fit_type_norm_file)
+		
 		self.norm_fit_func  = my_funcs[self.fit_type_norm]
 		self.phase_fit_func = my_funcs[self.fit_type_phase]
 		self.amp_fit_func   = my_funcs[self.fit_type_amp]
