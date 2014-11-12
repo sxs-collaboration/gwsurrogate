@@ -467,8 +467,8 @@ class EvaluateSurrogate(HDF5Surrogate, TextSurrogate):
 			TextSurrogate.__init__(self, path)
 		
 		# Interpolate columns of the empirical interpolant operator, B, using cubic spline
-		#self.reB_spline_params = [splrep(self.times, self.B[:,jj].real, k=deg) for jj in range(self.dim_rb)]
-		#self.imB_spline_params = [splrep(self.times, self.B[:,jj].imag, k=deg) for jj in range(self.dim_rb)]
+		self.reB_spline_params = [splrep(self.times, self.B[:,jj].real, k=deg) for jj in range(self.dim_rb)]
+		self.imB_spline_params = [splrep(self.times, self.B[:,jj].imag, k=deg) for jj in range(self.dim_rb)]
 		
 		# Convenience for plotting purposes
 		self.plt = plt
