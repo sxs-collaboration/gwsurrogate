@@ -9,8 +9,8 @@ equations. These equations must be solved in the ``building" phase, which
 was performed using other codes. For details see:
 
 [1] Scott Field, Chad Galley, Jan Hesthaven, Jason Kaye, and Manuel Tiglio. 
-``Fast prediction and evaluation of gravitational waveforms using surrogate 
-models”, arXiv: gr-qc:1308.3565
+`"Fast prediction and evaluation of gravitational waveforms using surrogate 
+models". Phys. Rev. X 4, 031006 (2014). arXiv: gr-qc:1308.3565
 
 If you find this package useful in your work, please cite reference [1] and, 
 if available, the relevant paper describing the specific surrogate used.
@@ -80,7 +80,6 @@ views of the National Science Foundation.
 Planned Development
 -------------------
 
--- Surrogate-specific parametric fitting functions
 -- Amplitude and phase based surrogates 
 -- More descriptive surrogate names: EOBNRv2_q1to2_sA_0to0_0to0_0to0_sB_0to0_0to0_0to0_SingleModes
 -- Direct generation of multi-mode surrogates with tensor harmonic weighting
