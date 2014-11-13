@@ -28,39 +28,50 @@ THE SOFTWARE.
 """
 
 import numpy as np
-import gwtools as gwtools
+import gwtools
 
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def polyval_1d(coeffs,x):
     """ 1D polynomial defined by coeffs vector and evaluated 
     as numpy.polyval(coeffs,x)"""
     return np.polyval(coeffs, x)
 
-def ampfitfn_1d(coeffs,x):
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def ampfitfn1_1d(coeffs,x):
     """ PN inspired ampitude fit a0 + a1*nu**a2"""
 
-    a0 = coeffs[0]
-    a1 = coeffs[1]
-    a2 = coeffs[2]
+    a0, a1, a2 = coeffs[:3]
 
     nu = gwtools.q_to_nu(x)
 
     return a0 + a1*nu**a2
 
-def phifitfn_1d(coeffs,x):
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def ampfitfn2_1d(coeffs, x):
+	""" PN inspired amplitude fit a0 + a1*np.abs(0.25-nu)**0.5 + a2*np.log(nu/0.25)"""
+	
+	a0, a1, a2 = coeffs[:3]
+	
+	nu = gwtools.q_to_nu(x)
+	
+	return a0 + a1*np.abs(0.25-nu)**0.5 + a2*np.log(nu/0.25)
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def phifitfn1_1d(coeffs,x):
     """ PN inspired phase fit a0 + a1*nu + a2*nu**2 + a3*np.log(nu)"""
 
-    a0 = coeffs[0]
-    a1 = coeffs[1]
-    a2 = coeffs[2]
-    a3 = coeffs[3]
+    a0, a1, a2, a3 = coeffs[:4]
 
     nu = gwtools.q_to_nu(x)
 
     return a0 + a1*nu + a2*nu**2 + a3*np.log(nu)
 
 
-
 ### dictionary of fitting functions ###
-function_dict = {"polyval_1d":polyval_1d,
-                 "ampfitfn_1d":ampfitfn_1d,
-                 "phifitfn_1d":phifitfn_1d}
+function_dict = {
+                 "polyval_1d": polyval_1d,
+                 "ampfitfn1_1d": ampfitfn1_1d,
+                 "ampfitfn1_1d": ampfitfn1_1d,
+                 "phifitfn1_1d": phifitfn1_1d,
+                 }
