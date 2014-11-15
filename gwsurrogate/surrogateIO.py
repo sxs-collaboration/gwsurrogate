@@ -80,15 +80,15 @@ class TextSurrogateRead(TextSurrogateIO):
     sdir = self.SurrogateID
 
     ### Surrogate's sampling rate and mass ratio (for fits) ###
-    time_info         = np.loadtxt(sdir+self._time_info_file)
+    self.time_info    = np.loadtxt(sdir+self._time_info_file)
     self.fit_interval = np.loadtxt(sdir+self._fit_interval_file)
     #self.Mtot        = np.loadtxt(sdir+'Mtot.txt')
 
     ### unpack time info ###
-    if(time_info.size == 3):
-      self.dt      = time_info[2]
-      self.tmin    = time_info[0]
-      self.tmax    = time_info[1]
+    if(self.time_info.size == 3):
+      self.dt      = self.time_info[2]
+      self.tmin    = self.time_info[0]
+      self.tmax    = self.time_info[1]
 
       # Time samples associated with the original data used to build the surrogate
       self.times              = np.arange(self.tmin, self.tmax+self.dt, self.dt)
@@ -159,13 +159,11 @@ class TextSurrogateWrite(TextSurrogateIO):
   def __init__(self, sdir):
     """open single-mode surrogate, to be located in directory sdir, for writing"""
 
-    if( not(path[-1:] is '/') ):
+    if( not(sdir[-1:] is '/') ):
       raise Exception, "path name should end in /"
     try:
       os.mkdir(sdir)
       print "Successfully created a surrogate directory...use write_text to export your surrogate!"
-      TextSurrogateWrite.__init__(self, path) 
-
     except OSError:
       print "Could not create a surrogate directory. Not ready to export, please try again."
 
@@ -174,23 +172,24 @@ class TextSurrogateWrite(TextSurrogateIO):
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def np_savetxt_safe(self,fname,data):
+  def np_savetxt_safe(self,fname, X, fmt='%.18e', delimiter=' ', newline='\n', header='', footer='', comments='# '):
     """ numpys savetext without overwrites """
 
     if os.path.isfile(fname):
       raise Exception, "file already exists"
     else: 
-      np.savetxt(fname,data)
+      np.savetxt(fname,X,fmt=fmt)
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def write_text(self, t, B, eim_indices, greedy_points, fit_min, fit_max, affine_map, \
-                 fitparams_amp, fitparams_phase, fitparams_norm, V, R):
+  def write_text(self, time_info, B, eim_indices, greedy_points, fit_interval, affine_map, \
+                 fitparams_amp, fitparams_phase, fitparams_norm, V, R,fit_type_phase,\
+                 fit_type_amp, fit_type_norm):
     """ Write surrogate data (text) in standard format.
 		
       Input:
       ======
-      t               -- time series array (only min, max and increment saved)
+      time_info       -- tuple (dt, tmin, tmax)
       B               -- empirical interpolant operator (`B matrix`)
       eim_indices     -- indices of empirical nodes from time series array `t`
       greedy_points   -- parameters selected by reduced basis greedy algorithm
@@ -198,8 +197,7 @@ class TextSurrogateWrite(TextSurrogateIO):
                          interpolation method
       R               -- matrix coefficients relating the reduced basis to the 
                          selected waveforms
-      fit_min         -- min values of parameters used for surrogate fitting
-      fit_max         -- max values of parameters used for surrogate fitting
+      fit_interval    -- min/max values of parameters used for surrogate fitting
       affine_map      -- mapped parameter domain to reference interval for fitting? 
                         (True/False)
       fitparams_amp   -- fitting parameters for waveform amplitude
@@ -212,27 +210,22 @@ class TextSurrogateWrite(TextSurrogateIO):
     # TODO: flag to zip folder with tar -cvzf SURROGATE_NAME.tar.gz SURROGATE_NAME/
 
     ### pack mass ratio interval (for fits) and time info ###
-    q_fit     = [fit_min, fit_max]
-    dt        = t[3] - t[2]
-    time_info = [t[0], t[-1], dt] # tmin, tmax, dt
-
-
-    self.np_savetxt_safe(self.SurrogateID+self._fit_interval_file,q_fit)
+    # TODO: should save full time series if necessary
+    self.np_savetxt_safe(self.SurrogateID+self._fit_interval_file,fit_interval)
     self.np_savetxt_safe(self.SurrogateID+self._time_info_file,time_info)
-    self.np_savetxt_safe(self.SurrogateID+self._greedy_points_file,greedy_points)
-    self.np_savetxt_safe(self.SurrogateID+self._eim_indices_file,eim_indices)
+    self.np_savetxt_safe(self.SurrogateID+self._greedy_points_file,greedy_points,fmt='%2.16f')
+    self.np_savetxt_safe(self.SurrogateID+self._eim_indices_file,eim_indices,fmt='%i')
     self.np_savetxt_safe(self.SurrogateID+self._B_i_file,B.imag)
     self.np_savetxt_safe(self.SurrogateID+self._B_r_file,B.real)
     self.np_savetxt_safe(self.SurrogateID+self._fitparams_phase_file,fitparams_phase)
     self.np_savetxt_safe(self.SurrogateID+self._fitparams_amp_file,fitparams_amp)
-    self.np_savetxt_safe(self.SurrogateID+self._affine_map_file,np.array([int(affine_map)]) )
+    self.np_savetxt_safe(self.SurrogateID+self._affine_map_file,np.array([int(affine_map)]),fmt='%i')
     self.np_savetxt_safe(self.SurrogateID+self._V_i_file,V.imag)
     self.np_savetxt_safe(self.SurrogateID+self._V_r_file,V.real)
     self.np_savetxt_safe(self.SurrogateID+self._R_i_file,R.imag)
     self.np_savetxt_safe(self.SurrogateID+self._R_r_file,R.real)
     self.np_savetxt_safe(self.SurrogateID+self._fitparams_norm_file,fitparams_norm)
-    # TODO: add fit_type keys....
-    pass
-
-
+    self.np_savetxt_safe(self.SurrogateID+self._fit_type_phase_file,[fit_type_phase],'%s')
+    self.np_savetxt_safe(self.SurrogateID+self._fit_type_amp_file,[fit_type_amp],'%s')
+    self.np_savetxt_safe(self.SurrogateID+self._fit_type_norm_file,[fit_type_norm],'%s')
 
