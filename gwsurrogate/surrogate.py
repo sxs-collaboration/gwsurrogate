@@ -790,7 +790,14 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
 				raise ValueError('sum over modes not coded yet')
 			modes = [(x, y) for x in ell for y in m]
 			for ell,m in modes:
-				mode_key = 'l'+str(ell)+'_m'+str(m)
-				t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
+				if m >= 0:
+					mode_key = 'l'+str(ell)+'_m'+str(m)
+					t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
+				else: # h(l,-m) = (-1)^l h(l,m)^*
+					# TODO: CHECK THESE EXPRESSIONS AGAINST SPEC OR LAL OUTPUT
+					mode_key = 'l'+str(ell)+'_m'+str(int(-m))
+					t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
+					hp_mode =   np.power(-1,ell) * hp_mode
+					hc_mode = - np.power(-1,ell) * hc_mode
 
 		return t_mode, hp_mode, hc_mode
