@@ -44,19 +44,20 @@ class TextSurrogateIO:
   _fit_interval_file    = 'q_fit.txt'
   _greedy_points_file   = 'greedy_points.txt'
   _eim_indices_file     = 'eim_indices.txt'
-  _B_i_file             = 'B_imag.txt'
-  _B_r_file             = 'B_real.txt'
   _fitparams_phase_file = 'fit_coeff_phase.txt'
   _fitparams_amp_file   = 'fit_coeff_amp.txt'
   _affine_map_file      = 'affine_map.txt'
-  _V_i_file             = 'V_imag.txt'
-  _V_r_file             = 'V_real.txt'
-  _R_i_file             = 'R_im.txt'
-  _R_r_file             = 'R_re.txt'
   _fitparams_norm_file  = 'fit_coeff_norm.txt'
   _fit_type_phase_file  = 'fit_type_phase.txt'
   _fit_type_amp_file    = 'fit_type_amp.txt'
   _fit_type_norm_file   = 'fit_type_norm.txt'
+  _B_i_file             = 'B_imag.txt'
+  _B_r_file             = 'B_real.txt'
+  _V_i_file             = 'V_imag.txt'
+  _V_r_file             = 'V_real.txt'
+  _R_i_file             = 'R_im.txt'
+  _R_r_file             = 'R_re.txt'
+
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __init__(self, sdir):
@@ -72,12 +73,6 @@ class TextSurrogateRead(TextSurrogateIO):
 
     ### sdir is defined to the the surrogate's ID ###
     self.SurrogateID = sdir
-    self.load_text()
-
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def load_text(self):
-
-    sdir = self.SurrogateID
 
     ### Surrogate's sampling rate and mass ratio (for fits) ###
     self.time_info    = np.loadtxt(sdir+self._time_info_file)
@@ -228,4 +223,5 @@ class TextSurrogateWrite(TextSurrogateIO):
     self.np_savetxt_safe(self.SurrogateID+self._fit_type_phase_file,[fit_type_phase],'%s')
     self.np_savetxt_safe(self.SurrogateID+self._fit_type_amp_file,[fit_type_amp],'%s')
     self.np_savetxt_safe(self.SurrogateID+self._fit_type_norm_file,[fit_type_norm],'%s')
+
 
