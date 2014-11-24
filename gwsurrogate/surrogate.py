@@ -234,7 +234,7 @@ class H5Surrogate:
 	def prepare_data(self, dataclass):
 		""" Prepare a dictionary to export with entries filled from imported surrogate data"""
 		dict = {}
-		
+
 		for kk in dataclass.keys:
 			dict[kk] = dataclass.__dict__[kk]
 		
@@ -801,3 +801,33 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
 					hc_mode = - np.power(-1,ell) * hc_mode
 
 		return t_mode, hp_mode, hc_mode
+
+
+####################################################
+def CompareSingleModeSurrogate(sur1,sur2):
+  """ Compare data defining two surrogates"""
+
+  #TODO: should loop over necessary and optional data fields in future SurrogateIO class
+
+  for key in sur1.__dict__.keys():
+
+    if key in ['B','V','R','fitparams_phase','fitparams_amp',\
+               'fitparams_norm','greedy_points','eim_indices']:
+
+      if np.max(np.abs(sur1.__dict__[key] - sur2.__dict__[key])) != 0:
+        print "checking attribute "+str(key)+"...DIFFERENT!!!"
+      else:
+        print "checking attribute "+str(key)+"...agrees"
+
+    elif key in ['fit_type_phase','fit_type_amp','fit_type_norm']:
+
+      if sur1.__dict__[key] == sur2.__dict__[key]:
+        print "checking attribute "+str(key)+"...agrees"
+      else:
+         print "checking attribute "+str(key)+"...DIFFERENT!!!"
+
+    else:
+      print "not checking attribute "+str(key)
+
+
+
