@@ -41,7 +41,7 @@ class TextSurrogateIO:
 
   #variable_name_file   = file_name
   _time_info_file       = 'time_info.txt' # either tuple (ti,tf,dt) or Nx2 matrix for N times and weights
-  _fit_interval_file    = 'q_fit.txt'
+  _fit_interval_file    = 'q_fit.txt' #TODO: rename param_fit_interval
   _greedy_points_file   = 'greedy_points.txt'
   _eim_indices_file     = 'eim_indices.txt'
   _fitparams_phase_file = 'fit_coeff_phase.txt'
