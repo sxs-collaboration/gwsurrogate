@@ -41,12 +41,13 @@ class TextSurrogateIO:
 
   #variable_name_file   = file_name
   _time_info_file       = 'time_info.txt' # either tuple (ti,tf,dt) or Nx2 matrix for N times and weights
-  _fit_interval_file    = 'q_fit.txt' #TODO: rename param_fit_interval
+  _fit_interval_file    = 'param_fit_interval.txt'
+  _parameterization     = 'parameterization.txt'
   _greedy_points_file   = 'greedy_points.txt'
   _eim_indices_file     = 'eim_indices.txt'
+  _affine_map_file      = 'affine_map.txt'
   _fitparams_phase_file = 'fit_coeff_phase.txt'
   _fitparams_amp_file   = 'fit_coeff_amp.txt'
-  _affine_map_file      = 'affine_map.txt'
   _fitparams_norm_file  = 'fit_coeff_norm.txt'
   _fit_type_phase_file  = 'fit_type_phase.txt'
   _fit_type_amp_file    = 'fit_type_amp.txt'
@@ -119,10 +120,14 @@ class TextSurrogateRead(TextSurrogateIO):
     self.fit_type_phase  = self.get_string_key(sdir+self._fit_type_phase_file)
     self.fit_type_amp    = self.get_string_key(sdir+self._fit_type_amp_file)
     self.fit_type_norm   = self.get_string_key(sdir+self._fit_type_norm_file)
-		
+
     self.norm_fit_func  = my_funcs[self.fit_type_norm]
     self.phase_fit_func = my_funcs[self.fit_type_phase]
     self.amp_fit_func   = my_funcs[self.fit_type_amp]
+
+    ### Information about surrogate's parameterization ###
+    self.parameterization = self.get_string_key(sdir+self._parameterization)
+    self.get_surr_params  = my_funcs[self.parameterization]
 		
     # TODO: set to false and don't load data if norm information not provided
     self.norms = True
@@ -179,7 +184,7 @@ class TextSurrogateWrite(TextSurrogateIO):
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def write_text(self, time_info, B, eim_indices, greedy_points, fit_interval, affine_map, \
                  fitparams_amp, fitparams_phase, fitparams_norm, V, R,fit_type_phase,\
-                 fit_type_amp, fit_type_norm):
+                 fit_type_amp, fit_type_norm,parameterization):
     """ Write surrogate data (text) in standard format.
 		
       Input:
@@ -200,7 +205,8 @@ class TextSurrogateWrite(TextSurrogateIO):
       fitparams_norm  -- fitting parameters for waveform norm
       fit_type_phase  -- key to select parametric fitting function (phase)
       fit_type_amp    -- key to select parametric fitting function (amp)
-      fit_type_norm   -- key to select parametric fitting function (norm) """
+      fit_type_norm   -- key to select parametric fitting function (norm) 
+      parameterization-- key to select map from q,M to surrogate's parameterization"""
 
     # TODO: flag to zip folder with tar -cvzf SURROGATE_NAME.tar.gz SURROGATE_NAME/
 
@@ -223,5 +229,5 @@ class TextSurrogateWrite(TextSurrogateIO):
     self.np_savetxt_safe(self.SurrogateID+self._fit_type_phase_file,[fit_type_phase],'%s')
     self.np_savetxt_safe(self.SurrogateID+self._fit_type_amp_file,[fit_type_amp],'%s')
     self.np_savetxt_safe(self.SurrogateID+self._fit_type_norm_file,[fit_type_norm],'%s')
-
+    self.np_savetxt_safe(self.SurrogateID+self._parameterization,[parameterization],'%s')
 

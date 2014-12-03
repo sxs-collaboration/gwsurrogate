@@ -68,10 +68,19 @@ def phifitfn1_1d(coeffs,x):
     return a0 + a1*nu + a2*nu**2 + a3*np.log(nu)
 
 
+### these are for switching from (q,M) to surrogate's parameterization ###
+def q_to_q(q):
+  return q
+
+def q_to_nu(q):
+  return gwtools.q_to_nu(q)
+
 ### dictionary of fitting functions ###
 function_dict = {
                  "polyval_1d": polyval_1d,
                  "ampfitfn1_1d": ampfitfn1_1d,
                  "ampfitfn1_1d": ampfitfn1_1d,
                  "phifitfn1_1d": phifitfn1_1d,
+                 "q_to_q": q_to_q,
+                 "q_to_nu":q_to_nu
                  }
