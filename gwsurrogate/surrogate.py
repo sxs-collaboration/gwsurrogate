@@ -593,6 +593,8 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   def basis(self, i, flavor='waveform'):
     """compute the ith cardinal, orthogonal, or waveform basis."""
 
+    # TODO: need to gaurd against missing V,R and their relationships to B
+
     if flavor == 'cardinal':
       basis = self.B[:,i]
     elif flavor == 'orthogonal':
@@ -670,7 +672,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   #
   # These routine's use x as the parameter, which could be mass ratio,
   # symmetric mass ratio, or something else. Parameterization info should
-  # be supplied by surrogate data files.
+  # be supplied by surrogate's parameterization tag.
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _affine_mapper_checker(self, x):
@@ -684,23 +686,46 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
       Warning("Surrogate not trained at requested parameter value")
 
 
-    if self.affine_map:
+    # TODO: should be rolled like amp/phase/fit funcs
+    if self.affine_map == 'minus1_to_1':
       x_0 = 2.*(x - x_min)/(x_max - x_min) - 1.;
-    else:
+    elif self.affine_map == 'zero_to_1':
+      x_0 = (x - x_min)/(x_max - x_min);
+    elif self.affine_map == 'none':
       x_0 = x
-
+    else:
+      raise ValueError('unknown affine map')
     return x_0
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _norm_eval(self, x_0, affine_mapped=True):
     """evaluate norm fit at x_0"""
 
+    if not self.norms:
+      return 1.
+
     # TODO: this seems hacky -- just so when calling from outside class (which shouldn't be done) it will evaluate correctly
+    # TODO: need to gaurd against missing norm info
     if( not(affine_mapped) ):
       x_0 = self._affine_mapper_checker(x_0)
 
     nrm_eval  = np.array([ self.norm_fit_func(self.fitparams_norm, x_0) ])
     return nrm_eval
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def _amp_eval(self, x_0):
+    """evaluate amplitude fit at x_0"""
+    # 0:self.dim_rb... could be bad: fit degrees of freedom have nothing to do with rb dimension
+    #return np.array([ self.amp_fit_func(self.fitparams_amp[jj, 0:self.dim_rb], x_0) for jj in range(self.dim_rb) ])
+    return np.array([ self.amp_fit_func(self.fitparams_amp[jj,:], x_0) for jj in range(self.dim_rb) ])
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def _phase_eval(self, x_0):
+    """evaluate phase fit at x_0"""
+    #return np.array([ self.phase_fit_func(self.fitparams_phase[jj, 0:self.dim_rb], x_0) for jj in range(self.dim_rb) ])
+    return np.array([ self.phase_fit_func(self.fitparams_phase[jj,:], x_0) for jj in range(self.dim_rb) ])
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -717,21 +742,36 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
     x_0 = self._affine_mapper_checker(x)
 
     ### Evaluate amp/phase/norm fits ###
-    amp_eval   = np.array([ self.amp_fit_func(self.fitparams_amp[jj, 0:self.dim_rb], x_0) for jj in range(self.dim_rb) ])
-    phase_eval = np.array([ self.phase_fit_func(self.fitparams_phase[jj, 0:self.dim_rb], x_0) for jj in range(self.dim_rb) ])
-    if self.norms:
-      nrm_eval = self._norm_eval(x_0)
-    else:
-      nrm_eval = 1.
+    amp_eval   = self._amp_eval(x_0)
+    phase_eval = self._phase_eval(x_0)
+    nrm_eval   = self._norm_eval(x_0)
+
+    if self.surrogate_mode_type  == 'waveform_basis':
+
+      ### Build dim_RB-vector fit evaluation of h ###
+      h_EIM = amp_eval*np.exp(1j*phase_eval)
 		
-    ### Build dim_RB-vector fit evaluation of h ###
-    h_EIM = amp_eval*np.exp(1j*phase_eval)
-		
-    ### Surrogate modes hp and hc ###
-    if samples == None:
-      surrogate = np.dot(self.B, h_EIM)
+      if samples == None:
+        surrogate = np.dot(self.B, h_EIM)
+      else:
+        surrogate = np.dot(self.resample_B(samples), h_EIM)
+
+
+    elif self.surrogate_mode_type  == 'amp_phase_basis':
+
+      if samples == None:
+        sur_A = np.dot(self.B.real, amp_eval)
+        sur_P = np.dot(self.B.imag, phase_eval)
+      else:
+        sur_A = np.dot(self.resample_B(samples).real, amp_eval)
+        sur_P = np.dot(self.resample_B(samples).imag, phase_eval)
+
+      surrogate = sur_A*np.exp(1j*sur_P)
+
+
     else:
-      surrogate = np.dot(self.resample_B(samples), h_EIM)
+      raise ValueError('invalid surrogate type')
+
 
     surrogate = nrm_eval * surrogate
     hp = surrogate.real

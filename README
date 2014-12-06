@@ -80,9 +80,7 @@ views of the National Science Foundation.
 Planned Development
 -------------------
 
--- Amplitude and phase based surrogates 
 -- More descriptive surrogate names: EOBNRv2_q1to2_sA_0to0_0to0_0to0_sB_0to0_0to0_0to0_SingleModes
--- Direct generation of multi-mode surrogates with tensor harmonic weighting
 -- adherence to pep standards
 -- log files for all downloaded surrogates, and tools for viewing them
 -- parameter array inputs for generating multiple surrogate evaluations
