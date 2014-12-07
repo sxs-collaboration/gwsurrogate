@@ -175,9 +175,18 @@ class TextSurrogateRead(TextSurrogateIO):
     ### Complex B coefficients ###
     B_1    = np.loadtxt(sdir+self._B_1_file)
     B_2    = np.loadtxt(sdir+self._B_2_file)
-    self.B = B_1 + (1j)*B_2
+
+    # TODO: B needs to be handled better 
+    if self.surrogate_mode_type  == 'amp_phase_basis':
+      self.B_1 = B_1
+      self.B_2 = B_2
+    elif self.surrogate_mode_type  == 'waveform_basis':
+      self.B = B_1 + (1j)*B_2
+    else:
+      raise ValueError('invalid surrogate type')
 
     ### Deduce sizes from B ###
+    # TODO: dim_rb needs to account for different amp/phase dimensions
     self.dim_rb       = B_1.shape[1]
     self.time_samples = B_1.shape[0]
 

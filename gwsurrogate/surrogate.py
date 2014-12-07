@@ -452,8 +452,14 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
       TextSurrogateRead.__init__(self, path)
 		
     # Interpolate columns of the empirical interpolant operator, B, using cubic spline
-    self.reB_spline_params = [splrep(self.times, self.B[:,jj].real, k=deg) for jj in range(self.dim_rb)]
-    self.imB_spline_params = [splrep(self.times, self.B[:,jj].imag, k=deg) for jj in range(self.dim_rb)]
+    if self.surrogate_mode_type  == 'waveform_basis':
+      self.reB_spline_params = [splrep(self.times, self.B[:,jj].real, k=deg) for jj in range(self.dim_rb)]
+      self.imB_spline_params = [splrep(self.times, self.B[:,jj].imag, k=deg) for jj in range(self.dim_rb)]
+    elif self.surrogate_mode_type  == 'amp_phase_basis':
+      self.B1_spline_params = [splrep(self.times, self.B_1[:,jj], k=deg) for jj in range(self.B_1.shape[1])]
+      self.B2_spline_params = [splrep(self.times, self.B_2[:,jj], k=deg) for jj in range(self.B_2.shape[1])]
+    else:
+      raise ValueError('invalid surrogate type')
 
     # Convenience for plotting purposes
     self.plt = plt
@@ -593,7 +599,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   def basis(self, i, flavor='waveform'):
     """compute the ith cardinal, orthogonal, or waveform basis."""
 
-    # TODO: need to gaurd against missing V,R and their relationships to B
+    # TODO: need to gaurd against missing V,R and their relationships to B (or B_1, B_2)
 
     if flavor == 'cardinal':
       basis = self.B[:,i]
@@ -718,14 +724,17 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
     """evaluate amplitude fit at x_0"""
     # 0:self.dim_rb... could be bad: fit degrees of freedom have nothing to do with rb dimension
     #return np.array([ self.amp_fit_func(self.fitparams_amp[jj, 0:self.dim_rb], x_0) for jj in range(self.dim_rb) ])
-    return np.array([ self.amp_fit_func(self.fitparams_amp[jj,:], x_0) for jj in range(self.dim_rb) ])
+    #return np.array([ self.amp_fit_func(self.fitparams_amp[jj,:], x_0) for jj in range(self.dim_rb) ])
+    # TODO: How slow is shape?
+    return np.array([ self.amp_fit_func(self.fitparams_amp[jj,:], x_0) for jj in range(self.fitparams_amp.shape[0]) ])
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _phase_eval(self, x_0):
     """evaluate phase fit at x_0"""
     #return np.array([ self.phase_fit_func(self.fitparams_phase[jj, 0:self.dim_rb], x_0) for jj in range(self.dim_rb) ])
-    return np.array([ self.phase_fit_func(self.fitparams_phase[jj,:], x_0) for jj in range(self.dim_rb) ])
+    #return np.array([ self.phase_fit_func(self.fitparams_phase[jj,:], x_0) for jj in range(self.dim_rb) ])
+    return np.array([ self.phase_fit_func(self.fitparams_phase[jj,:], x_0) for jj in range(self.fitparams_phase.shape[0]) ])
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -760,11 +769,11 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
     elif self.surrogate_mode_type  == 'amp_phase_basis':
 
       if samples == None:
-        sur_A = np.dot(self.B.real, amp_eval)
-        sur_P = np.dot(self.B.imag, phase_eval)
+        sur_A = np.dot(self.B_1, amp_eval)
+        sur_P = np.dot(self.B_2, phase_eval)
       else:
-        sur_A = np.dot(self.resample_B(samples).real, amp_eval)
-        sur_P = np.dot(self.resample_B(samples).imag, phase_eval)
+        sur_A = np.dot(np.array([splev(samples, self.B1_spline_params[jj]) for jj in range(self.B_1.shape[1])]).T, amp_eval)
+        sur_P = np.dot(np.array([splev(samples, self.B2_spline_params[jj]) for jj in range(self.B_2.shape[1])]).T, phase_eval)
 
       surrogate = sur_A*np.exp(1j*sur_P)
 
