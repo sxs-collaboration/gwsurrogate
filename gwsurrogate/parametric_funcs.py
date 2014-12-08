@@ -33,40 +33,38 @@ import gwtools
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def polyval_1d(coeffs,x):
-    """ 1D polynomial defined by coeffs vector and evaluated 
-    as numpy.polyval(coeffs,x)"""
-    return np.polyval(coeffs, x)
+  """ 1D polynomial defined by coeffs vector and evaluated 
+  as numpy.polyval(coeffs,x)"""
+  return np.polyval(coeffs, x)
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def ampfitfn1_1d(coeffs,x):
-    """ PN inspired ampitude fit a0 + a1*nu**a2"""
+  """ PN inspired ampitude fit a0 + a1*nu**a2"""
 
-    a0, a1, a2 = coeffs[:3]
-
-    nu = gwtools.q_to_nu(x)
-
-    return a0 + a1*nu**a2
+  a0, a1, a2 = coeffs[:3]
+  nu = gwtools.q_to_nu(x)
+  return a0 + a1*nu**a2
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def ampfitfn2_1d(coeffs, x):
-	""" PN inspired amplitude fit a0 + a1*np.abs(0.25-nu)**0.5 + a2*np.log(nu/0.25)"""
-	
-	a0, a1, a2 = coeffs[:3]
-	
-	nu = gwtools.q_to_nu(x)
-	
-	return a0 + a1*np.abs(0.25-nu)**0.5 + a2*np.log(nu/0.25)
+  """ PN inspired amplitude fit a0 + a1*np.abs(0.25-nu)**0.5 + a2*np.log(nu/0.25)"""
+
+  a0, a1, a2 = coeffs[:3]
+  nu = gwtools.q_to_nu(x)
+  return a0 + a1*np.abs(0.25-nu)**0.5 + a2*np.log(nu/0.25)
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def phifitfn1_1d(coeffs,x):
-    """ PN inspired phase fit a0 + a1*nu + a2*nu**2 + a3*np.log(nu)"""
+  """ PN inspired phase fit a0 + a1*nu + a2*nu**2 + a3*np.log(nu)"""
 
-    a0, a1, a2, a3 = coeffs[:4]
+  a0, a1, a2, a3 = coeffs[:4]
+  nu = gwtools.q_to_nu(x)
+  return a0 + a1*nu + a2*nu**2 + a3*np.log(nu)
 
-    nu = gwtools.q_to_nu(x)
-
-    return a0 + a1*nu + a2*nu**2 + a3*np.log(nu)
-
+def ampfitfn3_1d(coeffs,x):
+  a0 = coefs[-1]
+  a1 = coeffs[-2]
+  return a0*np.sqrt(1. - x) + a1*np.log(x) + polyval_1d(coeffs[:-2],x)
 
 ### these are for switching from (q,M) to surrogate's parameterization ###
 def q_to_q(q):
@@ -81,6 +79,7 @@ function_dict = {
                  "ampfitfn1_1d": ampfitfn1_1d,
                  "ampfitfn1_1d": ampfitfn1_1d,
                  "phifitfn1_1d": phifitfn1_1d,
+                 "nuSingularPlusPolynomial": ampfitfn3_1d,
                  "q_to_q": q_to_q,
                  "q_to_nu":q_to_nu
                  }
