@@ -144,6 +144,8 @@ class TextSurrogateRead(TextSurrogateIO):
   def __init__(self, sdir):
     """initialize single-mode surrogate defined by text files located in directory sdir"""
 
+    surrogate_load_info = '' # add to string, display after loading
+
     ### sdir is defined to the the surrogate's ID ###
     self.SurrogateID = sdir
 
@@ -216,7 +218,7 @@ class TextSurrogateRead(TextSurrogateIO):
       V_2    = np.loadtxt(sdir+self._V_2_file)
       self.V = V_1 + (1j)*V_2
     except IOError:
-      print 'Vandermonde matrix not found...proceeding without it'
+      surrogate_load_info +='Vandermonde not found, '
       self.V = False
 
 
@@ -224,7 +226,7 @@ class TextSurrogateRead(TextSurrogateIO):
     try:
       self.greedy_points = np.loadtxt(sdir+self._greedy_points_file)
     except IOError:
-      print 'Greedy points not found...proceeding without it'
+      surrogate_load_info += 'Greedy points not found, '
       self.greedy_points = False
 
     ### R matrix such that waveform basis H = ER ###
@@ -233,8 +235,8 @@ class TextSurrogateRead(TextSurrogateIO):
       R_2    = np.loadtxt(sdir+self._R_2_file)
       self.R = R_1 + (1j)*R_2
     except IOError:
-     print 'R matrix not found...proceeding without it'
-     self.R = False
+      surrogate_load_info += 'R matrix not found, '
+      self.R = False
 
     try: 
       self.fitparams_norm = np.loadtxt(sdir+self._fitparams_norm_file)
@@ -242,16 +244,17 @@ class TextSurrogateRead(TextSurrogateIO):
       self.norm_fit_func  = my_funcs[self.fit_type_norm]
       self.norms = True
     except IOError:
-      print 'norm fits not found...proceeding without it'
+      surrogate_load_info += 'Norm fits not found, '
       self.norms = False
 
     ### empirical time index (ordered by EIM selection) ###
     try:
       self.eim_indices = np.loadtxt(sdir+self._eim_indices_file,dtype=int)
     except IOError:
-      print 'EIM indices not found...proceeding without it'
+      surrogate_load_info += 'EIM indices not found.'
       self.eim_indices = False
 
+    #print surrogate_load_info #Q: should we display this?
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def get_string_key(self,fname):
