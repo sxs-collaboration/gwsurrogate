@@ -61,10 +61,18 @@ def phifitfn1_1d(coeffs,x):
   nu = gwtools.q_to_nu(x)
   return a0 + a1*nu + a2*nu**2 + a3*np.log(nu)
 
-def ampfitfn3_1d(coeffs,x):
-  a0 = coefs[-1]
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def ampfitfn3_1d(coeffs, x):
+  """ PN inspired amplitude fit plus polynomial,
+      a0*np.sqrt(1 - x) + a1*np.log(x) + a2(1 - x) + ... + aN*(1-x)**(N-1)"""
+
+  a0 = coeffs[-1]
   a1 = coeffs[-2]
-  return a0*np.sqrt(1. - x) + a1*np.log(x) + polyval_1d(coeffs[:-2],x)
+
+  polyCoefs = [c for c in coeffs[:-2]]
+  polyCoefs.append(0.)
+
+  return a0*np.sqrt(1. - x) + a1*np.log(x) + np.polyval(polyCoefs,1. - x)
 
 ### these are for switching from (q,M) to surrogate's parameterization ###
 def q_to_q(q):
