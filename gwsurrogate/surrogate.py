@@ -36,7 +36,7 @@ import matplotlib.pyplot as plt
 import time
 import os as os
 from parametric_funcs import function_dict as my_funcs
-from surrogateIO import TextSurrogateRead, TextSurrogateWrite
+from surrogateIO import H5SurrogateRead, H5SurrogateWrite, TextSurrogateRead, TextSurrogateWrite
 
 try:
 	import h5py
