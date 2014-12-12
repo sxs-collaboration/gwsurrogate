@@ -543,7 +543,7 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def evaluate_on_sphere(self,ell,m,theta,phi,hp_mode,hc_mode):
-    """elvaluate on the sphere"""
+    """evaluate on the sphere"""
 
     if( theta is not None and phi is not None):
       sYlm_value =  sYlm(-2,ll=ell,mm=m,theta=theta,phi=phi)
