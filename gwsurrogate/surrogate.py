@@ -30,6 +30,7 @@ THE SOFTWARE.
 import numpy as np
 from scipy.interpolate import splrep
 from scipy.interpolate import splev
+from harmonics import sYlm as sYlm
 import const_mks as mks
 import gwtools
 import matplotlib.pyplot as plt
@@ -111,11 +112,22 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, phi_ref=None, f_low=None, samples=None):
     """Return surrogate evaluation for...
-       q    = mass ratio (dimensionless) 
-       M    = total mass (solar masses) 
-       dist = distance to binary system (megaparsecs)
-       phir = mode's phase at peak amplitude
-       flow = instantaneous initial frequency, will check if flow_surrogate < flow """
+
+       Input
+       =====
+       q         --- mass ratio (dimensionless) 
+       M         --- total mass (solar masses) 
+       dist      --- distance to binary system (megaparsecs)
+       phir      --- mode's phase at peak amplitude
+       flow      --- instantaneous initial frequency, will check if flow_surrogate < flow 
+
+
+       More information
+       ================
+       This routine evaluates gravitational wave complex polarization modes h_{ell m}
+       defined on a sphere whose origin is the binary's center of mass. """
+
+    # TODO: mode description here and point to paper with equation
 
     ### compute surrogate's parameter values from input ones (q,M) ###
     # Ex: symmetric mass ratio x = q / (1+q)^2 might parameterize the surrogate
@@ -446,61 +458,152 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 ##############################################
 class EvaluateSurrogate(EvaluateSingleModeSurrogate): 
 # TODO: inherated from EvalSingleModeSurrogate to gain access to some functions. this should be better structured
-	"""Evaluate multi-mode surrogates"""
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def __init__(self, path, deg=3):
+  """Evaluate multi-mode surrogates"""
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def __init__(self, path, deg=3):
 
 
-		# Convenience for plotting purposes
-		self.plt = plt
+    # Convenience for plotting purposes
+    self.plt = plt
 
-		### fill up dictionary of single mode surrogate class ###
-		self.single_modes = dict()
+    ### fill up dictionary with single mode surrogate class ###
+    self.single_modes = dict()
 
-		# Load HDF5 or Text surrogate data depending on input file extension
-		ext = path.split('.')[-1]
-		if ext == 'hdf5' or ext == 'h5':
-			raise ValueError('Not coded yet')
-		else:
-			### compile list of available modes ###
-			# assumes (i) single mode folder format l#_m#_ (ii) ell<=9, m>=0
-			for single_mode in list_folders(path,'l'):
-				mode_key = single_mode[0:5]
-				print "loading surrogate mode... "+mode_key
-				self.single_modes[mode_key] = EvaluateSingleModeSurrogate(path+single_mode+'/')
+    # Load HDF5 or Text surrogate data depending on input file extension
+    ext = path.split('.')[-1]
+    if ext == 'hdf5' or ext == 'h5':
+      raise ValueError('Not coded yet')
+    else:
+      ### compile list of available modes ###
+      # assumes (i) single mode folder format l#_m#_ (ii) ell<=9, m>=0
+      for single_mode in list_folders(path,'l'):
+        mode_key = single_mode[0:5]
+        print "loading surrogate mode... "+mode_key
+        self.single_modes[mode_key] = EvaluateSingleModeSurrogate(path+single_mode+'/')
 
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def __call__(self, q, M=None, dist=None, phi_ref=None, f_low=None, samples=None, ell=None, m=None):
-		"""Return surrogate evaluation for...
-			q    = mass ratio (dimensionless) 
-			M    = total mass (solar masses) 
-			dist = distance to binary system (megaparsecs)
-			phir = mode's phase at peak amplitude
-			flow = instantaneous initial frequency, will check if flow_surrogate < flow 
-			ell = list or array of N ell modes to evaluate for (if none, all modes are returned)
-			m   = for each ell, supply a matching m value 
+    ### Assumes all modes are defined on the same temporal grid. ###
+    ### TODO: should explicitly check this in previous step ###
+    self.time_all_modes = self.single_modes[mode_key].time
 
-                    NOTE: if only requesting one mode, this should be ell=[2],m=[2]"""
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def __call__(self, q, M=None, dist=None, theta=None,phi=None,phi_ref=None, f_low=None, samples=None, ell=None, m=None, mode_sum=True):
+    """Return surrogate evaluation for...
 
-		if ell is None:
-			raise ValueError('code me')
-		else:
-			if len(ell) > 1:
-				raise ValueError('sum over modes not coded yet')
-			modes = [(x, y) for x in ell for y in m]
-			for ell,m in modes:
-				if m >= 0:
-					mode_key = 'l'+str(ell)+'_m'+str(m)
-					t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
-				else: # h(l,-m) = (-1)^l h(l,m)^*
-					# TODO: CHECK THESE EXPRESSIONS AGAINST SPEC OR LAL OUTPUT
-					mode_key = 'l'+str(ell)+'_m'+str(int(-m))
-					t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
-					hp_mode =   np.power(-1,ell) * hp_mode
-					hc_mode = - np.power(-1,ell) * hc_mode
+      q    = mass ratio (dimensionless) 
+      M    = total mass (solar masses) 
+      dist  = distance to binary system (megaparsecs)
+      theta/phi --- evaluate hp and hc modes at this location on sphere
+      phir = mode's phase at peak amplitude
+      flow = instantaneous initial frequency, will check if flow_surrogate < flow 
+      ell = list or array of N ell modes to evaluate for (if none, all modes are returned)
+      m   = for each ell, supply a matching m value 
+      mode_sum = if true, all modes are summed, if false all modes are returned in an array
 
-		return t_mode, hp_mode, hc_mode
+      NOTE: if only requesting one mode, this should be ell=[2],m=[2]
+
+       Note about Angles
+       =================
+       For circular orbits, the binary's orbital angular momentum is taken to
+       be the z-axis. Theta and phi is location on the sphere relative to this 
+       coordiante system. """
+
+    # TODO: automatically generate m<0 too, control with flag
+
+    ### deduce single mode dictionary keys from ell,m input ###
+    eval_mode_keys  = self.generate_mode_keys(ell,m)
+ 
+    ### allocate arrays for multimode polarizations ###
+    if mode_sum:
+      hp_full, hc_full = self.allocate_output_array(samples,1)
+    else:
+      hp_full, hc_full = self.allocate_output_array(samples,len(eval_mode_keys))
+
+    ii = 0
+    for mode_key in eval_mode_keys:
+
+      ell = mode_key[1]
+      m   = mode_key[4]
+
+      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,phi_ref,f_low,samples,mode_key,ell,m)
+      hp_mode, hc_mode         = self.evaluate_on_sphere(ell,m,theta,phi,hp_mode,hc_mode)
+
+      if mode_sum:
+        hp_full = hp_full + hp_mode
+        hc_full = hc_full + hc_mode
+      else:
+        hp_full[:,ii] = hp_mode[:]
+        hc_full[:,ii] = hc_mode[:]
+
+
+      ii+=1
+
+    return t_mode, hp_full, hc_full #assumes all mode's have same temporal gride
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def evaluate_on_sphere(self,ell,m,theta,phi,hp_mode,hc_mode):
+    """elvaluate on the sphere"""
+
+    if( theta is not None and phi is not None):
+      sYlm_value =  sYlm(-2,ll=ell,mm=m,theta=theta,phi=phi)
+      hp_mode = sYlm_value*hp_mode
+      hc_mode = 1.0j*sYlm_value*hc_mode
+
+    return hp_mode, hc_mode
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def evaluate_single_mode(self,q, M, dist, phi_ref, f_low, samples,mode_key,ell,m):
+    """ light wrapper around single mode evaluator to account for m < 0 modes """
+
+    t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
+    if m < 0: # h(l,-m) = (-1)^l h(l,m)^* (TODO: CHECK THESE EXPRESSIONS AGAINST SPEC OR LAL OUTPUT)
+      hp_mode =   np.power(-1,ell) * hp_mode
+      hc_mode = - np.power(-1,ell) * hc_mode
+
+    return t_mode, hp_mode, hc_mode
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def allocate_output_array(self,samples,num_modes):
+    """ allocate memory for result of hp, hc.
+
+    Input
+    =====
+    samples   --- array of time samples. None if using default
+    num_modes --- number of harmonic modes (cols). set to 1 if summation over modes"""
+
+    if (samples is not None):
+      hp_full = np.zeros((samples.shape[0],num_modes))
+      hc_full = np.zeros((samples.shape[0],num_modes))
+    else:
+      hp_full = np.zeros((self.time_all_modes().shape[0],num_modes))
+      hc_full = np.zeros((self.time_all_modes().shape[0],num_modes))
+
+    if( num_modes == 1): #TODO: hack to prevent broadcast when summing over modes
+      hp_full = hp_full.reshape([hp_full.shape[0],])
+      hc_full = hp_full.reshape([hp_full.shape[0],])
+
+    return hp_full, hc_full
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def generate_mode_keys(self,ell=None,m=None):
+    """from list of [ell],[m] pairs, generate mode keys to evaluate for """
+
+    if ell is None: # evaluate for all available modes
+      mode_keys = self.single_modes.keys()
+    else:
+      modes = [(x, y) for x in ell for y in m] 
+      mode_keys = []
+      for ell,m in modes:
+        if m>=0:
+          mode_key = 'l'+str(ell)+'_m'+str(m)
+        else:
+          mode_key = 'l'+str(ell)+'_m'+str(int(-m))
+
+      mode_keys.append(mode_key)
+
+    return mode_keys
 
 
 ####################################################

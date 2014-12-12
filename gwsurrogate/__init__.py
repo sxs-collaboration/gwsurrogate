@@ -97,5 +97,5 @@ THE SOFTWARE.
 
 from surrogate import *
 import surrogate_repo
-
+from harmonics import sYlm as sYlm
 
