@@ -90,6 +90,55 @@ surrogate_description = """* Description of tags:
 
 
 ##############################################
+class H5SurrogateIO:
+  """
+* Summary (IO base class): 
+
+    Base class for single-mode text-based surrogate format. This class
+    organizes a common set of mandatory and optional data files and
+    bookkeeping tags. It serves as a base class from which surrogate read
+    and write classes will inherit.
+
+
+"""
+  __doc__+=surrogate_description
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def __init__(self):
+    pass
+  
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def chars_to_string(self, chars):
+    return "".join(chr(cc) for cc in chars)
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def string_to_chars(self, string):
+    return [ord(cc) for cc in string]
+  
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def print_required(self):
+    """ Print variable names required for importing and exporting surrogate data"""
+    
+    print "\nGWSurrogate requires data for the following:"
+    
+    for kk in self.required:
+      print "\t"+kk
+    
+    pass
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def check_required(self, dict):
+    """ Check if input dictionary has the minimum required surrogate data"""
+    keys = dict.keys()
+    
+    for kk in self.required:
+      if kk not in keys:
+        raise Exception, "\nGWSurrogate requires data for "+kk
+    
+    return keys
+
+
+##############################################
 class H5Surrogate:
 	"""Load or export a single-mode surrogate in terms of the function's amplitude and phase from HDF5 data format"""
 
@@ -235,36 +284,6 @@ class H5Surrogate:
 #				self.file.close()
 			
 		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def chars_to_string(self, chars):
-		return "".join(chr(cc) for cc in chars)
-
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def string_to_chars(self, string):
-		return [ord(cc) for cc in string]
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def print_required(self):
-		""" Print variable names required for importing and exporting surrogate data"""
-		
-		print "\nGWSurrogate requires data for the following:"
-		
-		for kk in self.required:
-			print "\t"+kk
-		
-		pass
-	
-	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	def check_required(self, dict):
-		""" Check if input dictionary has the minimum required surrogate data"""
-		keys = dict.keys()
-		
-		for kk in self.required:
-			if kk not in keys:
-				raise Exception, "\nGWSurrogate requires data for "+kk
-		
-		return keys
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	def prepare_data(self, dataclass):
