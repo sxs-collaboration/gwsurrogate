@@ -37,7 +37,7 @@ import matplotlib.pyplot as plt
 import time
 import os as os
 from parametric_funcs import function_dict as my_funcs
-from surrogateIO import TextSurrogateRead, TextSurrogateWrite
+from surrogateIO import TextSurrogateRead, TextSurrogateWrite, H5Surrogate
 
 try:
 	import h5py
@@ -480,23 +480,31 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
         print "loading surrogate mode... "+mode_key
         self.single_modes[mode_key] = EvaluateSingleModeSurrogate(path+single_mode+'/')
 
+    if len(self.single_modes) == 0:
+      raise IOError('no surrogate modes found. make sure each mode subdirectory is of the form l#_m#_')
+
     ### Assumes all modes are defined on the same temporal grid. ###
     ### TODO: should explicitly check this in previous step ###
     self.time_all_modes = self.single_modes[mode_key].time
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def __call__(self, q, M=None, dist=None, theta=None,phi=None,phi_ref=None, f_low=None, samples=None, ell=None, m=None, mode_sum=True):
+  def __call__(self, q, M=None, dist=None, theta=None,phi=None,\
+                     phi_ref=None, f_low=None, samples=None,\
+                     ell=None, m=None, mode_sum=True,fake_neg_modes=False):
     """Return surrogate evaluation for...
 
-      q    = mass ratio (dimensionless) 
-      M    = total mass (solar masses) 
-      dist  = distance to binary system (megaparsecs)
-      theta/phi --- evaluate hp and hc modes at this location on sphere
-      phir = mode's phase at peak amplitude
-      flow = instantaneous initial frequency, will check if flow_surrogate < flow 
-      ell = list or array of N ell modes to evaluate for (if none, all modes are returned)
-      m   = for each ell, supply a matching m value 
-      mode_sum = if true, all modes are summed, if false all modes are returned in an array
+      INPUT
+      =====
+      q              --- mass ratio (dimensionless) 
+      M              --- total mass (solar masses) 
+      dist           --- distance to binary system (megaparsecs)
+      theta/phi      --- evaluate hp and hc modes at this location on sphere
+      phir           --- mode's phase at peak amplitude
+      flow           --- instantaneous initial frequency, will check if flow_surrogate < flow 
+      ell            --- list or array of N ell modes to evaluate for (if none, all modes are returned)
+      m              --- for each ell, supply a matching m value 
+      mode_sum       --- if true, all modes are summed, if false all modes are returned in an array
+      fake_neg_modes --- if true, include m<0 modes deduced from m>0 mode. all m in [ell,m] input should be non-negative
 
       NOTE: if only requesting one mode, this should be ell=[2],m=[2]
 
@@ -507,6 +515,11 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
        coordiante system. """
 
     # TODO: automatically generate m<0 too, control with flag
+    if fake_neg_modes:
+      raise ValueError('not coded yet')
+
+    if phi_ref is not None:
+      raise ValueError('not coded yet')
 
     ### deduce single mode dictionary keys from ell,m input ###
     eval_mode_keys  = self.generate_mode_keys(ell,m)
@@ -520,8 +533,8 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
     ii = 0
     for mode_key in eval_mode_keys:
 
-      ell = mode_key[1]
-      m   = mode_key[4]
+      ell = int(mode_key[1])
+      m   = int(mode_key[4])
 
       t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,phi_ref,f_low,samples,mode_key,ell,m)
       hp_mode, hc_mode         = self.evaluate_on_sphere(ell,m,theta,phi,hp_mode,hc_mode)
@@ -543,7 +556,11 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
   def evaluate_on_sphere(self,ell,m,theta,phi,hp_mode,hc_mode):
     """elvaluate on the sphere"""
 
-    if( theta is not None and phi is not None):
+    if theta is not None: 
+
+      if phi is None:
+        phi = 0.0
+
       sYlm_value =  sYlm(-2,ll=ell,mm=m,theta=theta,phi=phi)
       hp_mode = sYlm_value*hp_mode
       hc_mode = 1.0j*sYlm_value*hc_mode
