@@ -36,7 +36,7 @@ import matplotlib.pyplot as plt
 import time
 import os as os
 from parametric_funcs import function_dict as my_funcs
-from surrogateIO import H5SurrogateRead, H5SurrogateWrite, TextSurrogateRead, TextSurrogateWrite
+from surrogateIO import H5Surrogate, TextSurrogateRead, TextSurrogateWrite
 
 try:
 	import h5py
@@ -343,6 +343,8 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 
 
     # TODO: should be rolled like amp/phase/fit funcs
+    # QUESTION FOR SCOTT: Why not just make self.affine_map the end points [a,b] 
+    #and map that to self.fit_interval? (and keep the 'none' bit or use None directly)
     if self.affine_map == 'minus1_to_1':
       x_0 = 2.*(x - x_min)/(x_max - x_min) - 1.;
     elif self.affine_map == 'zero_to_1':
