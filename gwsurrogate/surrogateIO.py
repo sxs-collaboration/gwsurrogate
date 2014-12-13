@@ -372,9 +372,9 @@ class H5Surrogate(H5SurrogateIO):
     
     ### Information about phase/amp parametric fit ###
     if 'affine_map' in self.keys:
-	    self.affine_map = self.chars_to_string(self.file['affine_map'][()])
-	else:
-		self.affine_map = 'none'
+      self.affine_map = self.chars_to_string(self.file['affine_map'][()])
+    else:
+      self.affine_map = 'none'
     self.fitparams_amp = self.file['fitparams_amp'][:]
     self.fitparams_phase = self.file['fitparams_phase'][:]
     self.fit_min = self.file['fit_min'][()]
