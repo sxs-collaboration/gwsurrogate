@@ -517,7 +517,7 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
        coordiante system. """
 
     # TODO: automatically generate m<0 too, control with flag
-    if fake_neg_modes:
+    if fake_neg_modes and not(mode_sum):
       raise ValueError('not coded yet')
 
     if phi_ref is not None:
@@ -539,11 +539,21 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
       m   = int(mode_key[4])
 
       t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,phi_ref,f_low,samples,mode_key,ell,m)
-      hp_mode, hc_mode         = self.evaluate_on_sphere(ell,m,theta,phi,hp_mode,hc_mode)
+
+      if fake_neg_modes and m != 0:
+        hp_mode_mm, hc_mode_mm = self.generate_minus_m_mode(hp_mode,hc_mode,ell,m)
+        hp_mode_mm, hc_mode_mm = self.evaluate_on_sphere(ell,-m,theta,phi,hp_mode_mm,hc_mode_mm)
+
+
+      hp_mode, hc_mode = self.evaluate_on_sphere(ell,m,theta,phi,hp_mode,hc_mode)
+
 
       if mode_sum:
         hp_full = hp_full + hp_mode
         hc_full = hc_full + hc_mode
+        if fake_neg_modes and m != 0:
+          hp_full = hp_full + hp_mode_mm
+          hc_full = hc_full + hc_mode_mm
       else:
         hp_full[:,ii] = hp_mode[:]
         hc_full[:,ii] = hc_mode[:]
@@ -564,21 +574,36 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
         phi = 0.0
 
       sYlm_value =  sYlm(-2,ll=ell,mm=m,theta=theta,phi=phi)
-      hp_mode = sYlm_value*hp_mode
-      hc_mode = 1.0j*sYlm_value*hc_mode
+      h = sYlm_value*(hp_mode + 1.0j*hc_mode)
 
-    return hp_mode, hc_mode
+    return h.real, h.imag
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def evaluate_single_mode(self,q, M, dist, phi_ref, f_low, samples,mode_key,ell,m):
-    """ light wrapper around single mode evaluator to account for m < 0 modes """
+    """ light wrapper around single mode evaluator to gaurd against m < 0 modes """
 
-    t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
-    if m < 0: # h(l,-m) = (-1)^l h(l,m)^* (TODO: CHECK THESE EXPRESSIONS AGAINST SPEC OR LAL OUTPUT)
+    if m >=0:
+      t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
+    else:
+      raise ValueError('m must be non-negative')
+
+    return t_mode, hp_mode, hc_mode
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def generate_minus_m_mode(self,hp_mode,hc_mode,ell,m):
+    """ For m>0 positive modes hp_mode,hc_mode use h(l,-m) = (-1)^l h(l,m)^*
+        to compute the m<0 mode. 
+
+  See Kidder,Physical Review D 77, 044016 (2008), arXiv:0710.0614v1 [gr-qc]."""
+
+    if (m<=0):
+      raise ValueError('m must be nonnegative. m<0 will be generated for you from the m>0 mode.')
+    else:
       hp_mode =   np.power(-1,ell) * hp_mode
       hc_mode = - np.power(-1,ell) * hc_mode
 
-    return t_mode, hp_mode, hc_mode
+    return hp_mode, hc_mode
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
