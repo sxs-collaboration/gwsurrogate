@@ -516,52 +516,57 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
        be the z-axis. Theta and phi is location on the sphere relative to this 
        coordiante system. """
 
-    # TODO: automatically generate m<0 too, control with flag
-    if fake_neg_modes and not(mode_sum):
-      raise ValueError('not coded yet')
 
     if phi_ref is not None:
       raise ValueError('not coded yet')
 
     ### deduce single mode dictionary keys from ell,m input ###
-    eval_mode_keys  = self.generate_mode_keys(ell,m)
- 
+    modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
+
+    avail_modes = self.all_model_modes(fake_neg_modes)
+
     ### allocate arrays for multimode polarizations ###
     if mode_sum:
       hp_full, hc_full = self.allocate_output_array(samples,1)
     else:
-      hp_full, hc_full = self.allocate_output_array(samples,len(eval_mode_keys))
+      hp_full, hc_full = self.allocate_output_array(samples,len(modes_to_evaluate))
 
+    ### loop over all evaluation modes ###
     ii = 0
-    for mode_key in eval_mode_keys:
+    for ell,m in modes_to_evaluate:
 
-      ell = int(mode_key[1])
-      m   = int(mode_key[4])
+      ### if the mode is modelled, evaluate it. Otherwise its zero ###
+      if (ell,m) in avail_modes:
+        
+        if m>=0:
+          t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,phi_ref,f_low,samples,ell,m)
+        else:
+          t_mode, hp_mode, hc_mode = self.evaluate_single_mode_minus(q,M,dist,phi_ref,f_low,samples,ell,m)
 
-      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,phi_ref,f_low,samples,mode_key,ell,m)
+        # TODO: should be faster. integrate this later on
+        #if fake_neg_modes and m != 0:
+        #  hp_mode_mm, hc_mode_mm = self.generate_minus_m_mode(hp_mode,hc_mode,ell,m)
+        #  hp_mode_mm, hc_mode_mm = self.evaluate_on_sphere(ell,-m,theta,phi,hp_mode_mm,hc_mode_mm)
 
-      if fake_neg_modes and m != 0:
-        hp_mode_mm, hc_mode_mm = self.generate_minus_m_mode(hp_mode,hc_mode,ell,m)
-        hp_mode_mm, hc_mode_mm = self.evaluate_on_sphere(ell,-m,theta,phi,hp_mode_mm,hc_mode_mm)
+        hp_mode, hc_mode = self.evaluate_on_sphere(ell,m,theta,phi,hp_mode,hc_mode)
 
+        if mode_sum:
+          hp_full = hp_full + hp_mode
+          hc_full = hc_full + hc_mode
+          #if fake_neg_modes and m != 0:
+          #  hp_full = hp_full + hp_mode_mm
+          #  hc_full = hc_full + hc_mode_mm
+        else:
+          hp_full[:,ii] = hp_mode[:]
+          hc_full[:,ii] = hc_mode[:]
 
-      hp_mode, hc_mode = self.evaluate_on_sphere(ell,m,theta,phi,hp_mode,hc_mode)
-
-
-      if mode_sum:
-        hp_full = hp_full + hp_mode
-        hc_full = hc_full + hc_mode
-        if fake_neg_modes and m != 0:
-          hp_full = hp_full + hp_mode_mm
-          hc_full = hc_full + hc_mode_mm
-      else:
-        hp_full[:,ii] = hp_mode[:]
-        hc_full[:,ii] = hc_mode[:]
-
-
+      
       ii+=1
 
-    return t_mode, hp_full, hc_full #assumes all mode's have same temporal gride
+    if mode_sum:
+      return t_mode, hp_full, hc_full #assumes all mode's have same temporal grid
+    else: # helpful to have (l,m) list for understanding mode evaluations
+      return modes_to_evaluate, t_mode, hp_full, hc_full
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -569,23 +574,23 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
     """elvaluate on the sphere"""
 
     if theta is not None: 
-
-      if phi is None:
-        phi = 0.0
-
+      if phi is None: phi = 0.0
       sYlm_value =  sYlm(-2,ll=ell,mm=m,theta=theta,phi=phi)
       h = sYlm_value*(hp_mode + 1.0j*hc_mode)
+      hp_mode = h.real
+      hc_mode = h.imag
 
-    return h.real, h.imag
+    return hp_mode, hc_mode
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def evaluate_single_mode(self,q, M, dist, phi_ref, f_low, samples,mode_key,ell,m):
+  def evaluate_single_mode(self,q, M, dist, phi_ref, f_low, samples,ell,m):
     """ light wrapper around single mode evaluator to gaurd against m < 0 modes """
 
     if m >=0:
+      mode_key = 'l'+str(ell)+'_m'+str(m)
       t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
     else:
-      raise ValueError('m must be non-negative')
+      raise ValueError('m must be non-negative. evalutate m < 0 modes with evaluate_single_mode_minus')
 
     return t_mode, hp_mode, hc_mode
 
@@ -604,6 +609,19 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
       hc_mode = - np.power(-1,ell) * hc_mode
 
     return hp_mode, hc_mode
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def evaluate_single_mode_minus(self,q, M, dist, phi_ref, f_low, samples,ell,m):
+    """ evaluate m<0 mode from m>0 mode and relationship between these"""
+
+    if m<0:
+      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q, M, dist, phi_ref, f_low, samples,ell,-m)
+      hp_mode, hc_mode         = self.generate_minus_m_mode(hp_mode,hc_mode,ell,-m)
+    else:
+      raise ValueError('m must be negative.')
+
+    return t_mode, hp_mode, hc_mode
+
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -628,25 +646,60 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
 
     return hp_full, hc_full
 
+
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def generate_mode_keys(self,ell=None,m=None):
-    """from list of [ell],[m] pairs, generate mode keys to evaluate for """
+  def generate_mode_eval_list(self,ell=None,m=None,minus_m=False):
+    """generate list of (ell,m) modes to evaluate for.
 
-    if ell is None: # evaluate for all available modes
-      mode_keys = self.single_modes.keys()
+      1) ell=m=None: use all available model modes
+      2) ell=NUM, m=None: all modes up to ell_max = NUM. unmodelled modes set to zero
+      3) list of [ell], [m] pairs: only use modes (ell,m). unmodelled modes set to zero 
+
+      These three options produce a list of (ell,m) modes. set minus_m=True 
+      to generate m<0 modes from m>0 modes."""
+
+    ### generate list of nonnegative m modes to evaluate for ###
+    if ell is None and m is None:
+      modes_to_eval = self.all_model_modes()
+    elif m is None:
+      LMax = ell
+      modes_to_eval = []
+      for L in range(2,LMax+1):
+        for emm in range(0,L+1):
+          modes_to_eval.append((L,emm))
     else:
-      modes = [(x, y) for x in ell for y in m] 
-      mode_keys = []
-      for ell,m in modes:
-        if m>=0:
-          mode_key = 'l'+str(ell)+'_m'+str(m)
-        else:
-          mode_key = 'l'+str(ell)+'_m'+str(int(-m))
+      modes_to_eval = [(x, y) for x in ell for y in m]
 
-      mode_keys.append(mode_key)
+    ### if m<0 requested, build these from m>=0 list ###
+    if minus_m:
+      modes_to_eval = self.extend_mode_list_minus_m(modes_to_eval)
+ 
+    return modes_to_eval
 
-    return mode_keys
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def all_model_modes(self,minus_m=False):
+    """ from single mode keys deduce all available model modes.
+        If minus_m=True, include (ell,-m) whenever (ell,m) is available ."""
 
+    model_modes = [(int(tmp[1]),int(tmp[4])) for tmp in self.single_modes.keys()]
+
+    if minus_m:
+      model_modes = self.extend_mode_list_minus_m(model_modes)
+
+    return model_modes
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def extend_mode_list_minus_m(self,mode_list):
+    """ from list of [(ell,m)] pairs return a new list which includes m<0 too."""
+
+    positive_modes = list(mode_list)
+    for ell,m in positive_modes:
+      if m>0:
+        mode_list.append((ell,-m))
+      if m<0:
+        raise ValueError('your list already has negative modes!')
+
+    return mode_list
 
 ####################################################
 def CompareSingleModeSurrogate(sur1,sur2):
