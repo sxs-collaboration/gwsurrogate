@@ -527,7 +527,8 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
     if not mode_sum:
       modes_to_evaluate = self.sort_mode_list(modes_to_evaluate)
 
-    avail_modes = self.all_model_modes(fake_neg_modes)
+    ### by default, m<0 included as potentially available for evaluation ###
+    avail_modes = self.all_model_modes(True)
 
     ### allocate arrays for multimode polarizations ###
     if mode_sum:
@@ -541,7 +542,7 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
 
       ### if the mode is modelled, evaluate it. Otherwise its zero ###
       if (ell,m) in avail_modes:
-        
+
         if m>=0:
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,phi_ref,f_low,samples,ell,m)
         else:
