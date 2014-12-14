@@ -523,6 +523,10 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
     ### deduce single mode dictionary keys from ell,m input ###
     modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
 
+    ### if mode_sum false, return modes in a sensible way ###
+    if not mode_sum:
+      modes_to_evaluate = self.sort_mode_list(modes_to_evaluate)
+
     avail_modes = self.all_model_modes(fake_neg_modes)
 
     ### allocate arrays for multimode polarizations ###
@@ -673,8 +677,18 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
     ### if m<0 requested, build these from m>=0 list ###
     if minus_m:
       modes_to_eval = self.extend_mode_list_minus_m(modes_to_eval)
- 
+
     return modes_to_eval
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def sort_mode_list(self,mode_list):
+    """sort modes as (2,-2), (2,-1), ..., (2,2), (3,-3),(3,-2)..."""
+
+    from operator import itemgetter
+
+    mode_list = sorted(mode_list, key=itemgetter(0,1))
+    return mode_list
+
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def all_model_modes(self,minus_m=False):
