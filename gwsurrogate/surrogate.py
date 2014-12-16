@@ -478,8 +478,11 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
       ### compile list of available modes ###
       # assumes (i) single mode folder format l#_m#_ (ii) ell<=9, m>=0
       for single_mode in list_folders(path,'l'):
-        mode_key = single_mode[0:5]
-        print "loading surrogate mode... "+mode_key
+        #mode_key = single_mode[0:5]
+        ell = int(single_mode[1])
+        emm = int(single_mode[4])
+        mode_key = (ell,emm)
+        print "loading surrogate mode... "+single_mode[0:5]
         self.single_modes[mode_key] = EvaluateSingleModeSurrogate(path+single_mode+'/')
 
     if len(self.single_modes) == 0:
@@ -592,7 +595,8 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
     """ light wrapper around single mode evaluator to gaurd against m < 0 modes """
 
     if m >=0:
-      mode_key = 'l'+str(ell)+'_m'+str(m)
+      #mode_key = 'l'+str(ell)+'_m'+str(m)
+      mode_key = (ell,m)
       t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
     else:
       raise ValueError('m must be non-negative. evalutate m < 0 modes with evaluate_single_mode_minus')
@@ -696,7 +700,8 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
     """ from single mode keys deduce all available model modes.
         If minus_m=True, include (ell,-m) whenever (ell,m) is available ."""
 
-    model_modes = [(int(tmp[1]),int(tmp[4])) for tmp in self.single_modes.keys()]
+    #model_modes = [(int(tmp[1]),int(tmp[4])) for tmp in self.single_modes.keys()]
+    model_modes = [(ell,m) for ell,m in self.single_modes.keys()]
 
     if minus_m:
       model_modes = self.extend_mode_list_minus_m(model_modes)
