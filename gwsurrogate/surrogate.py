@@ -508,9 +508,15 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
       ### compile list of available modes ###
       # assumes (i) single mode folder format l#_m#_ (ii) ell<=9, m>=0
       for single_mode in list_folders(path,'l'):
-        mode_key = single_mode[0:5]
-        print "loading surrogate mode... "+mode_key
+        #mode_key = single_mode[0:5]
+        ell = int(single_mode[1])
+        emm = int(single_mode[4])
+        mode_key = (ell,emm)
+        print "loading surrogate mode... "+single_mode[0:5]
         self.single_modes[mode_key] = EvaluateSingleModeSurrogate(path+single_mode+'/')
+
+    if len(self.single_modes) == 0:
+      raise IOError('no surrogate modes found. make sure each mode subdirectory is of the form l#_m#_')
 
     ### Assumes all modes are defined on the same temporal grid. ###
     ### TODO: should explicitly check this in previous step ###
@@ -518,18 +524,23 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
       self.time_all_modes = self.single_modes[mode_key].time
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def __call__(self, q, M=None, dist=None, theta=None,phi=None,phi_ref=None, f_low=None, samples=None, ell=None, m=None, mode_sum=True):
+  def __call__(self, q, M=None, dist=None, theta=None,phi=None,\
+                     phi_ref=None, f_low=None, samples=None,\
+                     ell=None, m=None, mode_sum=True,fake_neg_modes=False):
     """Return surrogate evaluation for...
 
-      q    = mass ratio (dimensionless) 
-      M    = total mass (solar masses) 
-      dist  = distance to binary system (megaparsecs)
-      theta/phi --- evaluate hp and hc modes at this location on sphere
-      phir = mode's phase at peak amplitude
-      flow = instantaneous initial frequency, will check if flow_surrogate < flow 
-      ell = list or array of N ell modes to evaluate for (if none, all modes are returned)
-      m   = for each ell, supply a matching m value 
-      mode_sum = if true, all modes are summed, if false all modes are returned in an array
+      INPUT
+      =====
+      q              --- mass ratio (dimensionless) 
+      M              --- total mass (solar masses) 
+      dist           --- distance to binary system (megaparsecs)
+      theta/phi      --- evaluate hp and hc modes at this location on sphere
+      phir           --- mode's phase at peak amplitude
+      flow           --- instantaneous initial frequency, will check if flow_surrogate < flow 
+      ell            --- list or array of N ell modes to evaluate for (if none, all modes are returned)
+      m              --- for each ell, supply a matching m value 
+      mode_sum       --- if true, all modes are summed, if false all modes are returned in an array
+      fake_neg_modes --- if true, include m<0 modes deduced from m>0 mode. all m in [ell,m] input should be non-negative
 
       NOTE: if only requesting one mode, this should be ell=[2],m=[2]
 
@@ -539,64 +550,238 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
        be the z-axis. Theta and phi is location on the sphere relative to this 
        coordiante system. """
 
-    # TODO: automatically generate m<0 too, control with flag
+
+    if phi_ref is not None:
+      raise ValueError('not coded yet')
 
     ### deduce single mode dictionary keys from ell,m input ###
-    eval_mode_keys  = self.generate_mode_keys(ell,m)
- 
+    modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
+
+    ### if mode_sum false, return modes in a sensible way ###
+    if not mode_sum:
+      modes_to_evaluate = self.sort_mode_list(modes_to_evaluate)
+
+    ### by default, m<0 included as potentially available for evaluation ###
+    avail_modes = self.all_model_modes(True)
+
     ### allocate arrays for multimode polarizations ###
     if mode_sum:
-      hp_full, hc_full = self.allocate_output_array(samples,1)
+      hp_full, hc_full = self._allocate_output_array(samples,1)
     else:
-      hp_full, hc_full = self.allocate_output_array(samples,len(eval_mode_keys))
+      hp_full, hc_full = self._allocate_output_array(samples,len(modes_to_evaluate))
 
+    ### loop over all evaluation modes ###
     ii = 0
-    for mode_key in eval_mode_keys:
+    for ell,m in modes_to_evaluate:
 
-      ell = mode_key[1]
-      m   = mode_key[4]
+      ### if the mode is modelled, evaluate it. Otherwise its zero ###
+      if (ell,m) in avail_modes:
 
-      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,phi_ref,f_low,samples,mode_key,ell,m)
-      hp_mode, hc_mode         = self.evaluate_on_sphere(ell,m,theta,phi,hp_mode,hc_mode)
+        if m>=0:
+          t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,phi_ref,f_low,samples,ell,m)
+        else:
+          t_mode, hp_mode, hc_mode = self.evaluate_single_mode_minus(q,M,dist,phi_ref,f_low,samples,ell,m)
 
-      if mode_sum:
-        hp_full = hp_full + hp_mode
-        hc_full = hc_full + hc_mode
-      else:
-        hp_full[:,ii] = hp_mode[:]
-        hc_full[:,ii] = hc_mode[:]
+        # TODO: should be faster. integrate this later on
+        #if fake_neg_modes and m != 0:
+        #  hp_mode_mm, hc_mode_mm = self._generate_minus_m_mode(hp_mode,hc_mode,ell,m)
+        #  hp_mode_mm, hc_mode_mm = self.evaluate_on_sphere(ell,-m,theta,phi,hp_mode_mm,hc_mode_mm)
 
+        hp_mode, hc_mode = self.evaluate_on_sphere(ell,m,theta,phi,hp_mode,hc_mode)
 
+        if mode_sum:
+          hp_full = hp_full + hp_mode
+          hc_full = hc_full + hc_mode
+          #if fake_neg_modes and m != 0:
+          #  hp_full = hp_full + hp_mode_mm
+          #  hc_full = hc_full + hc_mode_mm
+        else:
+          hp_full[:,ii] = hp_mode[:]
+          hc_full[:,ii] = hc_mode[:]
+
+      
       ii+=1
 
-    return t_mode, hp_full, hc_full #assumes all mode's have same temporal gride
+    if mode_sum:
+      return t_mode, hp_full, hc_full #assumes all mode's have same temporal grid
+    else: # helpful to have (l,m) list for understanding mode evaluations
+      return modes_to_evaluate, t_mode, hp_full, hc_full
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def h_sphere_builder(self, q, M=None,dist=None,ell=None,m=None):
+    """Returns a function for evaluations of h(t,theta,phi;q,M,d). This new function 
+       can be evaluated for rotations about z-axis, and at points on the sphere.
+
+       modes_to_evalute and max/min times defining the surrogate are also returned"""
+
+    modes_to_evaluate, t_mode, hp_full, hc_full = \
+      self(q=q, M=M, dist=dist,ell=ell,m=m,mode_sum=False,fake_neg_modes=True)
+
+    ### fill dictionary with model's modes as a spline ###
+    hp_modes_spline = dict()
+    hc_modes_spline = dict()
+    ii = 0
+    for ell_m in modes_to_evaluate:
+      hp_modes_spline[ell_m] = splrep(t_mode, hp_full[:,ii], k=3)
+      hc_modes_spline[ell_m] = splrep(t_mode, hc_full[:,ii], k=3)
+      ii += 1
+
+    ### time interval for valid surrogate evaluations ###
+    t_min = t_mode.min() 
+    t_max = t_mode.max()
+ 
+
+    ### create function which can be used to evaluate for h(t,theta,phi) ###
+    def h_sphere(times,theta=None,phi=None,z_rot=None,psi_rot=None):
+      """ evaluations h(t,theta,phi), defined as matrix of modes, or sphere evaluations.
+
+          INPUT
+          =====
+          times     --- numpy array of times for which the surrogate is defined
+          theta/phi --- angle on the sphere, evaluations after z-axis rotation
+          z_rot     --- rotation angle about the z-axis (coalescence angle)
+          psi_rot   --- overall phase adjustment of exp(1.0j*psi_rot) mixing h+,hx
+          """
+
+      if times.min() < t_min or times.max() > t_max:
+        raise ValueError('surrogate cannot be evaluated outside of its time window')
+
+      if psi_rot is not None:
+        raise ValueError('not coded yet')
+
+      ### output will be h (if theta,phi specified) or hp_modes, hc_modes ###
+      if theta is not None and phi is not None:
+        h = np.zeros((times.shape[0],),dtype=complex)
+      else:
+        hp_modes, hc_modes = self._allocate_output_array(times,len(modes_to_evaluate))
+
+      ### evaluate modes at times ###
+      jj=0
+      for ell_m in modes_to_evaluate:
+        hp_modes_eval = splev(times, hp_modes_spline[ell_m])
+        hc_modes_eval = splev(times, hc_modes_spline[ell_m])
+
+        ### apply rotation about z axis and evaluation on sphere if requested ###
+        h_modes_eval  = hp_modes_eval + 1.0j*hc_modes_eval
+        if z_rot is not None:
+          h_modes_eval = h_modes_eval*np.exp(1.0j*z_rot*ell_m[1])
+        
+        if theta is not None and phi is not None:
+          sYlm_value =  sYlm(-2,ll=ell_m[0],mm=ell_m[1],theta=theta,phi=phi)
+          h = h + sYlm_value*h_modes_eval
+        else:
+          hp_modes[:,jj] = h_modes_eval.real
+          hc_modes[:,jj] = h_modes_eval.imag
+          jj+=1
+
+      if theta is not None and phi is not None:
+        return h.real, h.imag
+      else:
+        return hp_modes, hc_modes
+    
+    return h_sphere, modes_to_evaluate, [t_min, t_max]
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def evaluate_on_sphere(self,ell,m,theta,phi,hp_mode,hc_mode):
     """evaluate on the sphere"""
 
-    if( theta is not None and phi is not None):
+    if theta is not None: 
+      if phi is None: phi = 0.0
       sYlm_value =  sYlm(-2,ll=ell,mm=m,theta=theta,phi=phi)
-      hp_mode = sYlm_value*hp_mode
-      hc_mode = 1.0j*sYlm_value*hc_mode
+      h = sYlm_value*(hp_mode + 1.0j*hc_mode)
+      hp_mode = h.real
+      hc_mode = h.imag
 
     return hp_mode, hc_mode
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def evaluate_single_mode(self,q, M, dist, phi_ref, f_low, samples,mode_key,ell,m):
-    """ light wrapper around single mode evaluator to account for m < 0 modes """
+  def evaluate_single_mode(self,q, M, dist, phi_ref, f_low, samples,ell,m):
+    """ light wrapper around single mode evaluator to gaurd against m < 0 modes """
 
-    t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
-    if m < 0: # h(l,-m) = (-1)^l h(l,m)^* (TODO: CHECK THESE EXPRESSIONS AGAINST SPEC OR LAL OUTPUT)
-      hp_mode =   np.power(-1,ell) * hp_mode
-      hc_mode = - np.power(-1,ell) * hc_mode
+    if m >=0:
+      #mode_key = 'l'+str(ell)+'_m'+str(m)
+      mode_key = (ell,m)
+      t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples)
+    else:
+      raise ValueError('m must be non-negative. evalutate m < 0 modes with evaluate_single_mode_minus')
 
     return t_mode, hp_mode, hc_mode
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def allocate_output_array(self,samples,num_modes):
+  def evaluate_single_mode_minus(self,q, M, dist, phi_ref, f_low, samples,ell,m):
+    """ evaluate m<0 mode from m>0 mode and relationship between these"""
+
+    if m<0:
+      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q, M, dist, phi_ref, f_low, samples,ell,-m)
+      hp_mode, hc_mode         = self._generate_minus_m_mode(hp_mode,hc_mode,ell,-m)
+    else:
+      raise ValueError('m must be negative.')
+
+    return t_mode, hp_mode, hc_mode
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def generate_mode_eval_list(self,ell=None,m=None,minus_m=False):
+    """generate list of (ell,m) modes to evaluate for.
+
+      1) ell=m=None: use all available model modes
+      2) ell=NUM, m=None: all modes up to ell_max = NUM. unmodelled modes set to zero
+      3) list of [ell], [m] pairs: only use modes (ell,m). unmodelled modes set to zero 
+
+      These three options produce a list of (ell,m) modes. set minus_m=True 
+      to generate m<0 modes from m>0 modes."""
+
+    ### generate list of nonnegative m modes to evaluate for ###
+    if ell is None and m is None:
+      modes_to_eval = self.all_model_modes()
+    elif m is None:
+      LMax = ell
+      modes_to_eval = []
+      for L in range(2,LMax+1):
+        for emm in range(0,L+1):
+          modes_to_eval.append((L,emm))
+    else:
+      modes_to_eval = [(x, y) for x in ell for y in m]
+
+    ### if m<0 requested, build these from m>=0 list ###
+    if minus_m:
+      modes_to_eval = self._extend_mode_list_minus_m(modes_to_eval)
+
+    return modes_to_eval
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def sort_mode_list(self,mode_list):
+    """sort modes as (2,-2), (2,-1), ..., (2,2), (3,-3),(3,-2)..."""
+
+    from operator import itemgetter
+
+    mode_list = sorted(mode_list, key=itemgetter(0,1))
+    return mode_list
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def all_model_modes(self,minus_m=False):
+    """ from single mode keys deduce all available model modes.
+        If minus_m=True, include (ell,-m) whenever (ell,m) is available ."""
+
+    #model_modes = [(int(tmp[1]),int(tmp[4])) for tmp in self.single_modes.keys()]
+    model_modes = [(ell,m) for ell,m in self.single_modes.keys()]
+
+    if minus_m:
+      model_modes = self._extend_mode_list_minus_m(model_modes)
+
+    return model_modes
+
+
+  #### below here are "private" member functions ###
+  # These routine's carry out inner workings of multimode surrogate
+  # class (such as memory allocation)
+ 
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def _allocate_output_array(self,samples,num_modes):
     """ allocate memory for result of hp, hc.
 
     Input
@@ -617,24 +802,35 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
 
     return hp_full, hc_full
 
+
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def generate_mode_keys(self,ell=None,m=None):
-    """from list of [ell],[m] pairs, generate mode keys to evaluate for """
+  def _generate_minus_m_mode(self,hp_mode,hc_mode,ell,m):
+    """ For m>0 positive modes hp_mode,hc_mode use h(l,-m) = (-1)^l h(l,m)^*
+        to compute the m<0 mode. 
 
-    if ell is None: # evaluate for all available modes
-      mode_keys = self.single_modes.keys()
+  See Kidder,Physical Review D 77, 044016 (2008), arXiv:0710.0614v1 [gr-qc]."""
+
+    if (m<=0):
+      raise ValueError('m must be nonnegative. m<0 will be generated for you from the m>0 mode.')
     else:
-      modes = [(x, y) for x in ell for y in m] 
-      mode_keys = []
-      for ell,m in modes:
-        if m>=0:
-          mode_key = 'l'+str(ell)+'_m'+str(m)
-        else:
-          mode_key = 'l'+str(ell)+'_m'+str(int(-m))
+      hp_mode =   np.power(-1,ell) * hp_mode
+      hc_mode = - np.power(-1,ell) * hc_mode
 
-      mode_keys.append(mode_key)
+    return hp_mode, hc_mode
 
-    return mode_keys
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def _extend_mode_list_minus_m(self,mode_list):
+    """ from list of [(ell,m)] pairs return a new list which includes m<0 too."""
+
+    positive_modes = list(mode_list)
+    for ell,m in positive_modes:
+      if m>0:
+        mode_list.append((ell,-m))
+      if m<0:
+        raise ValueError('your list already has negative modes!')
+
+    return mode_list
 
 
 ####################################################
