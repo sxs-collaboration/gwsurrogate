@@ -137,13 +137,14 @@ class H5SurrogateIO:
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def check_required(self, dict):
     """ Check if input dictionary has the minimum required surrogate data"""
-    keys = dict.keys()
+    #keys = dict.keys()
     
     for kk in self.required:
-      if kk not in keys:
+      #if kk not in keys:
+      if not dict.has_key(kk):
         raise Exception, "\nGWSurrogate requires data for "+kk
     
-    return keys
+    return dict.keys()
 
 
 ##############################################
@@ -153,14 +154,23 @@ class H5Surrogate(H5SurrogateIO):
   __doc__ += surrogate_description
   
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def __init__(self, file=None, mode=None):
+  def __init__(self, file=None, mode=None, subdir='', closeQ=True):
     
     H5SurrogateIO.__init__(self)
+    
+    ### Get mode name if supplied and check if subdir ends with '/' ###
+    if subdir != '':
+      if subdir[-1] == '/':
+        self.subdir = subdir
+        self.mode = subdir[:-1]
+      else:
+        self.subdir = subdir + '/'
+        self.mode = subdir
     
     ### Check file mode if specified ###
     if mode is not None:
       if mode in ['r', 'w', 'r+', 'a']:
-        self.mode = mode
+        self._mode = mode
       else:
         raise Exception, "File mode not recognized. Must be 'r', 'w', 'r+', 'a'."
     
@@ -168,164 +178,68 @@ class H5Surrogate(H5SurrogateIO):
     if file is not None:
       self.type = type(file)
       if self.type == str:
-        if mode == 'r':
+        if self._mode == 'r':
           try:
             self.file = h5py.File(file, 'r')
           except:
             pass
-        if mode == 'w':
+        if self._mode == 'w':
           self.file = h5py.File(file, 'w')
       elif self.type == h5py._hl.files.File:
-        if mode == 'r' or mode == 'w':
+        if self._mode == 'r' or self._mode == 'w':
           self.file = file
     
-      #if file is not None:
-      
       ### If mode is 'r' then import surrogate data ###
-      if mode == 'r':
-        
-        self.load_h5(file)
-        
-#				### Get data keys listing all available surrogate data ###
-#				self.keys = self.file.keys()
-#					
-#				### Get SurrogateID ####
-#				#if self.type == str:
-#				name = self.file.filename.split('.')[0]
-#				if 'surrogate_ID' in self.keys:
-#					self.surrogate_ID = self.chars_to_string(self.file['surrogate_ID'][()])
-#					if self.surrogate_ID != name:
-#						print "\n>>> Warning: SurrogateID does not have expected name."
-#				else:
-#					"\n>>> Warning: No surrogate ID found."
-#			
-#				### Unpack time info ###
-#				self.tmin = self.file['tmin'][()]
-#				self.tmax = self.file['tmax'][()]
-#				
-#				if 'times' in self.keys:
-#					self.times = self.file['times'][:]
-#				
-#				if 'quadrature_weights' in self.keys:
-#					self.quadrature_weights = self.file['quadrature_weights'][:]
-#				
-#				if 'dt' in self.keys:
-#					self.dt = self.file['dt'][()]
-#					self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
-#					self.quadrature_weights = self.dt * np.ones(self.times.shape)
-#				
-#				if 'times' not in self.__dict__.keys():
-#					print "\n>>> Warning: No time samples found or generated."
-#				
-#				if 'quadrature_weights' not in self.__dict__.keys():
-#					print "\n>>> Warning: No quadrature weights found or generated."
-#				
-#				if 't_units' in self.keys:
-#					self.t_units = self.file['t_units'][()]
-#				else:
-#					self.t_units = 'TOverMtot'
-#				
-#				### Greedy points (ordered by RB selection) ###
-#				self.greedy_points = self.file['greedy_points'][:]
-#				
-#				### Empirical time index (ordered by EIM selection) ###
-#				self.eim_indices = self.file['eim_indices'][:]
-#				
-#				### Complex B coefficients ###
-#				self.B = self.file['B'][:]	
-#				
-#				### Information about phase/amp parametric fit ###
-#				self.affine_map = self.file['affine_map'][()]
-#				self.fitparams_amp = self.file['fitparams_amp'][:]
-#				self.fitparams_phase = self.file['fitparams_phase'][:]
-#				self.fit_min = self.file['fit_min'][()]
-#				self.fit_max = self.file['fit_max'][()]
-#				self.fit_interval = [self.fit_min, self.fit_max]
-#				
-#				self.fit_type_amp = self.chars_to_string(self.file['fit_type_amp'][()])
-#				self.fit_type_phase = self.chars_to_string(self.file['fit_type_phase'][()])
-#				
-#				self.amp_fit_func   = my_funcs[self.fit_type_amp]
-#				self.phase_fit_func = my_funcs[self.fit_type_phase]
-#				
-#				if 'fit_type_norm' in self.keys:
-#					self.fitparams_norm = self.file['fitparams_norm'][:]
-#					self.fit_type_norm = self.chars_to_string(self.file['fit_type_norm'][()])
-#					self.norm_fit_func  = my_funcs[self.fit_type_norm]
-#					self.norms = True
-#			
-#				else:
-#					self.norms = False
-#				
-#				if 'eim_amp' in self.keys:
-#					self.eim_amp = self.file['eim_amp'][:]
-#			
-#				if 'eim_phase' in self.keys:
-#					self.eim_phase = self.file['eim_phase'][:]
-#							
-#				### Transpose matrices if surrogate was built using ROMpy ###
-#				Bshape = np.shape(self.B)
-#			
-#				if Bshape[0] < Bshape[1]:
-#					transposeB = True
-#					self.B = np.transpose(self.B)
-#					self.dim_rb = Bshape[0]
-#					self.time_samples = Bshape[1]
-#			
-#				else:
-#					self.dim_rb = Bshape[1]
-#					self.time_samples = Bshape[0]
-#				
-#				### Vandermonde V such that E (orthogonal basis) is E = BV ###
-#				if 'V' in self.keys:
-#					self.V = file['V'][:]
-#					if transposeB:
-#						self.V = np.transpose(self.V)
-#	
-#				### R matrix such that waveform basis H = ER ###
-#				if 'R' in self.keys:
-#					self.R = file['R'][:]
-#					if transposeB:
-#						self.R = np.transpose(self.R)
-#				
-#				self.file.close()
+      if self._mode == 'r':
+        self.load_h5(file, subdir=self.subdir, closeQ=closeQ)
       
     pass
   
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def prepare_data(self, dataclass):
-    """ Prepare a dictionary to export with entries filled from imported surrogate data"""
+  def prepare_mode_data(self, data_mode_class):
+    """ Prepare a dictionary to export with entries filled from imported single-mode surrogate data"""
+    
+    # data_mode_class will usually be of the form surrogate_class.single_mode[<mode_key>]
+    
     dict = {}
-
-    for kk in dataclass.keys:
-      dict[kk] = dataclass.__dict__[kk]
+    
+    for kk in data_mode_class.keys:
+      dict[kk] = data_mode_class.__dict__[kk]
+    
+    if data_mode_class.__dict__.has_key('mode'):
+      dict['mode'] = data_mode_class.__dict__['mode']
     
     return dict
+  
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def prepare_data(self, data_class):
+    """ Prepare a dictionary to export with entries filled from imported surrogate data"""
+    return [self.prepare_mode_data(data_class.single_modes[mm]) for mm in data_class.modes]
       
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def load_h5(self, file):
+  def load_h5(self, file, subdir='', closeQ=True):
     
-    #if path is not None:
-    #	file = h5py.File(path, 'r')
-    #else:
-    #	file = self.file
-    
+    ### Open file based on input being a filename or file pointer ###
     self.type = type(file)
     if self.type == str:
       try:
         self.file = h5py.File(file, 'r')
       except:
-        pass
+        raise Exception, "Cannot open file."
     elif self.type == h5py._hl.files.File:
       self.file = file
     
     ### Get data keys listing all available surrogate data ###
-    self.keys = self.file.keys()
+    if subdir == '':
+      self.keys = self.file.keys()
+    else:
+      # Get keys in the given subdirectory
+      self.keys = self.file[subdir[:-1]].keys()
       
     ### Get SurrogateID ####
-    name = self.file.filename.split('.')[0]
+    name = self.file.filename.split('/')[-1].split('.')[0]
     if 'surrogate_ID' in self.keys:
-      self.surrogate_ID = self.chars_to_string(self.file['surrogate_ID'][()])
+      self.surrogate_ID = self.chars_to_string(self.file[subdir+'surrogate_ID'][()])
       if self.surrogate_ID != name:
         print "\n>>> Warning: SurrogateID does not have expected name."
     else:
@@ -333,20 +247,20 @@ class H5Surrogate(H5SurrogateIO):
     
     ### Get type of basis used to build surrogate 
     # (e.g., basis for complex waveform or for amplitude and phase)
-    self.surrogate_mode_type = self.chars_to_string(self.file['surrogate_mode_type'][()])
+    self.surrogate_mode_type = self.chars_to_string(self.file[subdir+'surrogate_mode_type'][()])
     
     ### Unpack time info ###
-    self.tmin = self.file['tmin'][()]
-    self.tmax = self.file['tmax'][()]
+    self.tmin = self.file[subdir+'tmin'][()]
+    self.tmax = self.file[subdir+'tmax'][()]
     
     if 'times' in self.keys:
-      self.times = self.file['times'][:]
+      self.times = self.file[subdir+'times'][:]
     
     if 'quadrature_weights' in self.keys:
-      self.quadrature_weights = self.file['quadrature_weights'][:]
+      self.quadrature_weights = self.file[subdir+'quadrature_weights'][:]
     
     if 'dt' in self.keys:
-      self.dt = self.file['dt'][()]
+      self.dt = self.file[subdir+'dt'][()]
       self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
       self.quadrature_weights = self.dt * np.ones(self.times.shape)
     
@@ -357,39 +271,39 @@ class H5Surrogate(H5SurrogateIO):
       print "\n>>> Warning: No quadrature weights found or generated."
     
     if 't_units' in self.keys:
-      self.t_units = self.file['t_units'][()]
+      self.t_units = self.file[subdir+'t_units'][()]
     else:
       self.t_units = 'TOverMtot'
     
     ### Greedy points (ordered by RB selection) ###
-    self.greedy_points = self.file['greedy_points'][:]
+    self.greedy_points = self.file[subdir+'greedy_points'][:]
     
     ### Empirical time index (ordered by EIM selection) ###
-    self.eim_indices = self.file['eim_indices'][:]
+    self.eim_indices = self.file[subdir+'eim_indices'][:]
     
     ### Complex B coefficients ###
-    self.B = self.file['B'][:]	
+    self.B = self.file[subdir+'B'][:]	
     
     ### Information about phase/amp parametric fit ###
     if 'affine_map' in self.keys:
-	    self.affine_map = self.chars_to_string(self.file['affine_map'][()])
-	else:
-		self.affine_map = 'none'
-    self.fitparams_amp = self.file['fitparams_amp'][:]
-    self.fitparams_phase = self.file['fitparams_phase'][:]
-    self.fit_min = self.file['fit_min'][()]
-    self.fit_max = self.file['fit_max'][()]
+      self.affine_map = self.chars_to_string(self.file[subdir+'affine_map'][()])
+    else:
+      self.affine_map = 'none'
+    self.fitparams_amp = self.file[subdir+'fitparams_amp'][:]
+    self.fitparams_phase = self.file[subdir+'fitparams_phase'][:]
+    self.fit_min = self.file[subdir+'fit_min'][()]
+    self.fit_max = self.file[subdir+'fit_max'][()]
     self.fit_interval = [self.fit_min, self.fit_max]
     
-    self.fit_type_amp = self.chars_to_string(self.file['fit_type_amp'][()])
-    self.fit_type_phase = self.chars_to_string(self.file['fit_type_phase'][()])
+    self.fit_type_amp = self.chars_to_string(self.file[subdir+'fit_type_amp'][()])
+    self.fit_type_phase = self.chars_to_string(self.file[subdir+'fit_type_phase'][()])
     
     self.amp_fit_func   = my_funcs[self.fit_type_amp]
     self.phase_fit_func = my_funcs[self.fit_type_phase]
     
     if 'fit_type_norm' in self.keys:
-      self.fitparams_norm = self.file['fitparams_norm'][:]
-      self.fit_type_norm = self.chars_to_string(self.file['fit_type_norm'][()])
+      self.fitparams_norm = self.file[subdir+'fitparams_norm'][:]
+      self.fit_type_norm = self.chars_to_string(self.file[subdir+'fit_type_norm'][()])
       self.norm_fit_func  = my_funcs[self.fit_type_norm]
       self.norms = True
     
@@ -397,10 +311,10 @@ class H5Surrogate(H5SurrogateIO):
       self.norms = False
     
     if 'eim_amp' in self.keys:
-      self.eim_amp = self.file['eim_amp'][:]
+      self.eim_amp = self.file[subdir+'eim_amp'][:]
     
     if 'eim_phase' in self.keys:
-      self.eim_phase = self.file['eim_phase'][:]
+      self.eim_phase = self.file[subdir+'eim_phase'][:]
     
     ### Transpose matrices if surrogate was built using ROMpy ###
     Bshape = np.shape(self.B)
@@ -417,68 +331,100 @@ class H5Surrogate(H5SurrogateIO):
     
     ### Vandermonde V such that E (orthogonal basis) is E = BV ###
     if 'V' in self.keys:
-      self.V = self.file['V'][:]
+      self.V = self.file[subdir+'V'][:]
       if transposeB:
         self.V = np.transpose(self.V)
     
     ### R matrix such that waveform basis H = ER ###
     if 'R' in self.keys:
-      self.R = self.file['R'][:]
+      self.R = self.file[subdir+'R'][:]
       if transposeB:
         self.R = np.transpose(self.R)
         
     ### Information about surrogate's parameterization ###
-    self.parameterization = self.chars_to_string(self.file['parameterization'][()])
+    self.parameterization = self.chars_to_string(self.file[subdir+'parameterization'][()])
     self.get_surr_params  = my_funcs[self.parameterization]
     
-    self.file.close()
+    if closeQ:
+      self.file.close()
     
     pass
     
   
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def write_h5(self, dict, path=None):
+  def write_h5(self, dict, path=None, subdir='', closeQ=True):
     """ Export surrogate data in standard format.
     
     Input:
     ======
-      dict -- Dictionary with surrogate data to export.
+      dict -- Dictionary or list of dictionaries 
+              containing surrogate data to export.
       
     NOTE: Run print_required() to print the list of 
     the minimum data required by GWSurrogate.
     """
     
+    ### Check if path is a filename or pointer and process accordingly ###
     if path is not None:
-      file = h5py.File(path, 'w')
+      if type(path) is str:
+        file = h5py.File(path, 'w')
+      elif type(path) == h5py._hl.files.File:
+        file = path
     else:
       file = self.file
     
+    ### Check if dict is for a single mode or multiple modes ###
+    if type(dict) is list:
+      num_modes = len(dict)
+    else:
+      num_modes = 1
+     
     ### Check that the minimum required surrogate data is given ###
-    keys = self.check_required(dict)
+    if num_modes == 1:
+      keys = [self.check_required(dict)]
+    else:
+      keys = [self.check_required(dd) for dd in dict]
     
     ### Export surrogate data to HDF5 file ###
-    for kk in keys:
-    
-      if kk != 'surrogate_ID':
-    
-        dtype = type(dict[kk])
-        
-        if dtype == str:
-          chars = self.string_to_chars(dict[kk])
-          file.create_dataset(kk, data=chars, dtype='int')
-        
-        elif dtype == np.ndarray:
-          file.create_dataset(kk, data=dict[kk], dtype=dict[kk].dtype, compression='gzip')
-        
+    for ii in range(num_modes):
+      
+      # Create a group that will house a set of surrogate data for a single mode
+      if num_modes == 1:
+        data_to_write = dict
+        if subdir == '':
+          group = file.create_group(data_to_write['mode'])
         else:
-          file.create_dataset(kk, data=dict[kk], dtype=type(dict[kk]))
-
+          group = file.create_group(subdir)
       else:
-        name = file.filename.split('/')[-1].split('.')[0]
-        file.create_dataset('surrogate_ID', data=self.string_to_chars(name), dtype='int')
+        data_to_write = dict[ii]
+        group = file.create_group(data_to_write['mode'])
+      
+      # Write single-mode surrogate data to file, excluding the 'mode' information
+      for kk in keys[ii]:
+
+        if kk != 'mode':
+          if kk != 'surrogate_ID':
+            
+            dtype = type(data_to_write[kk])
+            
+            if dtype is str:
+              chars = self.string_to_chars(data_to_write[kk])
+              group.create_dataset(kk, data=chars, dtype='int')
+            
+            elif dtype is np.ndarray:
+              group.create_dataset(kk, data=data_to_write[kk], dtype=data_to_write[kk].dtype, compression='gzip')
+            
+            else:
+              group.create_dataset(kk, data=data_to_write[kk], dtype=type(data_to_write[kk]))
+          
+          else:
+            name = file.filename.split('/')[-1].split('.')[0]
+            group.create_dataset('surrogate_ID', data=self.string_to_chars(name), dtype='int')
+            #group.create_dataset('surrogate_ID', data=self.string_to_chars(data_to_write[kk]), dtype='int')
     
-    ### Close file ###
-    file.close()
+    ### Close file, if requested ###
+    if closeQ:
+      file.close()
     
     pass
 
