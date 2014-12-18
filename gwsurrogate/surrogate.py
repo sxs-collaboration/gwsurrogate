@@ -581,17 +581,22 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
         for kk in fp.keys():
           splitkk = kk.split('_')
           if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
-            mode_keys.append(kk)
+            #mode_keys.append(kk)
+            ell = int(splitkk[0][1])
+            emm = int(splitkk[1][1])
+            mode_keys.append((ell,emm))
         for mode_key in mode_keys:
-          print "loading surrogate mode... " + mode_key
-          self.single_modes[mode_key] = EvaluateSingleModeSurrogate(fp, subdir=mode_key+'/', closeQ=False)
+          mode_key_str = 'l'+str(mode_key[0])+'_m'+str(mode_key[1])
+          print "loading surrogate mode... " + mode_key_str
+          self.single_modes[mode_key] = EvaluateSingleModeSurrogate(fp, subdir=mode_key_str+'/', closeQ=False)
         fp.close()
         
         self.modes = mode_keys
       
     else:
       ### compile list of available modes ###
-      # assumes (i) single mode folder format l#_m#_ (ii) ell<=9, m>=0
+      # assumes (i) single mode folder format l#_m#_ 
+      #         (ii) ell<=9, m>=0
       for single_mode in list_folders(path,'l'):
         #mode_key = single_mode[0:5]
         ell = int(single_mode[1])
