@@ -309,8 +309,8 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def plot_sur(self, q_eval, timeM=False, htype='hphc', color='k', linestyle=['-', '--'], \
-                label=['$h_+(t)$', '$h_-(t)$'], legendQ=True, showQ=True):
+  def plot_sur(self, q_eval, timeM=False, htype='hphc', flavor='linear', color='k', linestyle=['-', '--'], \
+                label=['$h_+(t)$', '$h_-(t)$'], legendQ=False, showQ=True):
     """plot surrogate evaluated at mass ratio q_eval"""
 
     t, hp, hc = self.__call__(q_eval)
@@ -331,7 +331,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
       xlab = 'Time, $t$ (sec)'
 
     # Plot surrogate waveform
-    fig = self.plot_pretty(t, y[htype], color=color, linestyle=linestyle, \
+    fig = self.plot_pretty(t, y[htype], flavor=flavor, color=color, linestyle=linestyle, \
                 label=label, legendQ=legendQ, showQ=False)
     self.plt.xlabel(xlab)
     self.plt.ylabel('Surrogate waveform')
@@ -341,8 +341,87 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
         
     # Return figure method to allow for saving plot with fig.savefig
     return fig
-
-
+  
+  
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def plot_eim_data(self, inode=None, htype='Amp', nuQ=False, fignum=1, showQ=True):
+    """Plot empirical interpolation data used for performing fits in parameter"""
+    
+    fig = self.plt.figure(fignum)
+    ax1 = fig.add_subplot(111)
+    
+    y = {
+      'Amp': self.eim_amp,
+      'Phase': self.eim_phase,
+      }
+    
+    if nuQ:
+      nu = gwtools.q_to_nu(self.greedy_points)
+      
+      if inode is None:
+        [self.plt.plot(nu, ee, 'ko') for ee in y[htype]]
+      else:
+        self.plt.plot(nu, y[htype][inode], 'ko')
+      
+      self.plt.xlabel('Symmetric mass ratio, $\\nu$')
+    
+    else:
+      
+      if inode is None:
+        [self.plt.plot(self.greedy_points, ee, 'ko') for ee in y[htype]]
+      else:
+        self.plt.plot(self.greedy_points, y[htype][inode], 'ko')
+      
+      self.plt.xlabel('Mass ratio, $q$')
+    
+    if showQ:
+      self.plt.show()
+    
+    return fig
+  
+  
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def plot_eim_fits(self, inode=None, htype='Amp', nuQ=False, fignum=1, num=200, showQ=True):
+    """Plot empirical interpolation data and fits"""
+    
+    fig = self.plt.figure(fignum)
+    ax1 = fig.add_subplot(111)
+    
+    fitfn = {
+      'Amp': self.amp_fit_func,
+      'Phase': self.phase_fit_func,
+      }
+    
+    coeffs = {
+      'Amp': self.fitparams_amp,
+      'Phase': self.fitparams_phase,
+      }
+    
+    # Plot EIM data points
+    self.plot_eim_data(inode=inode, htype=htype, nuQ=nuQ, fignum=fignum, showQ=False)
+    
+    qs = np.linspace(self.fit_min, self.fit_max, num)
+    nus = gwtools.q_to_nu(qs)
+    
+    # Plot fits to EIM data points
+    if nuQ:
+      if inode is None:
+        [self.plt.plot(nus, fitfn[htype](cc, qs), 'k-') for cc in coeffs[htype]]
+      else:
+        self.plt.plot(nus, fitfn[htype](coeffs[htype][inode], qs), 'k-')  
+    
+    else:
+      if inode is None:
+        [self.plt.plot(qs, fitfn[htype](cc, qs), 'k-') for cc in coeffs[htype]]
+      else:
+        self.plt.plot(qs, fitfn[htype](coeffs[htype][inode], qs), 'k-')
+      
+    if showQ:
+      self.plt.show()
+    
+    return fig
+  
+  
   #### below here are "private" member functions ###
   # These routine's evaluate a "bare" surrogate, and should only be called
   # by the __call__ method 
