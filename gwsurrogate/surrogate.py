@@ -109,6 +109,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 
     # Convenience for plotting purposes
     self.plt = plt
+    self.plot_pretty = gwtools.plot_pretty
     
     pass
 
@@ -287,13 +288,6 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def plot_pretty(self, time, hp, hc, fignum=1, flavor='regular'):
-    """create a waveform figure with nice formatting and labels.
-       returns figure method for saving, plotting, etc."""
-    return gwtools.plot_pretty(time, hp, hc, fignum, flavor)
-
-	
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def plot_rb(self, i, showQ=True):
     """plot the ith reduced basis waveform"""
 
@@ -303,39 +297,51 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
     basis = self.basis(i)
     hp    = basis.real
     hc    = basis.imag
-		
+    
     # Plot waveform
     fig = self.plot_pretty(self.times,hp,hc)
 
     if showQ:
       self.plt.show()
-		
+    
     # Return figure method to allow for saving plot with fig.savefig
     return fig
-	
+
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def plot_sur(self, q_eval, timeM=False, showQ=True):
+  def plot_sur(self, q_eval, timeM=False, htype='hphc', color='k', linestyle=['-', '--'], \
+                label=['$h_+(t)$', '$h_-(t)$'], legendQ=True, showQ=True):
     """plot surrogate evaluated at mass ratio q_eval"""
 
     t, hp, hc = self.__call__(q_eval)
-
+    h = hp + 1j*hc
+    
+    y = {
+      'hphc': [hp, hc],
+      'hp': hp,
+      'hc': hc,
+      'AmpPhase': [np.abs(h), gwtools.phase(h)],
+      'Amp': np.abs(h),
+      'Phase': gwtools.phase(h),
+      }
+    
     if self.t_units == 'TOverMtot':
       xlab = 'Time, $t/M$'
     else:
       xlab = 'Time, $t$ (sec)'
 
     # Plot surrogate waveform
-    fig = self.plot_pretty(t,hp,hc)
+    fig = self.plot_pretty(t, y[htype], color=color, linestyle=linestyle, \
+                label=label, legendQ=legendQ, showQ=False)
     self.plt.xlabel(xlab)
     self.plt.ylabel('Surrogate waveform')
-		
+    
     if showQ:
       self.plt.show()
-		
+        
     # Return figure method to allow for saving plot with fig.savefig
     return fig
-	
+
 
   #### below here are "private" member functions ###
   # These routine's evaluate a "bare" surrogate, and should only be called
@@ -515,13 +521,15 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
         print "loading surrogate mode... "+single_mode[0:5]
         self.single_modes[mode_key] = EvaluateSingleModeSurrogate(path+single_mode+'/')
 
-    if len(self.single_modes) == 0:
-      raise IOError('no surrogate modes found. make sure each mode subdirectory is of the form l#_m#_')
-
     ### Assumes all modes are defined on the same temporal grid. ###
     ### TODO: should explicitly check this in previous step ###
     if filemode not in ['r+', 'w']:
+      
+      if len(self.single_modes) == 0:
+        raise IOError('no surrogate modes found. make sure each mode subdirectory is of the form l#_m#_')
+      
       self.time_all_modes = self.single_modes[mode_key].time
+          
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, theta=None,phi=None,\
