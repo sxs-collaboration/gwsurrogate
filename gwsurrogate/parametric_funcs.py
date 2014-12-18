@@ -85,7 +85,7 @@ def q_to_nu(q):
 function_dict = {
                  "polyval_1d": polyval_1d,
                  "ampfitfn1_1d": ampfitfn1_1d,
-                 "ampfitfn1_1d": ampfitfn1_1d,
+                 "ampfitfn2_1d": ampfitfn2_1d,
                  "phifitfn1_1d": phifitfn1_1d,
                  "nuSingularPlusPolynomial": ampfitfn3_1d,
                  "q_to_q": q_to_q,
