@@ -85,15 +85,18 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   """Evaluate single-mode surrogate in terms of the waveforms' amplitude and phase"""
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def __init__(self, path, deg=3):
-
+  def __init__(self, path, deg=3, subdir='', closeQ=True):
+    
     # Load HDF5 or Text surrogate data depending on input file extension
-    ext = path.split('.')[-1]
+    if type(path) == h5py._hl.files.File:
+      ext = 'h5'
+    else:
+      ext = path.split('.')[-1]
     if ext == 'hdf5' or ext == 'h5':
-      H5Surrogate.__init__(self, file=path, mode='r')
+      H5Surrogate.__init__(self, file=path, mode='r', subdir=subdir, closeQ=closeQ)
     else:
       TextSurrogateRead.__init__(self, path)
-		
+    
     # Interpolate columns of the empirical interpolant operator, B, using cubic spline
     if self.surrogate_mode_type  == 'waveform_basis':
       self.reB_spline_params = [splrep(self.times, self.B[:,jj].real, k=deg) for jj in range(self.dim_rb)]
@@ -106,7 +109,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 
     # Convenience for plotting purposes
     self.plt = plt
-		
+    
     pass
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -462,8 +465,13 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __init__(self, path, deg=3):
-
-
+    
+    # Make list of required data for reading/writing surrogate data
+    self.required = ['tmin', 'tmax', 'greedy_points', 'eim_indices', 'B', \
+                     'fitparams_amp', 'fitparams_phase', \
+                     'fit_min', 'fit_max', 'fit_type_amp', 'fit_type_phase', \
+                     'surrogate_mode_type', 'parameterization']
+    
     # Convenience for plotting purposes
     self.plt = plt
 
@@ -471,9 +479,31 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
     self.single_modes = dict()
 
     # Load HDF5 or Text surrogate data depending on input file extension
-    ext = path.split('.')[-1]
+    if type(path) == h5py._hl.files.File:
+      ext = 'h5'
+      filemode = path.mode
+    else:
+      ext = path.split('.')[-1]
+      filemode = 'r'
+
     if ext == 'hdf5' or ext == 'h5':
-      raise ValueError('Not coded yet')
+      
+      if filemode not in ['r+', 'w']:
+        fp = h5py.File(path, filemode)
+        
+        ### compile list of available modes ###
+        mode_keys = []
+        for kk in fp.keys():
+          splitkk = kk.split('_')
+          if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
+            mode_keys.append(kk)
+        for mode_key in mode_keys:
+          print "loading surrogate mode... " + mode_key
+          self.single_modes[mode_key] = EvaluateSingleModeSurrogate(fp, subdir=mode_key+'/', closeQ=False)
+        fp.close()
+        
+        self.modes = mode_keys
+      
     else:
       ### compile list of available modes ###
       # assumes (i) single mode folder format l#_m#_ (ii) ell<=9, m>=0
@@ -484,7 +514,8 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
 
     ### Assumes all modes are defined on the same temporal grid. ###
     ### TODO: should explicitly check this in previous step ###
-    self.time_all_modes = self.single_modes[mode_key].time
+    if filemode not in ['r+', 'w']:
+      self.time_all_modes = self.single_modes[mode_key].time
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, theta=None,phi=None,phi_ref=None, f_low=None, samples=None, ell=None, m=None, mode_sum=True):
