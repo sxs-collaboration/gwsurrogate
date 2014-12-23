@@ -583,7 +583,7 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
           if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
             #mode_keys.append(kk)
             ell = int(splitkk[0][1])
-            emm = int(splitkk[1][1])
+            emm = int(splitkk[1][1:])
             mode_keys.append((ell,emm))
         for mode_key in mode_keys:
           mode_key_str = 'l'+str(mode_key[0])+'_m'+str(mode_key[1])
