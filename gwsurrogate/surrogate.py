@@ -725,6 +725,52 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def match_surrogate(self, t_ref,h_ref,q, M=None, dist=None, theta=None,\
+                     t_ref_units='dimensionless',ell=None,m=None,fake_neg_modes=False,\
+                     t_low_adj=.0125,t_up_adj=.0125):
+    """ match discrete complex polarization (t_ref,h_ref) to surrogate waveform for 
+        given input values. Inputs have same meaning as those passed to __call__
+
+        Minimzation (i.e. match) over time shifts and z-axis rotations"""
+
+    #TODO: error check cases such as tref is mks but M not specified
+    #t_ref_units is how surrogate is evaluated in minimization step... 
+
+    ### setup minimization problem -- deduce common time grid and approximate minimization solution from discrete waveform ###
+    samples  = self.time_all_modes()
+    samples_units = 'dimensionless'
+    time_sur,hp,hc = self.__call__(q=q,M=M,dist=1.0,theta=theta,phi=0.0,\
+                                samples=samples,samples_units=samples_units,fake_neg_modes=fake_neg_modes)
+    h_sur =  hp + 1.0j*hc
+
+    # TODO: this deltaPhi is overall phase shift -- NOT a good guess for minimizations
+    junk1, h2_eval, common_times, deltaT, deltaPhi = \
+       gwtools.setup_minimization_from_discrete_waveforms(time_sur,h_sur,t_ref,h_ref,t_low_adj,t_up_adj)
+
+    ### (tc,phic)-parameterized waveform function to induce a parameterized norm ###
+    def parameterized_waveform(x):
+
+      tc   = x[0]
+      phic = x[1]
+
+      times = gwtools.coordinate_time_shift(common_times,tc)        
+      times,hp,hc = self.__call__(q=q,M=M,dist=1.0,theta=theta,phi=phic,\
+                                  samples=times,samples_units=t_ref_units,fake_neg_modes=fake_neg_modes)
+      h = hp + 1.0j*hc
+      return h
+
+
+    ### solve minimization problem ###
+    # opt_solution[0] and opt_solution[1] are tc and phic
+    [guessed_norm,min_norm], opt_solution, hsur_align = \
+      gwtools.minimize_waveform_match(parameterized_waveform,\
+                                      h2_eval,gwtools.euclidean_norm_sqrd,\
+                                      [deltaT,-deltaPhi/2.0],'nelder-mead')
+    
+    return min_norm, opt_solution, [common_times, hsur_align, h2_eval]
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def h_sphere_builder(self, q, M=None,dist=None,ell=None,m=None):
     """Returns a function for evaluations of h(t,theta,phi;q,M,d). This new function 
        can be evaluated for rotations about z-axis, and at points on the sphere.
