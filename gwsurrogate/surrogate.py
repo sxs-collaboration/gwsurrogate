@@ -126,9 +126,9 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
        q             --- mass ratio (dimensionless) 
        M             --- total mass (solar masses) 
        dist          --- distance to binary system (megaparsecs)
-       phir          --- mode's phase at peak amplitude
-       flow          --- instantaneous initial frequency, will check if flow_surrogate < flow 
-       samples       --- array of dimensionless times at which surrogate is to be evaluated
+       phi_ref       --- mode's phase phi(t), as h=A*exp(i*phi) at peak amplitude
+       f_low         --- instantaneous initial frequency, will check if flow_surrogate < f_low
+       samples       --- array of times at which surrogate is to be evaluated
        samples_units --- units (mks or dimensionless) of input array samples
 
 
@@ -289,17 +289,20 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   def basis(self, i, flavor='waveform'):
     """compute the ith cardinal, orthogonal, or waveform basis."""
 
-    # TODO: need to gaurd against missing V,R and their relationships to B (or B_1, B_2)
+    if self.surrogate_mode_type  == 'waveform_basis':
 
-    if flavor == 'cardinal':
-      basis = self.B[:,i]
-    elif flavor == 'orthogonal':
-      basis = np.dot(self.B,self.V)[:,i]
-    elif flavor == 'waveform':
-      E = np.dot(self.B,self.V)
-      basis = np.dot(E,self.R)[:,i]
-    else:
-      raise ValueError("Not a valid basis type")
+      if flavor == 'cardinal':
+        basis = self.B[:,i]
+      elif flavor == 'orthogonal':
+        basis = np.dot(self.B,self.V)[:,i]
+      elif flavor == 'waveform':
+        E = np.dot(self.B,self.V)
+        basis = np.dot(E,self.R)[:,i]
+      else:
+        raise ValueError("Not a valid basis type")
+
+    elif self.surrogate_mode_type  == 'amp_phase_basis':
+        raise ValueError("Not coded yet")
 
     return basis
 
@@ -315,15 +318,9 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   def plot_rb(self, i, showQ=True):
     """plot the ith reduced basis waveform"""
 
-    # NOTE: Need to allow for different time units for plotting and labeling
-
     # Compute surrogate approximation of RB waveform
     basis = self.basis(i)
-    hp    = basis.real
-    hc    = basis.imag
-    
-    # Plot waveform
-    fig = self.plot_pretty(self.times,hp,hc)
+    fig   = self.plot_pretty(self.times,[basis.real,basis.imag])
 
     if showQ:
       self.plt.show()
@@ -445,7 +442,14 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
     
     return fig
   
-  
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def norm_eval(self, q):
+    """evaluate norm fit at q. wrapper for norm evaluations evoked from utiside of the class"""
+
+    x_0 = self._affine_mapper_checker(q)
+    return self._norm_eval(x_0)
+
+
   #### below here are "private" member functions ###
   # These routine's evaluate a "bare" surrogate, and should only be called
   # by the __call__ method 
@@ -480,36 +484,24 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
     return x_0
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def _norm_eval(self, x_0, affine_mapped=True):
+  def _norm_eval(self, x_0):
     """evaluate norm fit at x_0"""
 
     if not self.norms:
       return 1.
-
-    # TODO: this seems hacky -- just so when calling from outside class (which shouldn't be done) it will evaluate correctly
-    # TODO: need to gaurd against missing norm info
-    if( not(affine_mapped) ):
-      x_0 = self._affine_mapper_checker(x_0)
-
-    nrm_eval  = np.array([ self.norm_fit_func(self.fitparams_norm, x_0) ])
-    return nrm_eval
+    else:
+      return np.array([ self.norm_fit_func(self.fitparams_norm, x_0) ])
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _amp_eval(self, x_0):
-    """evaluate amplitude fit at x_0"""
-    # 0:self.dim_rb... could be bad: fit degrees of freedom have nothing to do with rb dimension
-    #return np.array([ self.amp_fit_func(self.fitparams_amp[jj, 0:self.dim_rb], x_0) for jj in range(self.dim_rb) ])
-    #return np.array([ self.amp_fit_func(self.fitparams_amp[jj,:], x_0) for jj in range(self.dim_rb) ])
-    # TODO: How slow is shape?
+    """evaluate set of amplitude fits at x_0"""
     return np.array([ self.amp_fit_func(self.fitparams_amp[jj,:], x_0) for jj in range(self.fitparams_amp.shape[0]) ])
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _phase_eval(self, x_0):
-    """evaluate phase fit at x_0"""
-    #return np.array([ self.phase_fit_func(self.fitparams_phase[jj, 0:self.dim_rb], x_0) for jj in range(self.dim_rb) ])
-    #return np.array([ self.phase_fit_func(self.fitparams_phase[jj,:], x_0) for jj in range(self.dim_rb) ])
+    """evaluate set of phase fit at x_0"""
     return np.array([ self.phase_fit_func(self.fitparams_phase[jj,:], x_0) for jj in range(self.fitparams_phase.shape[0]) ])
 
 
@@ -568,8 +560,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 
 
 ##############################################
-class EvaluateSurrogate(EvaluateSingleModeSurrogate): 
-# TODO: inherated from EvalSingleModeSurrogate to gain access to some functions. this should be better structured
+class EvaluateSurrogate():
   """Evaluate multi-mode surrogates"""
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -725,6 +716,102 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def evaluate_on_sphere(self,ell,m,theta,phi,hp_mode,hc_mode):
+    """evaluate on the sphere"""
+
+    if theta is not None: 
+      if phi is None: phi = 0.0
+      sYlm_value =  sYlm(-2,ll=ell,mm=m,theta=theta,phi=phi)
+      h = sYlm_value*(hp_mode + 1.0j*hc_mode)
+      hp_mode = h.real
+      hc_mode = h.imag
+
+    return hp_mode, hc_mode
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def evaluate_single_mode(self,q, M, dist, phi_ref, f_low, samples, samples_units,ell,m):
+    """ light wrapper around single mode evaluator to gaurd against m < 0 modes """
+
+    if m >=0:
+      t_mode, hp_mode, hc_mode = self.single_modes[(ell,m)](q, M, dist, phi_ref, f_low, samples, samples_units)
+    else:
+      raise ValueError('m must be non-negative. evalutate m < 0 modes with evaluate_single_mode_minus')
+
+    return t_mode, hp_mode, hc_mode
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def evaluate_single_mode_minus(self,q, M, dist, phi_ref, f_low, samples,samples_units,ell,m):
+    """ evaluate m<0 mode from m>0 mode and relationship between these"""
+
+    if m<0:
+      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q, M, dist, phi_ref, f_low, samples,samples_units,ell,-m)
+      hp_mode, hc_mode         = self._generate_minus_m_mode(hp_mode,hc_mode,ell,-m)
+    else:
+      raise ValueError('m must be negative.')
+
+    return t_mode, hp_mode, hc_mode
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def generate_mode_eval_list(self,ell=None,m=None,minus_m=False):
+    """generate list of (ell,m) modes to evaluate for.
+
+      1) ell=m=None: use all available model modes
+      2) ell=NUM, m=None: all modes up to ell_max = NUM. unmodelled modes set to zero
+      3) list of [ell], [m] pairs: only use modes (ell,m). unmodelled modes set to zero 
+
+      These three options produce a list of (ell,m) modes. set minus_m=True 
+      to generate m<0 modes from m>0 modes."""
+
+    ### generate list of nonnegative m modes to evaluate for ###
+    if ell is None and m is None:
+      modes_to_eval = self.all_model_modes()
+    elif m is None:
+      LMax = ell
+      modes_to_eval = []
+      for L in range(2,LMax+1):
+        for emm in range(0,L+1):
+          modes_to_eval.append((L,emm))
+    else:
+      modes_to_eval = [(x, y) for x in ell for y in m]
+
+    ### if m<0 requested, build these from m>=0 list ###
+    if minus_m:
+      modes_to_eval = self._extend_mode_list_minus_m(modes_to_eval)
+
+    return modes_to_eval
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def sort_mode_list(self,mode_list):
+    """sort modes as (2,-2), (2,-1), ..., (2,2), (3,-3),(3,-2)..."""
+
+    from operator import itemgetter
+
+    mode_list = sorted(mode_list, key=itemgetter(0,1))
+    return mode_list
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def all_model_modes(self,minus_m=False):
+    """ from single mode keys deduce all available model modes.
+        If minus_m=True, include (ell,-m) whenever (ell,m) is available ."""
+
+    model_modes = [(ell,m) for ell,m in self.single_modes.keys()]
+
+    if minus_m:
+      model_modes = self._extend_mode_list_minus_m(model_modes)
+
+    return model_modes
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def single_mode(self,mode):
+    """ returns single mode class for mode=(ell,m)"""
+    return self.single_modes[mode] 
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def match_surrogate(self, t_ref,h_ref,q, M=None, dist=None, theta=None,\
                      t_ref_units='dimensionless',ell=None,m=None,fake_neg_modes=False,\
                      t_low_adj=.0125,t_up_adj=.0125,speed='slow'):
@@ -795,99 +882,6 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
     h_sphere = gwtools.h_sphere_builder(modes_to_evaluate, hp_full, hc_full, t_mode)
     
     return h_sphere, modes_to_evaluate, [t_min, t_max]
-
-
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def evaluate_on_sphere(self,ell,m,theta,phi,hp_mode,hc_mode):
-    """evaluate on the sphere"""
-
-    if theta is not None: 
-      if phi is None: phi = 0.0
-      sYlm_value =  sYlm(-2,ll=ell,mm=m,theta=theta,phi=phi)
-      h = sYlm_value*(hp_mode + 1.0j*hc_mode)
-      hp_mode = h.real
-      hc_mode = h.imag
-
-    return hp_mode, hc_mode
-
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def evaluate_single_mode(self,q, M, dist, phi_ref, f_low, samples, samples_units,ell,m):
-    """ light wrapper around single mode evaluator to gaurd against m < 0 modes """
-
-    if m >=0:
-      #mode_key = 'l'+str(ell)+'_m'+str(m)
-      mode_key = (ell,m)
-      t_mode, hp_mode, hc_mode = self.single_modes[mode_key](q, M, dist, phi_ref, f_low, samples, samples_units)
-    else:
-      raise ValueError('m must be non-negative. evalutate m < 0 modes with evaluate_single_mode_minus')
-
-    return t_mode, hp_mode, hc_mode
-
-
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def evaluate_single_mode_minus(self,q, M, dist, phi_ref, f_low, samples,samples_units,ell,m):
-    """ evaluate m<0 mode from m>0 mode and relationship between these"""
-
-    if m<0:
-      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q, M, dist, phi_ref, f_low, samples,samples_units,ell,-m)
-      hp_mode, hc_mode         = self._generate_minus_m_mode(hp_mode,hc_mode,ell,-m)
-    else:
-      raise ValueError('m must be negative.')
-
-    return t_mode, hp_mode, hc_mode
-
-
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def generate_mode_eval_list(self,ell=None,m=None,minus_m=False):
-    """generate list of (ell,m) modes to evaluate for.
-
-      1) ell=m=None: use all available model modes
-      2) ell=NUM, m=None: all modes up to ell_max = NUM. unmodelled modes set to zero
-      3) list of [ell], [m] pairs: only use modes (ell,m). unmodelled modes set to zero 
-
-      These three options produce a list of (ell,m) modes. set minus_m=True 
-      to generate m<0 modes from m>0 modes."""
-
-    ### generate list of nonnegative m modes to evaluate for ###
-    if ell is None and m is None:
-      modes_to_eval = self.all_model_modes()
-    elif m is None:
-      LMax = ell
-      modes_to_eval = []
-      for L in range(2,LMax+1):
-        for emm in range(0,L+1):
-          modes_to_eval.append((L,emm))
-    else:
-      modes_to_eval = [(x, y) for x in ell for y in m]
-
-    ### if m<0 requested, build these from m>=0 list ###
-    if minus_m:
-      modes_to_eval = self._extend_mode_list_minus_m(modes_to_eval)
-
-    return modes_to_eval
-
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def sort_mode_list(self,mode_list):
-    """sort modes as (2,-2), (2,-1), ..., (2,2), (3,-3),(3,-2)..."""
-
-    from operator import itemgetter
-
-    mode_list = sorted(mode_list, key=itemgetter(0,1))
-    return mode_list
-
-
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def all_model_modes(self,minus_m=False):
-    """ from single mode keys deduce all available model modes.
-        If minus_m=True, include (ell,-m) whenever (ell,m) is available ."""
-
-    #model_modes = [(int(tmp[1]),int(tmp[4])) for tmp in self.single_modes.keys()]
-    model_modes = [(ell,m) for ell,m in self.single_modes.keys()]
-
-    if minus_m:
-      model_modes = self._extend_mode_list_minus_m(model_modes)
-
-    return model_modes
 
 
   #### below here are "private" member functions ###
