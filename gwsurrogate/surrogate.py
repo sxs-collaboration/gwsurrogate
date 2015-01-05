@@ -727,120 +727,72 @@ class EvaluateSurrogate(EvaluateSingleModeSurrogate):
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def match_surrogate(self, t_ref,h_ref,q, M=None, dist=None, theta=None,\
                      t_ref_units='dimensionless',ell=None,m=None,fake_neg_modes=False,\
-                     t_low_adj=.0125,t_up_adj=.0125):
+                     t_low_adj=.0125,t_up_adj=.0125,speed='slow'):
     """ match discrete complex polarization (t_ref,h_ref) to surrogate waveform for 
         given input values. Inputs have same meaning as those passed to __call__
 
         Minimzation (i.e. match) over time shifts and z-axis rotations"""
 
-    #TODO: error check cases such as tref is mks but M not specified
-    #t_ref_units is how surrogate is evaluated in minimization step... 
+    if (M is None and t_ref_units=='mks') or (M is not None and t_ref_units=='dimensionless'):
+      raise ValueError('surrogate evaluations and reference temporal grid are inconsistent')
 
-    ### setup minimization problem -- deduce common time grid and approximate minimization solution from discrete waveform ###
-    samples  = self.time_all_modes()
-    samples_units = 'dimensionless'
-    time_sur,hp,hc = self.__call__(q=q,M=M,dist=1.0,theta=theta,phi=0.0,\
-                                samples=samples,samples_units=samples_units,fake_neg_modes=fake_neg_modes)
-    h_sur =  hp + 1.0j*hc
 
-    # TODO: this deltaPhi is overall phase shift -- NOT a good guess for minimizations
-    junk1, h2_eval, common_times, deltaT, deltaPhi = \
-       gwtools.setup_minimization_from_discrete_waveforms(time_sur,h_sur,t_ref,h_ref,t_low_adj,t_up_adj)
+    if speed == 'slow': # repeated calls to surrogate evaluation routines
 
-    ### (tc,phic)-parameterized waveform function to induce a parameterized norm ###
-    def parameterized_waveform(x):
+      ### setup minimization problem -- deduce common time grid and approximate minimization solution from discrete waveform ###
+      time_sur,hp,hc = self.__call__(q=q,M=M,dist=dist,theta=theta,phi=0.0,\
+                                  samples=self.time_all_modes(),samples_units='dimensionless',fake_neg_modes=fake_neg_modes)
+      h_sur =  hp + 1.0j*hc
 
-      tc   = x[0]
-      phic = x[1]
+      # TODO: this deltaPhi is overall phase shift -- NOT a good guess for minimizations
+      junk1, h2_eval, common_times, deltaT, deltaPhi = \
+         gwtools.setup_minimization_from_discrete_waveforms(time_sur,h_sur,t_ref,h_ref,t_low_adj,t_up_adj)
 
-      times = gwtools.coordinate_time_shift(common_times,tc)        
-      times,hp,hc = self.__call__(q=q,M=M,dist=1.0,theta=theta,phi=phic,\
+      ### (tc,phic)-parameterized waveform function to induce a parameterized norm ###
+      def parameterized_waveform(x):
+        tc   = x[0]
+        phic = x[1]
+        times = gwtools.coordinate_time_shift(common_times,tc)        
+        times,hp,hc = self.__call__(q=q,M=M,dist=dist,theta=theta,phi=phic,\
                                   samples=times,samples_units=t_ref_units,fake_neg_modes=fake_neg_modes)
-      h = hp + 1.0j*hc
-      return h
+        return hp + 1.0j*hc
 
+    elif speed == 'fast': # build spline interpolant of modes, evaluate the interpolant
 
-    ### solve minimization problem ###
-    # opt_solution[0] and opt_solution[1] are tc and phic
+      modes_to_evaluate, t_mode, hp_full, hc_full = self.__call__(q=q,M=M,dist=dist,ell=ell,m=m,mode_sum=False,fake_neg_modes=fake_neg_modes)
+      h_sphere = gwtools.h_sphere_builder(modes_to_evaluate, hp_full, hc_full, t_mode)
+
+      hp,hc=h_sphere(t_mode,theta=theta, phi=0.0, z_rot=None, psi_rot=None)
+      h1=hp+1.0j*hc
+
+      junk1, h2_eval, common_times, deltaT, deltaPhi = \
+          gwtools.setup_minimization_from_discrete_waveforms(t_mode,h1,t_ref,h_ref,t_low_adj,t_up_adj)
+      parameterized_waveform = gwtools.generate_parameterize_waveform(common_times,h_sphere,'h_sphere',theta)
+
+    else:
+      raise ValueError('not coded yet')
+
+    ### solve minimization problme ###
     [guessed_norm,min_norm], opt_solution, hsur_align = \
       gwtools.minimize_waveform_match(parameterized_waveform,\
                                       h2_eval,gwtools.euclidean_norm_sqrd,\
                                       [deltaT,-deltaPhi/2.0],'nelder-mead')
-    
+
+
     return min_norm, opt_solution, [common_times, hsur_align, h2_eval]
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def h_sphere_builder(self, q, M=None,dist=None,ell=None,m=None):
     """Returns a function for evaluations of h(t,theta,phi;q,M,d). This new function 
-       can be evaluated for rotations about z-axis, and at points on the sphere.
-
-       modes_to_evalute and max/min times defining the surrogate are also returned"""
+       can be evaluated for rotations about z-axis and at any set of 
+       points on the sphere. modes_to_evalute and max/min times defining the surrogate 
+       are also returned"""
 
     modes_to_evaluate, t_mode, hp_full, hc_full = \
       self(q=q, M=M, dist=dist,ell=ell,m=m,mode_sum=False,fake_neg_modes=True)
 
-    ### fill dictionary with model's modes as a spline ###
-    hp_modes_spline = dict()
-    hc_modes_spline = dict()
-    ii = 0
-    for ell_m in modes_to_evaluate:
-      hp_modes_spline[ell_m] = splrep(t_mode, hp_full[:,ii], k=3)
-      hc_modes_spline[ell_m] = splrep(t_mode, hc_full[:,ii], k=3)
-      ii += 1
-
-    ### time interval for valid surrogate evaluations ###
-    t_min = t_mode.min() 
-    t_max = t_mode.max()
- 
-
-    ### create function which can be used to evaluate for h(t,theta,phi) ###
-    def h_sphere(times,theta=None,phi=None,z_rot=None,psi_rot=None):
-      """ evaluations h(t,theta,phi), defined as matrix of modes, or sphere evaluations.
-
-          INPUT
-          =====
-          times     --- numpy array of times for which the surrogate is defined
-          theta/phi --- angle on the sphere, evaluations after z-axis rotation
-          z_rot     --- rotation angle about the z-axis (coalescence angle)
-          psi_rot   --- overall phase adjustment of exp(1.0j*psi_rot) mixing h+,hx
-          """
-
-      if times.min() < t_min or times.max() > t_max:
-        raise ValueError('surrogate cannot be evaluated outside of its time window')
-
-      if psi_rot is not None:
-        raise ValueError('not coded yet')
-
-      ### output will be h (if theta,phi specified) or hp_modes, hc_modes ###
-      if theta is not None and phi is not None:
-        h = np.zeros((times.shape[0],),dtype=complex)
-      else:
-        hp_modes, hc_modes = self._allocate_output_array(times,len(modes_to_evaluate))
-
-      ### evaluate modes at times ###
-      jj=0
-      for ell_m in modes_to_evaluate:
-        hp_modes_eval = splev(times, hp_modes_spline[ell_m])
-        hc_modes_eval = splev(times, hc_modes_spline[ell_m])
-
-        ### apply rotation about z axis and evaluation on sphere if requested ###
-        h_modes_eval  = hp_modes_eval + 1.0j*hc_modes_eval
-        if z_rot is not None:
-          h_modes_eval = h_modes_eval*np.exp(1.0j*z_rot*ell_m[1])
-        
-        if theta is not None and phi is not None:
-          sYlm_value =  sYlm(-2,ll=ell_m[0],mm=ell_m[1],theta=theta,phi=phi)
-          h = h + sYlm_value*h_modes_eval
-        else:
-          hp_modes[:,jj] = h_modes_eval.real
-          hc_modes[:,jj] = h_modes_eval.imag
-          jj+=1
-
-      if theta is not None and phi is not None:
-        return h.real, h.imag
-      else:
-        return hp_modes, hc_modes
+    h_sphere = gwtools.h_sphere_builder(modes_to_evaluate, hp_full, hc_full, t_mode)
     
     return h_sphere, modes_to_evaluate, [t_min, t_max]
 
