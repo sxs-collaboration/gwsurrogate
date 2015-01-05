@@ -596,7 +596,6 @@ class EvaluateSurrogate():
         for kk in fp.keys():
           splitkk = kk.split('_')
           if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
-            #mode_keys.append(kk)
             ell = int(splitkk[0][1])
             emm = int(splitkk[1][1:])
             mode_keys.append((ell,emm))
@@ -613,7 +612,6 @@ class EvaluateSurrogate():
       # assumes (i) single mode folder format l#_m#_ 
       #         (ii) ell<=9, m>=0
       for single_mode in list_folders(path,'l'):
-        #mode_key = single_mode[0:5]
         ell = int(single_mode[1])
         emm = int(single_mode[4])
         mode_key = (ell,emm)
@@ -632,7 +630,7 @@ class EvaluateSurrogate():
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, theta=None,phi=None,\
-                     phi_ref=None, f_low=None, samples=None,samples_units='dimensionless',\
+                     z_rot=None, f_low=None, samples=None,samples_units='dimensionless',\
                      ell=None, m=None, mode_sum=True,fake_neg_modes=False):
     """Return surrogate evaluation for...
 
@@ -642,8 +640,8 @@ class EvaluateSurrogate():
       M              --- total mass (solar masses) 
       dist           --- distance to binary system (megaparsecs)
       theta/phi      --- evaluate hp and hc modes at this location on sphere
-      phir           --- mode's phase at peak amplitude
-      flow           --- instantaneous initial frequency, will check if flow_surrogate < flow 
+      z_rot          --- physical rotation about angular momentum (z-)axis (radians)
+      flow           --- instantaneous initial frequency, will check if flow_surrogate < flow mode-by-mode
       ell            --- list or array of N ell modes to evaluate for (if none, all modes are returned)
       m              --- for each ell, supply a matching m value 
       mode_sum       --- if true, all modes are summed, if false all modes are returned in an array
@@ -658,8 +656,8 @@ class EvaluateSurrogate():
        coordiante system. """
 
 
-    if phi_ref is not None:
-      raise ValueError('not coded yet')
+    #if not mode_sum and (theta is not None or phi is not None):
+    #  raise ValueError('Inconsistent input')
 
     ### deduce single mode dictionary keys from ell,m input ###
     modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
@@ -678,6 +676,7 @@ class EvaluateSurrogate():
       hp_full, hc_full = self._allocate_output_array(samples,len(modes_to_evaluate))
 
     ### loop over all evaluation modes ###
+    # TODO: internal workings are simplified if h used instead of (hc,hp)
     ii = 0
     for ell,m in modes_to_evaluate:
 
@@ -685,9 +684,14 @@ class EvaluateSurrogate():
       if (ell,m) in avail_modes:
 
         if m>=0:
-          t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,phi_ref,f_low,samples,samples_units,ell,m)
+          t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,samples,samples_units,ell,m)
         else:
-          t_mode, hp_mode, hc_mode = self.evaluate_single_mode_minus(q,M,dist,phi_ref,f_low,samples,samples_units,ell,m)
+          t_mode, hp_mode, hc_mode = self.evaluate_single_mode_minus(q,M,dist,f_low,samples,samples_units,ell,m)
+
+        if z_rot is not None:
+          h_tmp   = gwtools.modify_phase(hp_mode+1.0j*hc_mode,z_rot*m)
+          hp_mode = h_tmp.real
+          hc_mode = h_tmp.imag
 
         # TODO: should be faster. integrate this later on
         #if fake_neg_modes and m != 0:
@@ -720,7 +724,8 @@ class EvaluateSurrogate():
     """evaluate on the sphere"""
 
     if theta is not None: 
-      if phi is None: phi = 0.0
+      #if phi is None: phi = 0.0
+      if phi is None: raise ValueError('phi must have a value')
       sYlm_value =  sYlm(-2,ll=ell,mm=m,theta=theta,phi=phi)
       h = sYlm_value*(hp_mode + 1.0j*hc_mode)
       hp_mode = h.real
@@ -729,11 +734,11 @@ class EvaluateSurrogate():
     return hp_mode, hc_mode
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def evaluate_single_mode(self,q, M, dist, phi_ref, f_low, samples, samples_units,ell,m):
+  def evaluate_single_mode(self,q, M, dist, f_low, samples, samples_units,ell,m):
     """ light wrapper around single mode evaluator to gaurd against m < 0 modes """
 
     if m >=0:
-      t_mode, hp_mode, hc_mode = self.single_modes[(ell,m)](q, M, dist, phi_ref, f_low, samples, samples_units)
+      t_mode, hp_mode, hc_mode = self.single_modes[(ell,m)](q, M, dist, None, f_low, samples, samples_units)
     else:
       raise ValueError('m must be non-negative. evalutate m < 0 modes with evaluate_single_mode_minus')
 
@@ -741,11 +746,11 @@ class EvaluateSurrogate():
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def evaluate_single_mode_minus(self,q, M, dist, phi_ref, f_low, samples,samples_units,ell,m):
+  def evaluate_single_mode_minus(self,q, M, dist, f_low, samples,samples_units,ell,m):
     """ evaluate m<0 mode from m>0 mode and relationship between these"""
 
     if m<0:
-      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q, M, dist, phi_ref, f_low, samples,samples_units,ell,-m)
+      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q, M, dist, f_low, samples,samples_units,ell,-m)
       hp_mode, hc_mode         = self._generate_minus_m_mode(hp_mode,hc_mode,ell,-m)
     else:
       raise ValueError('m must be negative.')
@@ -820,6 +825,8 @@ class EvaluateSurrogate():
 
         Minimzation (i.e. match) over time shifts and z-axis rotations"""
 
+    # TODO: routine only works for hp,hc evaluated on the sphere. should extend to modes
+
     if (M is None and t_ref_units=='mks') or (M is not None and t_ref_units=='dimensionless'):
       raise ValueError('surrogate evaluations and reference temporal grid are inconsistent')
 
@@ -828,7 +835,7 @@ class EvaluateSurrogate():
 
       ### setup minimization problem -- deduce common time grid and approximate minimization solution from discrete waveform ###
       time_sur,hp,hc = self.__call__(q=q,M=M,dist=dist,theta=theta,phi=0.0,\
-                                  samples=self.time_all_modes(),samples_units='dimensionless',fake_neg_modes=fake_neg_modes)
+                                  samples=self.time_all_modes(),samples_units='dimensionless',ell=ell,m=m,fake_neg_modes=fake_neg_modes)
       h_sur =  hp + 1.0j*hc
 
       # TODO: this deltaPhi is overall phase shift -- NOT a good guess for minimizations
@@ -841,7 +848,7 @@ class EvaluateSurrogate():
         phic = x[1]
         times = gwtools.coordinate_time_shift(common_times,tc)        
         times,hp,hc = self.__call__(q=q,M=M,dist=dist,theta=theta,phi=phic,\
-                                  samples=times,samples_units=t_ref_units,fake_neg_modes=fake_neg_modes)
+                                  samples=times,samples_units=t_ref_units,ell=ell,m=m,fake_neg_modes=fake_neg_modes)
         return hp + 1.0j*hc
 
     elif speed == 'fast': # build spline interpolant of modes, evaluate the interpolant
@@ -859,7 +866,7 @@ class EvaluateSurrogate():
     else:
       raise ValueError('not coded yet')
 
-    ### solve minimization problme ###
+    ### solve minimization problem ###
     [guessed_norm,min_norm], opt_solution, hsur_align = \
       gwtools.minimize_waveform_match(parameterized_waveform,\
                                       h2_eval,gwtools.euclidean_norm_sqrd,\
