@@ -513,10 +513,11 @@ class TextSurrogateRead(TextSurrogateIO):
       self.quadrature_weights = time_info[:,1]
 
     self.t_units = 'TOverMtot' # TODO: pass this through time_info for flexibility
+    self.time_samples = self.times.shape[0]
 
-    ### Complex B coefficients ###
-    B_1    = np.loadtxt(sdir+self._B_1_file)
-    B_2    = np.loadtxt(sdir+self._B_2_file)
+    ### Complex B coefficients - set ndim=2 in case only 1 basis vector ###
+    B_1    = np.loadtxt(sdir+self._B_1_file,ndmin=2)
+    B_2    = np.loadtxt(sdir+self._B_2_file,ndmin=2)
 
     # TODO: B needs to be handled better 
     if self.surrogate_mode_type  == 'amp_phase_basis':
@@ -527,16 +528,10 @@ class TextSurrogateRead(TextSurrogateIO):
     else:
       raise ValueError('invalid surrogate type')
 
-    ### Deduce sizes from B ###
-    # TODO: dim_rb needs to account for different amp/phase dimensions
-    self.dim_rb       = B_1.shape[1]
-    self.time_samples = B_1.shape[0]
-
     ### Information about phase/amp parametric fits ###
-    self.fitparams_phase = np.loadtxt(sdir+self._fitparams_phase_file)
-    self.fitparams_amp   = np.loadtxt(sdir+self._fitparams_amp_file)
+    self.fitparams_phase = np.loadtxt(sdir+self._fitparams_phase_file,ndmin=2)
+    self.fitparams_amp   = np.loadtxt(sdir+self._fitparams_amp_file,ndmin=2)
 
-    #self.affine_map     = bool(np.loadtxt(sdir+self._affine_map_file))
     self.affine_map      = self.get_string_key(sdir+self._affine_map_file)
 
     self.fit_type_phase  = self.get_string_key(sdir+self._fit_type_phase_file)
@@ -545,9 +540,21 @@ class TextSurrogateRead(TextSurrogateIO):
     self.phase_fit_func = my_funcs[self.fit_type_phase]
     self.amp_fit_func   = my_funcs[self.fit_type_amp]
 
+    ### if only 1 basis vector imported, extend B_X and fixparams_X from ndim=1 -> 2 ###
+    # TODO: this block of code could be useful for hdf5 too
+    #if self.B_1.ndim == 1:
+    #  self.B_1 = self.B_1.reshape([self.B_1.shape[0],1])
+    #if self.B_2.ndim == 1:
+    #  self.B_2 = self.B_2.reshape([self.B_2.shape[0],1])
+
     ### Information about surrogate's parameterization ###
     self.parameterization = self.get_string_key(sdir+self._parameterization)
     self.get_surr_params  = my_funcs[self.parameterization]
+
+    ### Deduce sizes from B ###
+    # TODO: dim_rb needs to account for different amp/phase dimensions
+    # TODO: consistency check that self.time_samples = B_X.shape[0]
+    self.dim_rb       = B_1.shape[1]
 
 
     ### Load optional parameters if they exist ###
