@@ -631,7 +631,7 @@ class EvaluateSurrogate():
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, theta=None,phi=None,\
                      z_rot=None, f_low=None, samples=None,samples_units='dimensionless',\
-                     ell=None, m=None, mode_sum=True,fake_neg_modes=False):
+                     ell=None, m=None, mode_sum=True,fake_neg_modes=True):
     """Return surrogate evaluation for...
 
       INPUT
@@ -658,6 +658,9 @@ class EvaluateSurrogate():
 
     #if not mode_sum and (theta is not None or phi is not None):
     #  raise ValueError('Inconsistent input')
+
+    if fake_neg_modes and ell is not None:
+      raise ValueError('Cannot generate faked negative modes with specific ell,m input requested')
 
     ### deduce single mode dictionary keys from ell,m input ###
     modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
@@ -818,7 +821,7 @@ class EvaluateSurrogate():
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def match_surrogate(self, t_ref,h_ref,q, M=None, dist=None, theta=None,\
-                     t_ref_units='dimensionless',ell=None,m=None,fake_neg_modes=False,\
+                     t_ref_units='dimensionless',ell=None,m=None,fake_neg_modes=True,\
                      t_low_adj=.0125,t_up_adj=.0125,speed='slow'):
     """ match discrete complex polarization (t_ref,h_ref) to surrogate waveform for 
         given input values. Inputs have same meaning as those passed to __call__
@@ -877,18 +880,20 @@ class EvaluateSurrogate():
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def h_sphere_builder(self, q, M=None,dist=None,ell=None,m=None):
-    """Returns a function for evaluations of h(t,theta,phi;q,M,d). This new function 
+  def h_sphere_builder(self, q, M=None,dist=None):
+    """Returns a function for evaluations of h(t,theta,phi;q,M,d) which include 
+       all available modes. 
+
+       This new function h(t,theta,phi;q,M,d)
        can be evaluated for rotations about z-axis and at any set of 
-       points on the sphere. modes_to_evalute and max/min times defining the surrogate 
-       are also returned"""
+       points on the sphere. modes_to_evalute are also returned"""
 
     modes_to_evaluate, t_mode, hp_full, hc_full = \
-      self(q=q, M=M, dist=dist,ell=ell,m=m,mode_sum=False,fake_neg_modes=True)
+      self(q=q, M=M, dist=dist, mode_sum=False)
 
     h_sphere = gwtools.h_sphere_builder(modes_to_evaluate, hp_full, hc_full, t_mode)
     
-    return h_sphere, modes_to_evaluate, [t_min, t_max]
+    return h_sphere, modes_to_evaluate,
 
 
   #### below here are "private" member functions ###
