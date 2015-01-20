@@ -109,7 +109,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 
     # Convenience for plotting purposes
     self.plt = plt
-    self.plot_pretty = gwtools.plot_pretty
+   # self.plot_pretty = gwtools.plot_pretty
 
     # All surrogates are dimensionless - this tag enforces this and could be generalized 
     self.surrogate_units = 'dimensionless'
@@ -659,8 +659,8 @@ class EvaluateSurrogate():
     #if not mode_sum and (theta is not None or phi is not None):
     #  raise ValueError('Inconsistent input')
 
-    if fake_neg_modes and ell is not None:
-      raise ValueError('Cannot generate faked negative modes with specific ell,m input requested')
+    #if fake_neg_modes and ell is not None:
+    #  raise ValueError('Cannot generate faked negative modes with specific ell,m input requested')
 
     ### deduce single mode dictionary keys from ell,m input ###
     modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
