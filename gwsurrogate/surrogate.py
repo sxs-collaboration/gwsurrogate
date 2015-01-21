@@ -109,7 +109,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 
     # Convenience for plotting purposes
     self.plt = plt
-    self.plot_pretty = gwtools.plot_pretty
+   # self.plot_pretty = gwtools.plot_pretty
 
     # All surrogates are dimensionless - this tag enforces this and could be generalized 
     self.surrogate_units = 'dimensionless'
