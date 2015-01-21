@@ -573,7 +573,9 @@ class EvaluateSurrogate():
   """Evaluate multi-mode surrogates"""
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def __init__(self, path, deg=3):
+  def __init__(self, path, deg=3, ell_m=None):
+    """ Ex: ell_m = [(2,2),(3,3)], only the (2,2) and (3,3) modes 
+        will load. An error is thrown if they cannot be found"""
     
     # Make list of required data for reading/writing surrogate data
     self.required = ['tmin', 'tmax', 'greedy_points', 'eim_indices', 'B', \
@@ -624,8 +626,17 @@ class EvaluateSurrogate():
         ell = int(single_mode[1])
         emm = int(single_mode[4])
         mode_key = (ell,emm)
-        print "loading surrogate mode... "+single_mode[0:5]
-        self.single_modes[mode_key] = EvaluateSingleModeSurrogate(path+single_mode+'/')
+        if (ell_m is None) or (mode_key in ell_m):
+          print "loading surrogate mode... "+single_mode[0:5]
+          self.single_modes[mode_key] = EvaluateSingleModeSurrogate(path+single_mode+'/')
+
+      ### check all requested modes have been loaded ###
+      if ell_m is not None:
+        for tmp in ell_m:
+          try:
+            self.single_modes[tmp]
+          except KeyError:
+            print 'Could not find mode '+str(tmp)
 
     ### Assumes all modes are defined on the same temporal grid. ###
     ### TODO: should explicitly check this in previous step ###
@@ -634,7 +645,8 @@ class EvaluateSurrogate():
       if len(self.single_modes) == 0:
         raise IOError('no surrogate modes found. make sure each mode subdirectory is of the form l#_m#_')
       
-      self.time_all_modes = self.single_modes[mode_key].time 
+      #self.time_all_modes = self.single_modes[mode_key].time
+      self.time_all_modes = self.single_modes[self.single_modes.keys()[0]].time
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, theta=None,phi=None,\
