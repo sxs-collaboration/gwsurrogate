@@ -118,18 +118,20 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, phi_ref=None,\
-                     f_low=None, samples=None,samples_units='dimensionless'):
+                     f_low=None, samples=None,samples_units='dimensionless',\
+                     singlemode_call=True):
     """Return single mode surrogate evaluation for...
 
        Input
        =====
-       q             --- mass ratio (dimensionless) 
-       M             --- total mass (solar masses) 
-       dist          --- distance to binary system (megaparsecs)
-       phi_ref       --- mode's phase phi(t), as h=A*exp(i*phi) at peak amplitude
-       f_low         --- instantaneous initial frequency, will check if flow_surrogate < f_low
-       samples       --- array of times at which surrogate is to be evaluated
-       samples_units --- units (mks or dimensionless) of input array samples
+       q               --- mass ratio (dimensionless) 
+       M               --- total mass (solar masses) 
+       dist            --- distance to binary system (megaparsecs)
+       phi_ref         --- mode's phase phi(t), as h=A*exp(i*phi) at peak amplitude
+       f_low           --- instantaneous initial frequency, will check if flow_surrogate < f_low
+       samples         --- array of times at which surrogate is to be evaluated
+       samples_units   --- units (mks or dimensionless) of input array samples
+       singlemode_call --- Never set this by hand, will be False if this routine is called by the multimode evaluator
 
 
        More information
@@ -178,6 +180,8 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
       samples = samples / t_scale
 
     ### Evaluate dimensionless single mode surrogates ###
+    if singlemode_call:
+      self._check_training_interval(x) # warning if x outside of training interval
     hp, hc = self._h_sur(x, samples=samples)
 
     ### adjust mode's phase by an overall constant ###
@@ -446,7 +450,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   def norm_eval(self, q):
     """evaluate norm fit at q. wrapper for norm evaluations evoked from utiside of the class"""
 
-    x_0 = self._affine_mapper_checker(q)
+    x_0 = self._affine_mapper(q)
     return self._norm_eval(x_0)
 
 
@@ -459,16 +463,10 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   # be supplied by surrogate's parameterization tag.
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def _affine_mapper_checker(self, x):
-    """map parameter value x to the standard interval [-1,1] if necessary. 
-       Check if x within training interval."""
+  def _affine_mapper(self, x):
+    """map parameter value x to the standard interval [-1,1] if necessary."""
 
     x_min, x_max = self.fit_interval
-
-    if( x < x_min or x > x_max):
-      print "Warning: Surrogate not trained at requested parameter value" # needed to display in ipython notebook
-      Warning("Surrogate not trained at requested parameter value")
-
 
     # TODO: should be rolled like amp/phase/fit funcs
     # QUESTION FOR SCOTT: Why not just make self.affine_map the end points [a,b] 
@@ -482,6 +480,17 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
     else:
       raise ValueError('unknown affine map')
     return x_0
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def _check_training_interval(self, x):
+    """Check if parameter value x within the training interval."""
+
+    x_min, x_max = self.fit_interval
+
+    if(x < x_min or x > x_max):
+      print "Warning: Surrogate not trained at requested parameter value" # needed to display in ipython notebook
+      Warning("Surrogate not trained at requested parameter value")
+
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _norm_eval(self, x_0):
@@ -515,8 +524,8 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
        This should ONLY be called by the __call__ method which accounts for 
        different parameterization choices. """
 
-    ### Map q to the standard interval and check parameter validity ###
-    x_0 = self._affine_mapper_checker(x)
+    ### Map q to the standard interval ###
+    x_0 = self._affine_mapper(x)
 
     ### Evaluate amp/phase/norm fits ###
     amp_eval   = self._amp_eval(x_0)
@@ -625,8 +634,7 @@ class EvaluateSurrogate():
       if len(self.single_modes) == 0:
         raise IOError('no surrogate modes found. make sure each mode subdirectory is of the form l#_m#_')
       
-      self.time_all_modes = self.single_modes[mode_key].time
-          
+      self.time_all_modes = self.single_modes[mode_key].time 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, theta=None,phi=None,\
@@ -656,14 +664,14 @@ class EvaluateSurrogate():
        coordiante system. """
 
 
-    #if not mode_sum and (theta is not None or phi is not None):
-    #  raise ValueError('Inconsistent input')
-
-    if fake_neg_modes and ell is not None:
+    if fake_neg_modes and (ell is not None and m is not None):
       raise ValueError('Cannot generate faked negative modes with specific ell,m input requested')
 
     ### deduce single mode dictionary keys from ell,m input ###
     modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
+
+    if mode_sum and (theta is None and phi is None) and len(modes_to_evaluate)!=1:
+      raise ValueError('Trying to sum modes without theta and phi is a strange idea')
 
     ### if mode_sum false, return modes in a sensible way ###
     if not mode_sum:
@@ -677,6 +685,12 @@ class EvaluateSurrogate():
       hp_full, hc_full = self._allocate_output_array(samples,1)
     else:
       hp_full, hc_full = self._allocate_output_array(samples,len(modes_to_evaluate))
+
+    ### check that request paramter is in training interval ###
+    # NOTE: this is handled by multimode surrogate class
+    # TODO: after multimode surrogate loaded, common data (e.g. parameter intervals) should be merged
+    tmp = avail_modes[0]
+    self.single_mode(tmp)._check_training_interval(self.single_mode(tmp).get_surr_params(q))
 
     ### loop over all evaluation modes ###
     # TODO: internal workings are simplified if h used instead of (hc,hp)
@@ -741,7 +755,7 @@ class EvaluateSurrogate():
     """ light wrapper around single mode evaluator to gaurd against m < 0 modes """
 
     if m >=0:
-      t_mode, hp_mode, hc_mode = self.single_modes[(ell,m)](q, M, dist, None, f_low, samples, samples_units)
+      t_mode, hp_mode, hc_mode = self.single_modes[(ell,m)](q, M, dist, None, f_low, samples, samples_units,singlemode_call=False)
     else:
       raise ValueError('m must be non-negative. evalutate m < 0 modes with evaluate_single_mode_minus')
 
@@ -880,7 +894,7 @@ class EvaluateSurrogate():
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def h_sphere_builder(self, q, M=None,dist=None):
+  def h_sphere_builder(self, q, M=None,dist=None,ell=None,m=None):
     """Returns a function for evaluations of h(t,theta,phi;q,M,d) which include 
        all available modes. 
 
@@ -889,7 +903,7 @@ class EvaluateSurrogate():
        points on the sphere. modes_to_evalute are also returned"""
 
     modes_to_evaluate, t_mode, hp_full, hc_full = \
-      self(q=q, M=M, dist=dist, mode_sum=False)
+      self(q=q, M=M, dist=dist, mode_sum=False,ell=ell,m=m)
 
     h_sphere = gwtools.h_sphere_builder(modes_to_evaluate, hp_full, hc_full, t_mode)
     
