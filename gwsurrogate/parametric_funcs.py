@@ -93,6 +93,16 @@ def ampfitfn5_1d(coeffs,x):
   
   return a0*np.sqrt(1. - x) + np.polyval(polyCoefs,1. - x)
 
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def ampfitfn6_1d(coeffs,x):
+  """a0*np.sqrt(1 - x) + a1*(1 - x)**1.5 + [ a2*(1 - x) + ... + aN*(1-x)**(N-1)"""
+  a0 = coeffs[-1]
+  a1 = coeffs[-2]
+  polyCoefs = [c for c in coeffs[:-2]]
+  polyCoefs.append(0.)
+
+  return a0*np.sqrt(1. - x) + a1*(1. - x)**1.5 + np.polyval(polyCoefs,1. - x)
+
 ### these are for switching from (q,M) to surrogate's parameterization ###
 def q_to_q(q):
   return q
@@ -108,6 +118,7 @@ function_dict = {
                  "ampfitfn4_1d": ampfitfn4_1d,
                  "phifitfn1_1d": phifitfn1_1d,
                  "nuSingularPlusPolynomial": ampfitfn5_1d,
+                 "nuSingular2TermsPlusPolynomial": ampfitfn6_1d,
                  "q_to_q": q_to_q,
                  "q_to_nu":q_to_nu
                  }
