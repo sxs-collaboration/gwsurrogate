@@ -7,6 +7,9 @@ setup(name='gwsurrogate',
       author_email='sfield@astro.cornell.edu',
       packages=['gwsurrogate'],
       license='MIT',
+      contributors=[
+      # Alphabetical by first name.
+      "Jonathan Blackman"],
       description='an easy to use interface to gravitational wave surrogate models',
       install_requires=["numpy","matplotlib","scipy"],
       classifiers=[
