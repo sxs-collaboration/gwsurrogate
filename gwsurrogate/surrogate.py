@@ -99,8 +99,8 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
     
     # Interpolate columns of the empirical interpolant operator, B, using cubic spline
     if self.surrogate_mode_type  == 'waveform_basis':
-      self.reB_spline_params = [splrep(self.times, self.B[:,jj].real, k=deg) for jj in range(self.dim_rb)]
-      self.imB_spline_params = [splrep(self.times, self.B[:,jj].imag, k=deg) for jj in range(self.dim_rb)]
+      self.reB_spline_params = [splrep(self.times, self.B[:,jj].real, k=deg) for jj in range(self.B.shape[1])]
+      self.imB_spline_params = [splrep(self.times, self.B[:,jj].imag, k=deg) for jj in range(self.B.shape[1])]
     elif self.surrogate_mode_type  == 'amp_phase_basis':
       self.B1_spline_params = [splrep(self.times, self.B_1[:,jj], k=deg) for jj in range(self.B_1.shape[1])]
       self.B2_spline_params = [splrep(self.times, self.B_2[:,jj], k=deg) for jj in range(self.B_2.shape[1])]
@@ -109,7 +109,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 
     # Convenience for plotting purposes
     self.plt = plt
-   # self.plot_pretty = gwtools.plot_pretty
+    self.plot_pretty = gwtools.plot_pretty
 
     # All surrogates are dimensionless - this tag enforces this and could be generalized 
     self.surrogate_units = 'dimensionless'
@@ -315,7 +315,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   def resample_B(self, samples):
     """resample the empirical interpolant operator, B, at the input samples"""
     return np.array([splev(samples, self.reB_spline_params[jj])  \
-             + 1j*splev(samples, self.imB_spline_params[jj]) for jj in range(self.dim_rb)]).T
+             + 1j*splev(samples, self.imB_spline_params[jj]) for jj in range(self.B.shape[1])]).T
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -468,9 +468,6 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 
     x_min, x_max = self.fit_interval
 
-    # TODO: should be rolled like amp/phase/fit funcs
-    # QUESTION FOR SCOTT: Why not just make self.affine_map the end points [a,b] 
-    #and map that to self.fit_interval? (and keep the 'none' bit or use None directly)
     if self.affine_map == 'minus1_to_1':
       x_0 = 2.*(x - x_min)/(x_max - x_min) - 1.;
     elif self.affine_map == 'zero_to_1':
@@ -613,7 +610,8 @@ class EvaluateSurrogate():
         for mode_key in mode_keys:
           mode_key_str = 'l'+str(mode_key[0])+'_m'+str(mode_key[1])
           print "loading surrogate mode... " + mode_key_str
-          self.single_modes[mode_key] = EvaluateSingleModeSurrogate(fp, subdir=mode_key_str+'/', closeQ=False)
+          self.single_modes[mode_key] = \
+            EvaluateSingleModeSurrogate(fp,subdir=mode_key_str+'/',closeQ=False)
         fp.close()
         
         self.modes = mode_keys
@@ -628,7 +626,8 @@ class EvaluateSurrogate():
         mode_key = (ell,emm)
         if (ell_m is None) or (mode_key in ell_m):
           print "loading surrogate mode... "+single_mode[0:5]
-          self.single_modes[mode_key] = EvaluateSingleModeSurrogate(path+single_mode+'/')
+          self.single_modes[mode_key] = \
+            EvaluateSingleModeSurrogate(path+single_mode+'/')
 
       ### check all requested modes have been loaded ###
       if ell_m is not None:
@@ -638,19 +637,26 @@ class EvaluateSurrogate():
           except KeyError:
             print 'Could not find mode '+str(tmp)
 
-    ### Assumes all modes are defined on the same temporal grid. ###
-    ### TODO: should explicitly check this in previous step ###
-    if filemode not in ['r+', 'w']:
-      
+
+    ### Load/deduce multi-mode surrogate properties ###
+
+    if filemode not in ['r+', 'w']:      
       if len(self.single_modes) == 0:
-        raise IOError('no surrogate modes found. make sure each mode subdirectory is of the form l#_m#_')
+        raise IOError('Modes not found. Mode subdirectories begins with l#_m#_')
+
+      ### Check single mode temporal grids are collocated ###
+      grid_shape = self.single_modes[self.single_modes.keys()[0]].time.shape
+      for key in self.single_modes.keys():
+        tmp_shape = self.single_modes[self.single_modes.keys()[0]].time.shape
+        if(grid_shape is not tmp_shape):
+          raise ValueError('inconsistent single mode temporal grids')
       
-      #self.time_all_modes = self.single_modes[mode_key].time
       self.time_all_modes = self.single_modes[self.single_modes.keys()[0]].time
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, theta=None,phi=None,\
-                     z_rot=None, f_low=None, samples=None,samples_units='dimensionless',\
+                     z_rot=None, f_low=None, samples=None,\
+                     samples_units='dimensionless',\
                      ell=None, m=None, mode_sum=True,fake_neg_modes=True):
     """Return surrogate evaluation for...
 
