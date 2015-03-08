@@ -640,18 +640,25 @@ class EvaluateSurrogate():
 
     ### Load/deduce multi-mode surrogate properties ###
 
-    if filemode not in ['r+', 'w']:      
+    tmp = avail_modes[0]
+    self.single_mode(tmp)._check_training_interval(self.single_mode(tmp).get_surr_params(q))
+    self._check_training_interval
+
+   if filemode not in ['r+', 'w']:      
       if len(self.single_modes) == 0:
         raise IOError('Modes not found. Mode subdirectories begins with l#_m#_')
 
       ### Check single mode temporal grids are collocated ###
-      grid_shape = self.single_modes[self.single_modes.keys()[0]].time.shape
+      grid_shape = self.single_modes[self.single_modes.keys()[0]].time().shape
       for key in self.single_modes.keys():
-        tmp_shape = self.single_modes[self.single_modes.keys()[0]].time.shape
-        if(grid_shape is not tmp_shape):
+        tmp_shape = self.single_modes[self.single_modes.keys()[0]].time().shape
+        if(grid_shape != tmp_shape):
           raise ValueError('inconsistent single mode temporal grids')
       
       self.time_all_modes = self.single_modes[self.single_modes.keys()[0]].time
+
+      # TODO: other common data to merge: surrogate parameter intervals
+      # Bad idea? if modes use different parameterization -- better to let modes handle this?
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, theta=None,phi=None,\
@@ -703,12 +710,6 @@ class EvaluateSurrogate():
       hp_full, hc_full = self._allocate_output_array(samples,1)
     else:
       hp_full, hc_full = self._allocate_output_array(samples,len(modes_to_evaluate))
-
-    ### check that request paramter is in training interval ###
-    # NOTE: this is handled by multimode surrogate class
-    # TODO: after multimode surrogate loaded, common data (e.g. parameter intervals) should be merged
-    tmp = avail_modes[0]
-    self.single_mode(tmp)._check_training_interval(self.single_mode(tmp).get_surr_params(q))
 
     ### loop over all evaluation modes ###
     # TODO: internal workings are simplified if h used instead of (hc,hp)
@@ -948,7 +949,7 @@ class EvaluateSurrogate():
       hp_full = np.zeros((self.time_all_modes().shape[0],num_modes))
       hc_full = np.zeros((self.time_all_modes().shape[0],num_modes))
 
-    if( num_modes == 1): #TODO: hack to prevent broadcast when summing over modes
+    if( num_modes == 1): # to prevent broadcast when summing over modes
       hp_full = hp_full.reshape([hp_full.shape[0],])
       hc_full = hp_full.reshape([hp_full.shape[0],])
 
@@ -989,7 +990,7 @@ class EvaluateSurrogate():
 def CompareSingleModeSurrogate(sur1,sur2):
   """ Compare data defining two surrogates"""
 
-  #TODO: should loop over necessary and optional data fields in future SurrogateIO class
+  #TODO: loop over necessary and optional data fields in SurrogateIO class
 
   for key in sur1.__dict__.keys():
 
