@@ -482,49 +482,65 @@ class TextSurrogateRead(TextSurrogateIO):
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __init__(self, sdir):
-    """initialize single-mode surrogate defined by text files located in directory sdir"""
+    """initialize single-mode surrogate defined from text files 
+       located in directory sdir. """
 
     surrogate_load_info = '' # add to string, display after loading
 
     ### sdir is defined to the the surrogate's ID ###
     self.SurrogateID = sdir
 
-    ### type of surrogate (for this harmonic mode) ###
-    self.surrogate_mode_type = self.get_string_key(sdir+self._surrogate_mode_type_file)
+    ### type of surrogate (for harmonic mode) ###
+    self.surrogate_mode_type = \
+      self.get_string_key(sdir+self._surrogate_mode_type_file)
 
     ### Surrogate's sampling rate and mass ratio (for fits) ###
     self.time_info    = np.loadtxt(sdir+self._time_info_file)
     self.fit_interval = np.loadtxt(sdir+self._fit_interval_file)
-    #self.Mtot        = np.loadtxt(sdir+'Mtot.txt')
 
     ### unpack time info ###
+    # NOTE: models stored in dimensionless T/M, whereas basis may be
+    # constructed in T. Basis not necessarily ortho wrt dt (see basis.ipynb)
     if(self.time_info.size == 3):
       self.dt      = self.time_info[2]
       self.tmin    = self.time_info[0]
       self.tmax    = self.time_info[1]
 
-      # Time samples associated with the original data used to build the surrogate
       self.times              = np.arange(self.tmin, self.tmax+self.dt, self.dt)
-      # TODO: these are not the weights were the basis are ortho (see basis.ipynb)
       self.quadrature_weights = self.dt * np.ones(self.times.shape)
 		
     else:
       self.times              = time_info[:,0]
       self.quadrature_weights = time_info[:,1]
 
-    self.t_units = 'TOverMtot' # TODO: pass this through time_info for flexibility
+    self.t_units = 'TOverMtot' # NOTE: hard coded assumption
     self.time_samples = self.times.shape[0]
 
     ### Complex B coefficients - set ndim=2 in case only 1 basis vector ###
     B_1    = np.loadtxt(sdir+self._B_1_file,ndmin=2)
     B_2    = np.loadtxt(sdir+self._B_2_file,ndmin=2)
 
-    # TODO: B needs to be handled better 
+    ### Consistency check that self.time_samples = B_X.shape[0] ###
+    if(self.time_samples != B_1.shape[0] or
+       self.time_samples != B_2.shape[0]):
+      print self.time_samples
+      print B_2.shape[0]
+      raise ValueError('temporal and basis dimension mismatch')
+
+
+    ### Cases handled by in evaluation code ###
     if self.surrogate_mode_type  == 'amp_phase_basis':
       self.B_1 = B_1
       self.B_2 = B_2
+      self.B   = None
+      self.modeled_data  = 2 # amp, phase data
+      self.fits_required = 2 # amp, phase fits
     elif self.surrogate_mode_type  == 'waveform_basis':
-      self.B = B_1 + (1j)*B_2
+      self.B   = B_1 + (1j)*B_2
+      self.B_1 = None
+      self.B_2 = None
+      self.modeled_data  = 1 # complexified waveform data
+      self.fits_required = 2 # amp, phase fits
     else:
       raise ValueError('invalid surrogate type')
 
@@ -540,21 +556,9 @@ class TextSurrogateRead(TextSurrogateIO):
     self.phase_fit_func = my_funcs[self.fit_type_phase]
     self.amp_fit_func   = my_funcs[self.fit_type_amp]
 
-    ### if only 1 basis vector imported, extend B_X and fixparams_X from ndim=1 -> 2 ###
-    # TODO: this block of code could be useful for hdf5 too
-    #if self.B_1.ndim == 1:
-    #  self.B_1 = self.B_1.reshape([self.B_1.shape[0],1])
-    #if self.B_2.ndim == 1:
-    #  self.B_2 = self.B_2.reshape([self.B_2.shape[0],1])
-
     ### Information about surrogate's parameterization ###
     self.parameterization = self.get_string_key(sdir+self._parameterization)
     self.get_surr_params  = my_funcs[self.parameterization]
-
-    ### Deduce sizes from B ###
-    # TODO: dim_rb needs to account for different amp/phase dimensions
-    # TODO: consistency check that self.time_samples = B_X.shape[0]
-    self.dim_rb       = B_1.shape[1]
 
 
     ### Load optional parameters if they exist ###
@@ -639,7 +643,8 @@ class TextSurrogateWrite(TextSurrogateIO):
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def np_savetxt_safe(self,fname, X, fmt='%.18e', delimiter=' ', newline='\n', header='', footer='', comments='# '):
+  def np_savetxt_safe(self,fname, X, fmt='%.18e', delimiter=' ',\
+                      newline='\n', header='', footer='', comments='# '):
     """ numpys savetext without overwrites """
 
     if os.path.isfile(fname):
@@ -649,32 +654,43 @@ class TextSurrogateWrite(TextSurrogateIO):
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def write_text(self, time_info, B, eim_indices, greedy_points, fit_interval, affine_map, \
-                 fitparams_amp, fitparams_phase, fitparams_norm, V, R,fit_type_phase,\
+  def write_text(self, time_info, B, eim_indices, greedy_points, \
+                 fit_interval, affine_map, \
+                 fitparams_amp, fitparams_phase, fitparams_norm, V, R, \
+                 fit_type_phase,\
                  fit_type_amp, fit_type_norm,parameterization):
     """ Write surrogate data (text) in standard format."""
 		
 
-    # TODO: flag to zip folder with tar -cvzf SURROGATE_NAME.tar.gz SURROGATE_NAME/
+    # TODO: flag to zip folder and save full time series
 
     ### pack mass ratio interval (for fits) and time info ###
-    # TODO: should save full time series if necessary
     self.np_savetxt_safe(self.SurrogateID+self._fit_interval_file,fit_interval)
     self.np_savetxt_safe(self.SurrogateID+self._time_info_file,time_info)
-    self.np_savetxt_safe(self.SurrogateID+self._greedy_points_file,greedy_points,fmt='%2.16f')
-    self.np_savetxt_safe(self.SurrogateID+self._eim_indices_file,eim_indices,fmt='%i')
+    self.np_savetxt_safe(self.SurrogateID+self._greedy_points_file,\
+                         greedy_points,fmt='%2.16f')
+    self.np_savetxt_safe(self.SurrogateID+self._eim_indices_file,\
+                         eim_indices,fmt='%i')
     self.np_savetxt_safe(self.SurrogateID+self._B_1_file,B.real)
     self.np_savetxt_safe(self.SurrogateID+self._B_2_file,B.imag)
-    self.np_savetxt_safe(self.SurrogateID+self._fitparams_phase_file,fitparams_phase)
-    self.np_savetxt_safe(self.SurrogateID+self._fitparams_amp_file,fitparams_amp)
-    self.np_savetxt_safe(self.SurrogateID+self._affine_map_file,np.array([int(affine_map)]),fmt='%i')
+    self.np_savetxt_safe(self.SurrogateID+self._fitparams_phase_file,\
+                         fitparams_phase)
+    self.np_savetxt_safe(self.SurrogateID+self._fitparams_amp_file,\
+                         fitparams_amp)
+    self.np_savetxt_safe(self.SurrogateID+self._affine_map_file,\
+                         np.array([int(affine_map)]),fmt='%i')
     self.np_savetxt_safe(self.SurrogateID+self._V_1_file,V.real)
     self.np_savetxt_safe(self.SurrogateID+self._V_2_file,V.imag)
     self.np_savetxt_safe(self.SurrogateID+self._R_1_file,R.real)
     self.np_savetxt_safe(self.SurrogateID+self._R_2_file,R.imag)
-    self.np_savetxt_safe(self.SurrogateID+self._fitparams_norm_file,fitparams_norm)
-    self.np_savetxt_safe(self.SurrogateID+self._fit_type_phase_file,[fit_type_phase],'%s')
-    self.np_savetxt_safe(self.SurrogateID+self._fit_type_amp_file,[fit_type_amp],'%s')
-    self.np_savetxt_safe(self.SurrogateID+self._fit_type_norm_file,[fit_type_norm],'%s')
-    self.np_savetxt_safe(self.SurrogateID+self._parameterization,[parameterization],'%s')
+    self.np_savetxt_safe(self.SurrogateID+self._fitparams_norm_file,\
+                         fitparams_norm)
+    self.np_savetxt_safe(self.SurrogateID+self._fit_type_phase_file,\
+                         [fit_type_phase],'%s')
+    self.np_savetxt_safe(self.SurrogateID+self._fit_type_amp_file,\
+                         [fit_type_amp],'%s')
+    self.np_savetxt_safe(self.SurrogateID+self._fit_type_norm_file,\
+                         [fit_type_norm],'%s')
+    self.np_savetxt_safe(self.SurrogateID+self._parameterization,\
+                         [parameterization],'%s')
 
