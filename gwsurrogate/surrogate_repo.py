@@ -29,51 +29,52 @@ THE SOFTWARE.
 
 import os
 
-### Naming convention: dictionary KEY (e.g. EOBNRv2) should match file KEY.tar.gz (e.g. EOBNRv2.tar.gz) ###
+### Naming convention: dictionary KEY should match file name KEY.tar.gz ###
 
 ### dictionary of all known surrogates -- download location ###
 _surrogate_world = {'EOBNRv2':'https://www.dropbox.com/s/4dpiw0zzh1wddmq/EOBNRv2.tar.gz'}
 
 ### dictionary of all known surrogates -- information ###
-_surrogate_world_info = {'EOBNRv2':'add info here'}
+_surrogate_world_info = {'EOBNRv2':'Collection of single mode surrogates from mass ratios 1 to 10, as long as 190000M and modes (2,1), (2,2), (3,3), (4,4), (5,5). This is not a true multi-mode surrogate, and relative time/phase information between the modes has not been preseved.'}
 
 def download_path():
-	'''return the default path for downloaded surrogates'''
+  '''return the default path for downloaded surrogates'''
 
-	import gwsurrogate
-	import os
-	gws_path = os.path.dirname(gwsurrogate.__file__)
-	return gws_path+'/../surrogate_downloads/'
+  import gwsurrogate
+  import os
+  gws_path = os.path.dirname(gwsurrogate.__file__)
+  return gws_path+'/../surrogate_downloads/'
 
 def list():
-	'''show all known surrogates available for download'''
+  '''show all known surrogates available for download'''
 
-	for surr_id, surr_url in _surrogate_world.iteritems():
-		print surr_id+' is located at '+surr_url
+  for surr_id in _surrogate_world.keys():
+    print surr_id+' is located at '+_surrogate_world[surr_id]
+    print "Description: "+_surrogate_world_info[surr_id]+'\n\n'
 
 def get(surr_name,sdir=None):
-	'''pass a valid surr_name from the repo list and download location. The default path is used if no location supplied'''
+  '''pass a valid surr_name from the repo list and download location. The default path is used if no location supplied'''
 
-	if( sdir is None):
-		download_to = download_path()
-	else:
-		download_to = sdir
+  if( sdir is None):
+    download_to = download_path()
+  else:
+    download_to = sdir
 
-	if _surrogate_world.has_key(surr_name):
-		os.system('wget --directory-prefix='+download_to+' '+_surrogate_world[surr_name])
-	else:
-		raise ValueError("No surrogate package exits")
+  if _surrogate_world.has_key(surr_name):
+    os.system('wget --directory-prefix='+download_to+' '+_surrogate_world[surr_name])
+  else:
+    raise ValueError("No surrogate package exits")
 
 def unzip(surr_name,sdir=None):
 
-	### TODO: check that surr_name exists
-	if ( sdir is None):
-		unzip_me = download_path()
-	else:
-		unzip_me = sdir
+  ### TODO: check that surr_name exists
+  if ( sdir is None):
+    unzip_me = download_path()
+  else:
+    unzip_me = sdir
 
-	os.system('tar -xvzf '+unzip_me+surr_name+'.tar.gz')
-	os.system('mv '+surr_name+ ' '+unzip_me)
+  os.system('tar -xvzf '+unzip_me+surr_name+'.tar.gz')
+  os.system('mv '+surr_name+ ' '+unzip_me)
 
-	# returns location of unziped surrogate
-	return unzip_me+surr_name+'/'
+  # returns location of unziped surrogate
+  return unzip_me+surr_name+'/'
