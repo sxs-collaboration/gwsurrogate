@@ -448,7 +448,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def norm_eval(self, q):
-    """evaluate norm fit at q. wrapper for norm evaluations evoked from utiside of the class"""
+    """evaluate norm fit at q. wrapper for norm evaluations called from outside of the class"""
 
     x_0 = self._affine_mapper(q)
     return self._norm_eval(x_0)
@@ -640,11 +640,7 @@ class EvaluateSurrogate():
 
     ### Load/deduce multi-mode surrogate properties ###
 
-    tmp = avail_modes[0]
-    self.single_mode(tmp)._check_training_interval(self.single_mode(tmp).get_surr_params(q))
-    self._check_training_interval
-
-   if filemode not in ['r+', 'w']:      
+    if filemode not in ['r+', 'w']:      
       if len(self.single_modes) == 0:
         raise IOError('Modes not found. Mode subdirectories begins with l#_m#_')
 
@@ -686,7 +682,7 @@ class EvaluateSurrogate():
        =================
        For circular orbits, the binary's orbital angular momentum is taken to
        be the z-axis. Theta and phi is location on the sphere relative to this 
-       coordiante system. """
+       coordinate system. """
 
 
     if fake_neg_modes and (ell is not None and m is not None):
@@ -771,12 +767,12 @@ class EvaluateSurrogate():
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def evaluate_single_mode(self,q, M, dist, f_low, samples, samples_units,ell,m):
-    """ light wrapper around single mode evaluator to gaurd against m < 0 modes """
+    """ light wrapper around single mode evaluator to guard against m < 0 modes """
 
     if m >=0:
       t_mode, hp_mode, hc_mode = self.single_modes[(ell,m)](q, M, dist, None, f_low, samples, samples_units,singlemode_call=False)
     else:
-      raise ValueError('m must be non-negative. evalutate m < 0 modes with evaluate_single_mode_minus')
+      raise ValueError('m must be non-negative. evaluate m < 0 modes with evaluate_single_mode_minus')
 
     return t_mode, hp_mode, hc_mode
 
@@ -859,7 +855,7 @@ class EvaluateSurrogate():
     """ match discrete complex polarization (t_ref,h_ref) to surrogate waveform for 
         given input values. Inputs have same meaning as those passed to __call__
 
-        Minimzation (i.e. match) over time shifts and z-axis rotations"""
+        Minimization (i.e. match) over time shifts and z-axis rotations"""
 
     # TODO: routine only works for hp,hc evaluated on the sphere. should extend to modes
 

@@ -58,7 +58,7 @@ surrogate_description = """* Description of tags:
       fitparams_amp   -- fitting parameters for waveform amplitude
       fitparams_phase -- fitting parameters for waveform phase
       greedy_points   -- parameters selected by reduced basis greedy algorithm
-      B_1/B_2         -- Basis matricies (their meaning is described below)
+      B_1/B_2         -- Basis matrices (their meaning is described below)
       eim_indices     -- (Optional) indices of empirical nodes from time series array `t`
       fitparams_norm  -- (Optional) fitting parameters for waveform norm
       V_1/V_2         -- (Optional) Generalized Vandermonde matrix from empirical 
