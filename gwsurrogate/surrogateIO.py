@@ -279,10 +279,18 @@ class H5Surrogate(H5SurrogateIO):
     self.greedy_points = self.file[subdir+'greedy_points'][:]
     
     ### Empirical time index (ordered by EIM selection) ###
-    self.eim_indices = self.file[subdir+'eim_indices'][:]
+    if self.surrogate_mode_type == 'amp_phase_basis':
+      self.eim_indices_amp = self.file[subdir+'eim_indices'][:]
+      self.eim_indices_phase = self.file[subdir+'eim_indices_phase'][:]
+    else:
+      self.eim_indices = self.file[subdir+'eim_indices'][:]
     
     ### Complex B coefficients ###
-    self.B = self.file[subdir+'B'][:]	
+    if self.surrogate_mode_type == 'amp_phase_basis':
+      self.B_1 = self.file[subdir+'B'][:]
+      self.B_2 = self.file[subdir+'B_phase'][:]
+    else:
+      self.B = self.file[subdir+'B'][:]	
     
     ### Information about phase/amp parametric fit ###
     if 'affine_map' in self.keys:
@@ -317,18 +325,24 @@ class H5Surrogate(H5SurrogateIO):
       self.eim_phase = self.file[subdir+'eim_phase'][:]
     
     ### Transpose matrices if surrogate was built using ROMpy ###
-    Bshape = np.shape(self.B)
+    if not self.surrogate_mode_type == 'amp_phase_basis':
+      Bshape = np.shape(self.B)
     
-    if Bshape[0] < Bshape[1]:
-      transposeB = True
-      self.B = np.transpose(self.B)
-      self.dim_rb = Bshape[0]
-      self.time_samples = Bshape[1]
+      if Bshape[0] < Bshape[1]:
+        transposeB = True
+        self.B = np.transpose(self.B)
+        self.dim_rb = Bshape[0]
+        self.time_samples = Bshape[1]
     
+      else:
+        self.dim_rb = Bshape[1]
+        self.time_samples = Bshape[0]
     else:
-      self.dim_rb = Bshape[1]
-      self.time_samples = Bshape[0]
-    
+        Bshape = np.shape(self.B_1)
+        self.dim_rb = Bshape[0]
+        self.time_samples = Bshape[1]
+        self.dim_rb_phase = np.shape(self.B_2)[0]
+
     ### Vandermonde V such that E (orthogonal basis) is E = BV ###
     if 'V' in self.keys:
       self.V = self.file[subdir+'V'][:]
