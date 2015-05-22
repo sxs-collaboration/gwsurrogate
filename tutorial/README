@@ -1,5 +1,0 @@
-Open a notebook, for example example1.ipynb, with
-
-  >>> ipython notebook example1.ipynb
-
-from the directory 'notebook'

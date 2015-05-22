@@ -63,7 +63,13 @@ or from ipython with
 >>> import gwsurrogate as gws
 >>> gws?
 
-Additional examples can be found in the accompanying ipython notebooks.
+Additional examples can be found in the accompanying ipython notebooks
+located in the 'tutorial' folder. To open a notebook, for example
+basics.ipynb, do
+
+  >>> ipython notebook example1.ipynb
+
+from the directory 'notebooks'
 
 
 NSF Support
@@ -77,9 +83,3 @@ gwsurrogate are those of the authors and do not necessarily reflect the
 views of the National Science Foundation.
 
 
-Planned Development
--------------------
-
--- More descriptive surrogate names
--- log files for all downloaded surrogates, and tools for viewing them
--- parameter array inputs for generating multiple surrogate evaluations
