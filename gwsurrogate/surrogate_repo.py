@@ -32,10 +32,15 @@ import os
 ### Naming convention: dictionary KEY should match file name KEY.tar.gz ###
 
 ### dictionary of all known surrogates -- download location ###
-_surrogate_world = {'EOBNRv2':'https://www.dropbox.com/s/4dpiw0zzh1wddmq/EOBNRv2.tar.gz'}
+_surrogate_world = \
+{'EOBNRv2':'https://www.dropbox.com/s/4dpiw0zzh1wddmq/EOBNRv2.tar.gz'}
 
 ### dictionary of all known surrogates -- information ###
-_surrogate_world_info = {'EOBNRv2':'Collection of single mode surrogates from mass ratios 1 to 10, as long as 190000M and modes (2,1), (2,2), (3,3), (4,4), (5,5). This is not a true multi-mode surrogate, and relative time/phase information between the modes has not been preseved.'}
+_surrogate_world_info = \
+{'EOBNRv2':'''Collection of single mode surrogates from mass ratios 1 to 10, 
+as long as 190000M and modes (2,1), (2,2), (3,3), (4,4), (5,5). This is not 
+a true multi-mode surrogate, and relative time/phase information between 
+the modes have not been preseved.'''}
 
 def download_path():
   '''return the default path for downloaded surrogates'''
@@ -53,7 +58,8 @@ def list():
     print "Description: "+_surrogate_world_info[surr_id]+'\n\n'
 
 def get(surr_name,sdir=None):
-  '''pass a valid surr_name from the repo list and download location. The default path is used if no location supplied'''
+  '''pass a valid surr_name from the repo list and download location. 
+     The default path is used if no location supplied'''
 
   if( sdir is None):
     download_to = download_path()
