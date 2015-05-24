@@ -10,7 +10,7 @@ setup(name='gwsurrogate',
       contributors=[
       # Alphabetical by last name.
       "Jonathan Blackman"],
-      description='an easy to use interface to gravitational wave surrogate models',
+      description='An easy to use interface to gravitational wave surrogate models',
       install_requires=["numpy","matplotlib","scipy"],
       classifiers=[
                 'Intended Audience :: Other Audience',
