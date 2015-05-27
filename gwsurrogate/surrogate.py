@@ -708,9 +708,9 @@ class EvaluateSurrogate():
 
     ### allocate arrays for multimode polarizations ###
     if mode_sum:
-      hp_full, hc_full = self._allocate_output_array(samples,1)
+      hp_full, hc_full = self._allocate_output_array(samples,1,mode_sum)
     else:
-      hp_full, hc_full = self._allocate_output_array(samples,len(modes_to_evaluate))
+      hp_full, hc_full = self._allocate_output_array(samples,len(modes_to_evaluate),mode_sum)
 
     ### loop over all evaluation modes ###
     # TODO: internal workings are simplified if h used instead of (hc,hp)
@@ -802,6 +802,7 @@ class EvaluateSurrogate():
       1) ell=m=None: use all available model modes
       2) ell=NUM, m=None: all modes up to ell_max = NUM. unmodelled modes set to zero
       3) list of [ell], [m] pairs: only use modes (ell,m). unmodelled modes set to zero 
+         ex: ell=[3,2] and m=[2,2] generates a (3,2) and (2,2) mode.
 
       These three options produce a list of (ell,m) modes. set minus_m=True 
       to generate m<0 modes from m>0 modes."""
@@ -815,8 +816,11 @@ class EvaluateSurrogate():
       for L in range(2,LMax+1):
         for emm in range(0,L+1):
           modes_to_eval.append((L,emm))
-    else:
-      modes_to_eval = [(x, y) for x in ell for y in m]
+    else: # neither pythonic nor fast
+      #modes_to_eval = [(x, y) for x in ell for y in m]
+      modes_to_eval = []
+      for ii in range(len(ell)):
+        modes_to_eval.append((ell[ii],m[ii]))
 
     ### if m<0 requested, build these from m>=0 list ###
     if minus_m:
@@ -936,14 +940,16 @@ class EvaluateSurrogate():
   # class (such as memory allocation)
  
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def _allocate_output_array(self,samples,num_modes):
+  def _allocate_output_array(self,samples,num_modes,mode_sum):
     """ allocate memory for result of hp, hc.
 
     Input
     =====
     samples   --- array of time samples. None if using default
-    num_modes --- number of harmonic modes (cols). set to 1 if summation over modes"""
+    num_modes --- number of harmonic modes (cols). set to 1 if summation over modes
+    mode_sum  --- whether or not modes will be summed over (see code for why necessary)"""
 
+    # TODO: should the dtype be complex?
     if (samples is not None):
       hp_full = np.zeros((samples.shape[0],num_modes))
       hc_full = np.zeros((samples.shape[0],num_modes))
@@ -951,7 +957,7 @@ class EvaluateSurrogate():
       hp_full = np.zeros((self.time_all_modes().shape[0],num_modes))
       hc_full = np.zeros((self.time_all_modes().shape[0],num_modes))
 
-    if( num_modes == 1): # to prevent broadcast when summing over modes
+    if(num_modes==1 and mode_sum): # to prevent broadcast when summing over modes
       hp_full = hp_full.reshape([hp_full.shape[0],])
       hc_full = hp_full.reshape([hp_full.shape[0],])
 
