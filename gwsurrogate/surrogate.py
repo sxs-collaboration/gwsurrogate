@@ -27,31 +27,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+# adding "_" prefix to potentially unfamiliar module names
+# so they won't show up in gws' tab completion
 import numpy as np
-from scipy.interpolate import splrep
-from scipy.interpolate import splev
-from harmonics import sYlm as sYlm
+from scipy.interpolate import splrep as _splrep
+from scipy.interpolate import splev as _splev
+from harmonics import sYlm as _sYlm
 import const_mks as mks
-import gwtools
-import matplotlib.pyplot as plt
-import time
-import os as os
+import gwtools as _gwtools
 from parametric_funcs import function_dict as my_funcs
-from surrogateIO import H5Surrogate, TextSurrogateRead, TextSurrogateWrite
+from surrogateIO import H5Surrogate as _H5Surrogate
+from surrogateIO import TextSurrogateRead as _TextSurrogateRead
+from surrogateIO import TextSurrogateWrite as _TextSurrogateWrite
 
 try:
-	import h5py
-	h5py_enabled = True
+  import h5py
+  h5py_enabled = True
 except ImportError:
-	h5py_enabled = False
+  h5py_enabled = False
 
 
 # needed to search for single mode surrogate directories 
-def list_folders(path,prefix):
-        '''returns all folders which begin with some prefix'''
-        for f in os.listdir(path):
-                if f.startswith(prefix):
-                        yield f
+def _list_folders(path,prefix):
+  '''returns all folders which begin with some prefix'''
+  import os as os
+  for f in os.listdir(path):
+    if f.startswith(prefix):
+      yield f
 
 # handy helper to save waveforms 
 def write_waveform(t, hp, hc, filename='output',ext='bin'):
@@ -66,7 +68,7 @@ def write_waveform(t, hp, hc, filename='output',ext='bin'):
 
 
 ##############################################
-class ExportSurrogate(H5Surrogate, TextSurrogateWrite):
+class ExportSurrogate(_H5Surrogate, _TextSurrogateWrite):
 	"""Export single-mode surrogate"""
 	
 	#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -75,13 +77,13 @@ class ExportSurrogate(H5Surrogate, TextSurrogateWrite):
 		# export HDF5 or Text surrogate data depending on input file extension
 		ext = path.split('.')[-1]
 		if ext == 'hdf5' or ext == 'h5':
-			H5Surrogate.__init__(self, file=path, mode='w')
+			_H5Surrogate.__init__(self, file=path, mode='w')
 		else:
 			raise ValueError('use TextSurrogateWrite instead')
 
 
 ##############################################
-class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
+class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   """Evaluate single-mode surrogate in terms of the waveforms' amplitude and phase"""
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -93,23 +95,24 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
     else:
       ext = path.split('.')[-1]
     if ext == 'hdf5' or ext == 'h5':
-      H5Surrogate.__init__(self, file=path, mode='r', subdir=subdir, closeQ=closeQ)
+      _H5Surrogate.__init__(self, file=path, mode='r', subdir=subdir, closeQ=closeQ)
     else:
-      TextSurrogateRead.__init__(self, path)
+      _TextSurrogateRead.__init__(self, path)
     
     # Interpolate columns of the empirical interpolant operator, B, using cubic spline
     if self.surrogate_mode_type  == 'waveform_basis':
-      self.reB_spline_params = [splrep(self.times, self.B[:,jj].real, k=deg) for jj in range(self.B.shape[1])]
-      self.imB_spline_params = [splrep(self.times, self.B[:,jj].imag, k=deg) for jj in range(self.B.shape[1])]
+      self.reB_spline_params = [_splrep(self.times, self.B[:,jj].real, k=deg) for jj in range(self.B.shape[1])]
+      self.imB_spline_params = [_splrep(self.times, self.B[:,jj].imag, k=deg) for jj in range(self.B.shape[1])]
     elif self.surrogate_mode_type  == 'amp_phase_basis':
-      self.B1_spline_params = [splrep(self.times, self.B_1[:,jj], k=deg) for jj in range(self.B_1.shape[1])]
-      self.B2_spline_params = [splrep(self.times, self.B_2[:,jj], k=deg) for jj in range(self.B_2.shape[1])]
+      self.B1_spline_params = [_splrep(self.times, self.B_1[:,jj], k=deg) for jj in range(self.B_1.shape[1])]
+      self.B2_spline_params = [_splrep(self.times, self.B_2[:,jj], k=deg) for jj in range(self.B_2.shape[1])]
     else:
       raise ValueError('invalid surrogate type')
 
     # Convenience for plotting purposes
+    import matplotlib.pyplot as plt
     self.plt = plt
-    self.plot_pretty = gwtools.plot_pretty
+    self.plot_pretty = _gwtools.plot_pretty
 
     # All surrogates are dimensionless - this tag enforces this and could be generalized 
     self.surrogate_units = 'dimensionless'
@@ -210,7 +213,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
 
        where \partial_t A ~ \partial_t f ~ 0. If f_low passed will check its been achieved."""
 
-    f_instant = gwtools.find_instant_freq(hp, hc, t)
+    f_instant = _gwtools.find_instant_freq(hp, hc, t)
 
     if f_low is None:
       return f_instant
@@ -224,7 +227,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def amp_phase(self,h):
     """Get amplitude and phase of waveform, h = A*exp(i*phi)"""
-    return gwtools.amp_phase(h)
+    return _gwtools.amp_phase(h)
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -244,7 +247,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
     phimerger = self.phi_merger(h)
     phiadj    = phiref - phimerger
 
-    return gwtools.modify_phase(h,phiadj)
+    return _gwtools.modify_phase(h,phiadj)
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -254,6 +257,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
     qmin, qmax = self.fit_interval
     ran = np.random.uniform(qmin, qmax, 1000)
 
+    import time
     tic = time.time()
     if M_eval is None:
       for i in ran:
@@ -314,8 +318,8 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def resample_B(self, samples):
     """resample the empirical interpolant operator, B, at the input samples"""
-    return np.array([splev(samples, self.reB_spline_params[jj])  \
-             + 1j*splev(samples, self.imB_spline_params[jj]) for jj in range(self.B.shape[1])]).T
+    return np.array([_splev(samples, self.reB_spline_params[jj])  \
+             + 1j*_splev(samples, self.imB_spline_params[jj]) for jj in range(self.B.shape[1])]).T
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -345,9 +349,9 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
       'hphc': [hp, hc],
       'hp': hp,
       'hc': hc,
-      'AmpPhase': [np.abs(h), gwtools.phase(h)],
+      'AmpPhase': [np.abs(h), _gwtools.phase(h)],
       'Amp': np.abs(h),
-      'Phase': gwtools.phase(h),
+      'Phase': _gwtools.phase(h),
       }
     
     if self.t_units == 'TOverMtot':
@@ -381,7 +385,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
       }
     
     if nuQ:
-      nu = gwtools.q_to_nu(self.greedy_points)
+      nu = _gwtools.q_to_nu(self.greedy_points)
       
       if inode is None:
         [self.plt.plot(nu, ee, 'ko') for ee in y[htype]]
@@ -426,7 +430,7 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
     self.plot_eim_data(inode=inode, htype=htype, nuQ=nuQ, fignum=fignum, showQ=False)
     
     qs = np.linspace(self.fit_min, self.fit_max, num)
-    nus = gwtools.q_to_nu(qs)
+    nus = _gwtools.q_to_nu(qs)
     
     # Plot fits to EIM data points
     if nuQ:
@@ -546,8 +550,8 @@ class EvaluateSingleModeSurrogate(H5Surrogate, TextSurrogateRead):
         sur_A = np.dot(self.B_1, amp_eval)
         sur_P = np.dot(self.B_2, phase_eval)
       else:
-        sur_A = np.dot(np.array([splev(samples, self.B1_spline_params[jj]) for jj in range(self.B_1.shape[1])]).T, amp_eval)
-        sur_P = np.dot(np.array([splev(samples, self.B2_spline_params[jj]) for jj in range(self.B_2.shape[1])]).T, phase_eval)
+        sur_A = np.dot(np.array([_splev(samples, self.B1_spline_params[jj]) for jj in range(self.B_1.shape[1])]).T, amp_eval)
+        sur_P = np.dot(np.array([_splev(samples, self.B2_spline_params[jj]) for jj in range(self.B_2.shape[1])]).T, phase_eval)
 
       surrogate = sur_A*np.exp(1j*sur_P)
 
@@ -581,10 +585,11 @@ class EvaluateSurrogate():
                      'surrogate_mode_type', 'parameterization']
     
     # Convenience for plotting purposes
+    import matplotlib.pyplot as plt
     self.plt = plt
 
     ### fill up dictionary with single mode surrogate class ###
-    self.single_modes = dict()
+    self.single_mode_dict = dict()
 
     # Load HDF5 or Text surrogate data depending on input file extension
     if type(path) == h5py._hl.files.File:
@@ -610,7 +615,7 @@ class EvaluateSurrogate():
         for mode_key in mode_keys:
           mode_key_str = 'l'+str(mode_key[0])+'_m'+str(mode_key[1])
           print "loading surrogate mode... " + mode_key_str
-          self.single_modes[mode_key] = \
+          self.single_mode_dict[mode_key] = \
             EvaluateSingleModeSurrogate(fp,subdir=mode_key_str+'/',closeQ=False)
         fp.close()
         
@@ -620,20 +625,20 @@ class EvaluateSurrogate():
       ### compile list of available modes ###
       # assumes (i) single mode folder format l#_m#_ 
       #         (ii) ell<=9, m>=0
-      for single_mode in list_folders(path,'l'):
+      for single_mode in _list_folders(path,'l'):
         ell = int(single_mode[1])
         emm = int(single_mode[4])
         mode_key = (ell,emm)
         if (ell_m is None) or (mode_key in ell_m):
           print "loading surrogate mode... "+single_mode[0:5]
-          self.single_modes[mode_key] = \
+          self.single_mode_dict[mode_key] = \
             EvaluateSingleModeSurrogate(path+single_mode+'/')
 
       ### check all requested modes have been loaded ###
       if ell_m is not None:
         for tmp in ell_m:
           try:
-            self.single_modes[tmp]
+            self.single_mode_dict[tmp]
           except KeyError:
             print 'Could not find mode '+str(tmp)
 
@@ -641,17 +646,17 @@ class EvaluateSurrogate():
     ### Load/deduce multi-mode surrogate properties ###
 
     if filemode not in ['r+', 'w']:      
-      if len(self.single_modes) == 0:
+      if len(self.single_mode_dict) == 0:
         raise IOError('Modes not found. Mode subdirectories begins with l#_m#_')
 
       ### Check single mode temporal grids are collocated ###
-      grid_shape = self.single_modes[self.single_modes.keys()[0]].time().shape
-      for key in self.single_modes.keys():
-        tmp_shape = self.single_modes[self.single_modes.keys()[0]].time().shape
+      grid_shape = self.single_mode_dict[self.single_mode_dict.keys()[0]].time().shape
+      for key in self.single_mode_dict.keys():
+        tmp_shape = self.single_mode_dict[self.single_mode_dict.keys()[0]].time().shape
         if(grid_shape != tmp_shape):
           raise ValueError('inconsistent single mode temporal grids')
       
-      self.time_all_modes = self.single_modes[self.single_modes.keys()[0]].time
+      self.time_all_modes = self.single_mode_dict[self.single_mode_dict.keys()[0]].time
 
       # TODO: other common data to merge: surrogate parameter intervals
       # Bad idea? if modes use different parameterization -- better to let modes handle this?
@@ -721,7 +726,7 @@ class EvaluateSurrogate():
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode_minus(q,M,dist,f_low,samples,samples_units,ell,m)
 
         if z_rot is not None:
-          h_tmp   = gwtools.modify_phase(hp_mode+1.0j*hc_mode,z_rot*m)
+          h_tmp   = _gwtools.modify_phase(hp_mode+1.0j*hc_mode,z_rot*m)
           hp_mode = h_tmp.real
           hc_mode = h_tmp.imag
 
@@ -758,7 +763,7 @@ class EvaluateSurrogate():
     if theta is not None: 
       #if phi is None: phi = 0.0
       if phi is None: raise ValueError('phi must have a value')
-      sYlm_value =  sYlm(-2,ll=ell,mm=m,theta=theta,phi=phi)
+      sYlm_value =  _sYlm(-2,ll=ell,mm=m,theta=theta,phi=phi)
       h = sYlm_value*(hp_mode + 1.0j*hc_mode)
       hp_mode = h.real
       hc_mode = h.imag
@@ -770,7 +775,7 @@ class EvaluateSurrogate():
     """ light wrapper around single mode evaluator to guard against m < 0 modes """
 
     if m >=0:
-      t_mode, hp_mode, hc_mode = self.single_modes[(ell,m)](q, M, dist, None, f_low, samples, samples_units,singlemode_call=False)
+      t_mode, hp_mode, hc_mode = self.single_mode_dict[(ell,m)](q, M, dist, None, f_low, samples, samples_units,singlemode_call=False)
     else:
       raise ValueError('m must be non-negative. evaluate m < 0 modes with evaluate_single_mode_minus')
 
@@ -834,7 +839,7 @@ class EvaluateSurrogate():
     """ from single mode keys deduce all available model modes.
         If minus_m=True, include (ell,-m) whenever (ell,m) is available ."""
 
-    model_modes = [(ell,m) for ell,m in self.single_modes.keys()]
+    model_modes = [(ell,m) for ell,m in self.single_mode_dict.keys()]
 
     if minus_m:
       model_modes = self._extend_mode_list_minus_m(model_modes)
@@ -844,8 +849,9 @@ class EvaluateSurrogate():
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def single_mode(self,mode):
-    """ returns single mode class for mode=(ell,m)"""
-    return self.single_modes[mode] 
+    """ Returns a single-mode object for mode=(ell,m).
+        This object stores information for the (ell,m)-mode surrogate"""
+    return self.single_mode_dict[mode] 
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -872,13 +878,13 @@ class EvaluateSurrogate():
 
       # TODO: this deltaPhi is overall phase shift -- NOT a good guess for minimizations
       junk1, h2_eval, common_times, deltaT, deltaPhi = \
-         gwtools.setup_minimization_from_discrete_waveforms(time_sur,h_sur,t_ref,h_ref,t_low_adj,t_up_adj)
+         _gwtools.setup_minimization_from_discrete_waveforms(time_sur,h_sur,t_ref,h_ref,t_low_adj,t_up_adj)
 
       ### (tc,phic)-parameterized waveform function to induce a parameterized norm ###
       def parameterized_waveform(x):
         tc   = x[0]
         phic = x[1]
-        times = gwtools.coordinate_time_shift(common_times,tc)        
+        times = _gwtools.coordinate_time_shift(common_times,tc)        
         times,hp,hc = self.__call__(q=q,M=M,dist=dist,theta=theta,phi=phic,\
                                   samples=times,samples_units=t_ref_units,ell=ell,m=m,fake_neg_modes=fake_neg_modes)
         return hp + 1.0j*hc
@@ -886,22 +892,22 @@ class EvaluateSurrogate():
     elif speed == 'fast': # build spline interpolant of modes, evaluate the interpolant
 
       modes_to_evaluate, t_mode, hp_full, hc_full = self.__call__(q=q,M=M,dist=dist,ell=ell,m=m,mode_sum=False,fake_neg_modes=fake_neg_modes)
-      h_sphere = gwtools.h_sphere_builder(modes_to_evaluate, hp_full, hc_full, t_mode)
+      h_sphere = _gwtools.h_sphere_builder(modes_to_evaluate, hp_full, hc_full, t_mode)
 
       hp,hc=h_sphere(t_mode,theta=theta, phi=0.0, z_rot=None, psi_rot=None)
       h1=hp+1.0j*hc
 
       junk1, h2_eval, common_times, deltaT, deltaPhi = \
-          gwtools.setup_minimization_from_discrete_waveforms(t_mode,h1,t_ref,h_ref,t_low_adj,t_up_adj)
-      parameterized_waveform = gwtools.generate_parameterize_waveform(common_times,h_sphere,'h_sphere',theta)
+          _gwtools.setup_minimization_from_discrete_waveforms(t_mode,h1,t_ref,h_ref,t_low_adj,t_up_adj)
+      parameterized_waveform = _gwtools.generate_parameterize_waveform(common_times,h_sphere,'h_sphere',theta)
 
     else:
       raise ValueError('not coded yet')
 
     ### solve minimization problem ###
     [guessed_norm,min_norm], opt_solution, hsur_align = \
-      gwtools.minimize_waveform_match(parameterized_waveform,\
-                                      h2_eval,gwtools.euclidean_norm_sqrd,\
+      _gwtools.minimize_waveform_match(parameterized_waveform,\
+                                      h2_eval,_gwtools.euclidean_norm_sqrd,\
                                       [deltaT,-deltaPhi/2.0],'nelder-mead')
 
 
@@ -920,7 +926,7 @@ class EvaluateSurrogate():
     modes_to_evaluate, t_mode, hp_full, hc_full = \
       self(q=q, M=M, dist=dist, mode_sum=False,ell=ell,m=m)
 
-    h_sphere = gwtools.h_sphere_builder(modes_to_evaluate, hp_full, hc_full, t_mode)
+    h_sphere = _gwtools.h_sphere_builder(modes_to_evaluate, hp_full, hc_full, t_mode)
     
     return h_sphere, modes_to_evaluate,
 
