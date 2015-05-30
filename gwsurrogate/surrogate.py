@@ -316,10 +316,11 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def resample_B(self, samples):
+  # TODO: ext should be passed from __call__
+  def resample_B(self, samples, ext=1):
     """resample the empirical interpolant operator, B, at the input samples"""
-    return np.array([_splev(samples, self.reB_spline_params[jj])  \
-             + 1j*_splev(samples, self.imB_spline_params[jj]) for jj in range(self.B.shape[1])]).T
+    return np.array([_splev(samples, self.reB_spline_params[jj],ext=ext)  \
+             + 1j*_splev(samples, self.imB_spline_params[jj],ext=ext) for jj in range(self.B.shape[1])]).T
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -483,14 +484,18 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     return x_0
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def _check_training_interval(self, x):
+  # TODO: strong_checking should be kwargs
+  def _check_training_interval(self, x, strong_checking=True):
     """Check if parameter value x within the training interval."""
 
     x_min, x_max = self.fit_interval
 
     if(x < x_min or x > x_max):
-      print "Warning: Surrogate not trained at requested parameter value" # needed to display in ipython notebook
-      Warning("Surrogate not trained at requested parameter value")
+      if strong_checking:
+        raise ValueError('Surrogate not trained at requested parameter value')
+      else:
+        print "Warning: Surrogate not trained at requested parameter value"
+        Warning("Surrogate not trained at requested parameter value")
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -536,6 +541,8 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if self.surrogate_mode_type  == 'waveform_basis':
 
       ### Build dim_RB-vector fit evaluation of h ###
+      # TODO: amp/phase and waveform basis types need to be better integrated
+      #       e.g.... resample_B should handle both cases
       h_EIM = amp_eval*np.exp(1j*phase_eval)
 		
       if samples == None:
@@ -550,8 +557,8 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
         sur_A = np.dot(self.B_1, amp_eval)
         sur_P = np.dot(self.B_2, phase_eval)
       else:
-        sur_A = np.dot(np.array([_splev(samples, self.B1_spline_params[jj]) for jj in range(self.B_1.shape[1])]).T, amp_eval)
-        sur_P = np.dot(np.array([_splev(samples, self.B2_spline_params[jj]) for jj in range(self.B_2.shape[1])]).T, phase_eval)
+        sur_A = np.dot(np.array([_splev(samples, self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T, amp_eval)
+        sur_P = np.dot(np.array([_splev(samples, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T, phase_eval)
 
       surrogate = sur_A*np.exp(1j*sur_P)
 
