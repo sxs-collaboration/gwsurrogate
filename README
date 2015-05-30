@@ -79,6 +79,16 @@ Surrogates can be downloaded directly from gwsurrogate.
 
 For download instructions see the basics.ipynb ipython notebook.
 
+
+Tests
+-----
+
+If you have downloaded the entire project as a tar.gz file, from the 
+top folder, do
+
+>>> py.test
+
+
 NSF Support
 -----------
 

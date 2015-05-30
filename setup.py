@@ -2,7 +2,7 @@ from distutils.core import setup
 import sys
 
 setup(name='gwsurrogate',
-      version='0.3',
+      version='0.3.1',
       author='Scott Field, Chad Galley',
       author_email='sfield@astro.cornell.edu',
       packages=['gwsurrogate'],
