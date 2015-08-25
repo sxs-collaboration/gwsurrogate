@@ -113,10 +113,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     import matplotlib.pyplot as plt
     self.plt = plt
     self.plot_pretty = _gwtools.plot_pretty
-
-    # All surrogates are dimensionless - this tag enforces this and could be generalized 
-    self.surrogate_units = 'dimensionless'
-    
+ 
     pass
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -274,25 +271,40 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
 	
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def time(self, units=None,M=None):
-    """Return time samples at which the surrogate was built for.
+  def time(self, units=None,M=None,dt=None):
+    """Return the set of time samples at which the surrogate is defined.
+       If dt is supplied, return the requested uniform grid.
 
-      INPUT
+      INPUT (all optional)
       =====
       units --- None:        time in geometric units, G=c=1
                 'mks'        time in seconds
                 'solarmass': time in solar masses
-      M     --- Mass in units of solar masses. Must be provided if units='mks'"""
+      M     --- Mass (in units of solar masses).
+      dt    --- delta T
+
+      OUTPUT
+      ======
+      1) units = M = None:   Return time samples at which the surrogate as built for.
+      2) units != None, M=:  Times after we convert from surrogate's self.t_units to units.
+                             If units = 'mks' and self.t_units='TOverMtot' then M must
+                             be supplied to carry out conversion.
+      3) dt != None:         Return time grid as np.arange(t[0],t[-1],dt)"""
+
 
     if units is None:
       t = self.times
-    elif units == 'solarmass':
-      t = mks.Msuninsec * self.times
-    elif units == 'mks':
+    elif (units == 'mks') and (self.t_units == 'TOverMtot'):
+      assert(M!=None)
       t = (mks.Msuninsec*M) * self.times
-    return t
+    else:
+      raise ValueError('Cannot compute times')
 
-	
+    if dt is None:
+      return t
+    else:
+      return np.arange(t[0],t[-1],dt)
+
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def basis(self, i, flavor='waveform'):
     """compute the ith cardinal, orthogonal, or waveform basis."""
@@ -314,13 +326,47 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
     return basis
 
-
+  # TODO: basis resampling should be unified.
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   # TODO: ext should be passed from __call__
   def resample_B(self, samples, ext=1):
     """resample the empirical interpolant operator, B, at the input samples"""
-    return np.array([_splev(samples, self.reB_spline_params[jj],ext=ext)  \
+
+    evaluations = np.array([_splev(samples, self.reB_spline_params[jj],ext=ext)  \
              + 1j*_splev(samples, self.imB_spline_params[jj],ext=ext) for jj in range(self.B.shape[1])]).T
+
+    # allow for extrapolation if very close to surrogate's temporal interval
+    if np.abs(samples[0] - self.times[0])/self.times[0] < 1.e-12:
+      evaluations[0] = np.array([_splev(samples[0], self.reB_spline_params[jj],)  \
+             + 1j*_splev(samples[0], self.imB_spline_params[jj]) for jj in range(self.B.shape[1])]).T
+    
+    return evaluations
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  # TODO: ext should be passed from __call__
+  def resample_B_1(self, samples, ext=1):
+    """resample the B_1 basis at the input samples"""
+
+    evaluations = np.array([_splev(samples, self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T
+
+    # allow for extrapolation if very close to surrogate's temporal interval
+    if np.abs(samples[0] - self.times[0])/self.times[0] < 1.e-12:
+      evaluations[0] = np.array([_splev(samples[0], self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T
+    
+    return evaluations
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  # TODO: ext should be passed from __call__
+  def resample_B_2(self, samples, ext=1):
+    """resample the B_2 basis at the input samples"""
+
+    evaluations = np.array([_splev(samples, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T
+
+    # allow for extrapolation if very close to surrogate's temporal interval
+    if np.abs(samples[0] - self.times[0])/self.times[0] < 1.e-12:
+      evaluations[0] = np.array([_splev(samples[0], self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T
+    
+    return evaluations
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -557,8 +603,10 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
         sur_A = np.dot(self.B_1, amp_eval)
         sur_P = np.dot(self.B_2, phase_eval)
       else:
-        sur_A = np.dot(np.array([_splev(samples, self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T, amp_eval)
-        sur_P = np.dot(np.array([_splev(samples, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T, phase_eval)
+        #sur_A = np.dot(np.array([_splev(samples, self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T, amp_eval)
+        #sur_P = np.dot(np.array([_splev(samples, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T, phase_eval)
+        sur_A = np.dot(self.resample_B_1(samples), amp_eval)
+        sur_P = np.dot(self.resample_B_2(samples), phase_eval)
 
       surrogate = sur_A*np.exp(1j*sur_P)
 
@@ -618,8 +666,11 @@ class EvaluateSurrogate():
           if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
             ell = int(splitkk[0][1])
             emm = int(splitkk[1][1:])
-            mode_keys.append((ell,emm))
+            mode_key = (ell,emm)
+            if (ell_m is None) or (mode_key in ell_m):
+              mode_keys.append((ell,emm))
         for mode_key in mode_keys:
+          assert(mode_keys.count(mode_key)==1)
           mode_key_str = 'l'+str(mode_key[0])+'_m'+str(mode_key[1])
           print "loading surrogate mode... " + mode_key_str
           self.single_mode_dict[mode_key] = \
@@ -637,6 +688,7 @@ class EvaluateSurrogate():
         emm = int(single_mode[4])
         mode_key = (ell,emm)
         if (ell_m is None) or (mode_key in ell_m):
+          assert(not self.single_mode_dict.has_key(mode_key))
           print "loading surrogate mode... "+single_mode[0:5]
           self.single_mode_dict[mode_key] = \
             EvaluateSingleModeSurrogate(path+single_mode+'/')
@@ -683,6 +735,8 @@ class EvaluateSurrogate():
       theta/phi      --- evaluate hp and hc modes at this location on sphere
       z_rot          --- physical rotation about angular momentum (z-)axis (radians)
       flow           --- instantaneous initial frequency, will check if flow_surrogate < flow mode-by-mode
+      samples        --- array of times at which surrogate is to be evaluated
+      samples_units  --- units ('mks' or 'dimensionless') of input array samples
       ell            --- list or array of N ell modes to evaluate for (if none, all modes are returned)
       m              --- for each ell, supply a matching m value 
       mode_sum       --- if true, all modes are summed, if false all modes are returned in an array
