@@ -591,7 +591,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       #       e.g.... resample_B should handle both cases
       h_EIM = amp_eval*np.exp(1j*phase_eval)
 		
-      if samples == None:
+      if samples is None:
         surrogate = np.dot(self.B, h_EIM)
       else:
         surrogate = np.dot(self.resample_B(samples), h_EIM)
@@ -599,7 +599,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
     elif self.surrogate_mode_type  == 'amp_phase_basis':
 
-      if samples == None:
+      if samples is None:
         sur_A = np.dot(self.B_1, amp_eval)
         sur_P = np.dot(self.B_2, phase_eval)
       else:
@@ -660,15 +660,16 @@ class EvaluateSurrogate():
         fp = h5py.File(path, filemode)
         
         ### compile list of available modes ###
-        mode_keys = []
-        for kk in fp.keys():
-          splitkk = kk.split('_')
-          if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
-            ell = int(splitkk[0][1])
-            emm = int(splitkk[1][1:])
-            mode_key = (ell,emm)
-            if (ell_m is None) or (mode_key in ell_m):
+        if ell_m is None:
+          mode_keys = []
+          for kk in fp.keys():
+            splitkk = kk.split('_')
+            if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
+              ell = int(splitkk[0][1])
+              emm = int(splitkk[1][1:])
               mode_keys.append((ell,emm))
+        else:
+          mode_keys = ell_m
         for mode_key in mode_keys:
           assert(mode_keys.count(mode_key)==1)
           mode_key_str = 'l'+str(mode_key[0])+'_m'+str(mode_key[1])
