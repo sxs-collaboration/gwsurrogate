@@ -54,6 +54,12 @@ surrogate_description = """* Description of tags:
 
       time_info       -- (i) tuple (dt, tmin, tmax) OR (ii) Nx2 matrix with 
                          times and quadrature weights
+      t_units         -- surrogate's temporal units (values = 'TOverMtot', ...)
+      surrogate_units -- currently hardcoded to be 'dimensionless'
+                         NOTE: error raised if t_units not 'TOverMtot'
+                               since surrogate_units and t_units describe the same
+                               information as evaluations are currently coded.
+                               In principle they *could* be different
       fit_interval    -- min/max values of parameters used for surrogate fitting
       fitparams_amp   -- fitting parameters for waveform amplitude
       fitparams_phase -- fitting parameters for waveform phase
@@ -274,7 +280,13 @@ class H5Surrogate(H5SurrogateIO):
       self.t_units = self.file[subdir+'t_units'][()]
     else:
       self.t_units = 'TOverMtot'
-    
+
+    ### redundently fill this variable too -- TODO: should have one var only ###
+    if(self.t_units == 'TOverMtot'):
+      self.surrogate_units = 'dimensionless'
+    else:
+      raise ValueError('surrogates must be dimensionless')
+
     ### Greedy points (ordered by RB selection) ###
     self.greedy_points = self.file[subdir+'greedy_points'][:]
     
@@ -481,6 +493,7 @@ class TextSurrogateIO:
   _V_2_file             = 'V_2.txt'
   _R_1_file             = 'R_1.txt'
   _R_2_file             = 'R_2.txt'
+  _t_units_file         = 't_units.txt'
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -515,6 +528,7 @@ class TextSurrogateRead(TextSurrogateIO):
     ### unpack time info ###
     # NOTE: models stored in dimensionless T/M, whereas basis may be
     # constructed in T. Basis not necessarily ortho wrt dt (see basis.ipynb)
+    # newer surrogate models use basis defined on stored time grid
     if(self.time_info.size == 3):
       self.dt      = self.time_info[2]
       self.tmin    = self.time_info[0]
@@ -522,13 +536,22 @@ class TextSurrogateRead(TextSurrogateIO):
 
       self.times              = np.arange(self.tmin, self.tmax+self.dt, self.dt)
       self.quadrature_weights = self.dt * np.ones(self.times.shape)
-		
     else:
       self.times              = time_info[:,0]
       self.quadrature_weights = time_info[:,1]
 
-    self.t_units = 'TOverMtot' # NOTE: hard coded assumption
     self.time_samples = self.times.shape[0]
+
+    try:
+      self.t_units = self.get_string_key(sdir+self._t_units_file)
+    except IOError:
+      self.t_units = 'TOverMtot'
+
+    ### redundently fill this variable too -- TODO: should have one var only ###
+    if(self.t_units == 'TOverMtot'):
+      self.surrogate_units = 'dimensionless'
+    else:
+      raise ValueError('surrogates must be dimensionless')
 
     ### Complex B coefficients - set ndim=2 in case only 1 basis vector ###
     B_1    = np.loadtxt(sdir+self._B_1_file,ndmin=2)
