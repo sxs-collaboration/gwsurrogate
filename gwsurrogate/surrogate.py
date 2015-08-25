@@ -33,7 +33,6 @@ import numpy as np
 from scipy.interpolate import splrep as _splrep
 from scipy.interpolate import splev as _splev
 from harmonics import sYlm as _sYlm
-import const_mks as mks
 import gwtools as _gwtools
 from parametric_funcs import function_dict as my_funcs
 from surrogateIO import H5Surrogate as _H5Surrogate
@@ -159,8 +158,8 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
     ### if (M,distance) provided, a physical mode in mks units is returned ###
     if( M is not None and dist is not None):
-      amp0    = ((M * mks.Msun ) / (dist * mks.Mpcinm )) * ( mks.G / np.power(mks.c,2.0) )
-      t_scale = mks.Msuninsec * M
+      amp0    = ((M * _gwtools.Msun ) / (dist * _gwtools.Mpcinm )) * ( _gwtools.G / np.power(_gwtools.c,2.0) )
+      t_scale = _gwtools.Msuninsec * M
     else:
       amp0    = 1.0
       t_scale = 1.0
@@ -296,7 +295,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       t = self.times
     elif (units == 'mks') and (self.t_units == 'TOverMtot'):
       assert(M!=None)
-      t = (mks.Msuninsec*M) * self.times
+      t = (_gwtools.Msuninsec*M) * self.times
     else:
       raise ValueError('Cannot compute times')
 
