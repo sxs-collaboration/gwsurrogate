@@ -335,7 +335,8 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
              + 1j*_splev(samples, self.imB_spline_params[jj],ext=ext) for jj in range(self.B.shape[1])]).T
 
     # allow for extrapolation if very close to surrogate's temporal interval
-    if np.abs(samples[0] - self.times[0])/self.times[0] < 1.e-12:
+    t0 = self.times[0]
+    if (np.abs(samples[0] - t0) < t0 * 1.e-12) or (t0==0 and np.abs(samples[0] - t0) <1.e-12):
       evaluations[0] = np.array([_splev(samples[0], self.reB_spline_params[jj],)  \
              + 1j*_splev(samples[0], self.imB_spline_params[jj]) for jj in range(self.B.shape[1])]).T
     
