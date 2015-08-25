@@ -166,6 +166,8 @@ class H5Surrogate(H5SurrogateIO):
       else:
         self.subdir = subdir + '/'
         self.mode = subdir
+    else:
+      self.subdir = subdir
     
     ### Check file mode if specified ###
     if mode is not None:
