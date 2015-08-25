@@ -612,13 +612,17 @@ class EvaluateSurrogate():
         fp = h5py.File(path, filemode)
         
         ### compile list of available modes ###
-        mode_keys = []
-        for kk in fp.keys():
-          splitkk = kk.split('_')
-          if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
-            ell = int(splitkk[0][1])
-            emm = int(splitkk[1][1:])
-            mode_keys.append((ell,emm))
+        if ell_m is None:
+          mode_keys = []
+          for kk in fp.keys():
+            splitkk = kk.split('_')
+            if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
+              ell = int(splitkk[0][1])
+              emm = int(splitkk[1][1:])
+              mode_keys.append((ell,emm))
+        else:
+          mode_keys = ell_m
+
         for mode_key in mode_keys:
           mode_key_str = 'l'+str(mode_key[0])+'_m'+str(mode_key[1])
           print "loading surrogate mode... " + mode_key_str
