@@ -808,6 +808,9 @@ class EvaluateSurrogate():
         else:
           hp_full[:,ii] = hp_mode[:]
           hc_full[:,ii] = hc_mode[:]
+      else:
+        warning_str = "Your mode (ell,m) = ("+str(ell)+","+str(m)+") is not available!"
+        raise Warning(warning_str)
 
       
       ii+=1
