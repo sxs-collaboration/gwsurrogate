@@ -652,6 +652,7 @@ class EvaluateSurrogate():
     # Convenience for plotting purposes
     import matplotlib.pyplot as plt
     self.plt = plt
+    self.plot_pretty = _gwtools.plot_pretty
 
     ### fill up dictionary with single mode surrogate class ###
     self.single_mode_dict = dict()
