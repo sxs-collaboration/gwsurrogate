@@ -32,7 +32,7 @@ THE SOFTWARE.
 import numpy as np
 from scipy.interpolate import splrep as _splrep
 from scipy.interpolate import splev as _splev
-from harmonics import sYlm as _sYlm
+from gwtools.harmonics import sYlm as _sYlm
 import gwtools as _gwtools
 from parametric_funcs import function_dict as my_funcs
 from surrogateIO import H5Surrogate as _H5Surrogate
