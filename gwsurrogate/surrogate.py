@@ -211,6 +211,9 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
     f_instant = _gwtools.find_instant_freq(hp, hc, t)
 
+    # TODO: this is a hack to account for inconsistent conventions!
+    f_instant = np.abs(f_instant)
+
     if f_low is None:
       return f_instant
     else:
@@ -794,10 +797,7 @@ class EvaluateSurrogate():
        coordinate system. """
 
 
-    if fake_neg_modes and (ell is not None and m is not None):
-      raise ValueError('Cannot generate faked negative modes with specific ell,m input requested')
-
-    ### deduce single mode dictionary keys from ell,m input ###
+    ### deduce single mode dictionary keys from ell, m and fake_neg_modes input ###
     modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
 
     if mode_sum and (theta is None and phi is None) and len(modes_to_evaluate)!=1:
@@ -848,8 +848,12 @@ class EvaluateSurrogate():
           #  hp_full = hp_full + hp_mode_mm
           #  hc_full = hc_full + hc_mode_mm
         else:
-          hp_full[:,ii] = hp_mode[:]
-          hc_full[:,ii] = hc_mode[:]
+          if len(modes_to_evaluate)==1:
+            hp_full[:] = hp_mode[:]
+            hc_full[:] = hc_mode[:]
+          else: 
+            hp_full[:,ii] = hp_mode[:]
+            hc_full[:,ii] = hc_mode[:]
       else:
         warning_str = "Your mode (ell,m) = ("+str(ell)+","+str(m)+") is not available!"
         raise Warning(warning_str)
@@ -911,8 +915,9 @@ class EvaluateSurrogate():
       3) list of [ell], [m] pairs: only use modes (ell,m). unmodelled modes set to zero 
          ex: ell=[3,2] and m=[2,2] generates a (3,2) and (2,2) mode.
 
-      These three options produce a list of (ell,m) modes. set minus_m=True 
-      to generate m<0 modes from m>0 modes."""
+      These three options produce a list of (ell,m) modes.
+
+      Set minus_m=True to generate m<0 modes from m>0 modes."""
 
     ### generate list of nonnegative m modes to evaluate for ###
     if ell is None and m is None:
@@ -1056,17 +1061,20 @@ class EvaluateSurrogate():
     num_modes --- number of harmonic modes (cols). set to 1 if summation over modes
     mode_sum  --- whether or not modes will be summed over (see code for why necessary)"""
 
-    # TODO: should the dtype be complex?
-    if (samples is not None):
-      hp_full = np.zeros((samples.shape[0],num_modes))
-      hc_full = np.zeros((samples.shape[0],num_modes))
-    else:
-      hp_full = np.zeros((self.time_all_modes().shape[0],num_modes))
-      hc_full = np.zeros((self.time_all_modes().shape[0],num_modes))
 
-    if(num_modes==1 and mode_sum): # to prevent broadcast when summing over modes
-      hp_full = hp_full.reshape([hp_full.shape[0],])
-      hc_full = hp_full.reshape([hp_full.shape[0],])
+    # Determine the number of time samples #
+    if (samples is not None):
+      sample_size = samples.shape[0]
+    else:
+      sample_size = self.time_all_modes().shape[0]
+
+    # TODO: should the dtype be complex?
+    if(num_modes==1): # return as vector instead of array
+      hp_full = np.zeros(sample_size)
+      hc_full = np.zeros(sample_size)
+    else:
+      hp_full = np.zeros((sample_size,num_modes))
+      hc_full = np.zeros((sample_size,num_modes))
 
     return hp_full, hc_full
 
