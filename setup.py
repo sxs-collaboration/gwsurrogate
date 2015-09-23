@@ -1,5 +1,12 @@
-from distutils.core import setup
 import sys
+
+try:
+  from setuptools import setup
+  setup
+except ImportError:
+  from distutils.core import setup
+  setup
+
 
 setup(name='gwsurrogate',
       version='0.4.0',
