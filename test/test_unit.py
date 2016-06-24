@@ -9,6 +9,11 @@ import numpy as np
 import gwsurrogate as gws
 import os
 
+
+# set global tolerances for floating point comparisons (see np.testing.assert_allclose)
+atol = 0.0
+rtol = 1.e-11
+
 # try importing data. If it doesn't exist, download it
 try:
   reg_data = np.load('test/data_notebook_basics_lesson1.npz')
@@ -37,13 +42,13 @@ np.savez('data_notebook_basics_lesson1.npz',t=t,hp=hp,hc=hc,
   # load regression data
   reg_data = np.load('test/data_notebook_basics_lesson1.npz')
 
-  np.testing.assert_array_almost_equal_nulp(t,reg_data['t'])
-  np.testing.assert_array_almost_equal_nulp(hp,reg_data['hp'])
-  np.testing.assert_array_almost_equal_nulp(hc,reg_data['hc'])
-  np.testing.assert_array_almost_equal_nulp(amp,reg_data['amp'])
-  np.testing.assert_array_almost_equal_nulp(phase,reg_data['phase'])
-  np.testing.assert_array_almost_equal_nulp(phi_m,reg_data['phi_m'])
-  np.testing.assert_array_almost_equal_nulp(h_adj,reg_data['h_adj'])
+  np.testing.assert_allclose(t,reg_data['t'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(hp,reg_data['hp'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(hc,reg_data['hc'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(amp,reg_data['amp'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(phase,reg_data['phase'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(phi_m,reg_data['phi_m'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(h_adj,reg_data['h_adj'], rtol=rtol, atol=atol)
 
 
 def test_notebook_basics_lesson2():
@@ -59,9 +64,9 @@ np.savez('data_notebook_basics_lesson2.npz',t_resamp=t_resamp,
   # load regression data
   reg_data = np.load('test/data_notebook_basics_lesson2.npz')
 
-  np.testing.assert_array_almost_equal_nulp(t_resamp,reg_data['t_resamp'])
-  np.testing.assert_array_almost_equal_nulp(hp_resamp,reg_data['hp_resamp'])
-  np.testing.assert_array_almost_equal_nulp(hc_resamp,reg_data['hc_resamp'])
+  np.testing.assert_allclose(t_resamp,reg_data['t_resamp'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(hp_resamp,reg_data['hp_resamp'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(hc_resamp,reg_data['hc_resamp'], rtol=rtol, atol=atol)
 
 
 def test_notebook_basics_lesson3():
@@ -71,7 +76,7 @@ np.savez('data_notebook_basics_lesson3.npz',eim_pts=eim_pts, T_eim=T_eim,
           greedy_pts=greedy_pts,tmin=EOBNRv2_sur.tmin,tmax=EOBNRv2_sur.tmax,
           dt=EOBNRv2_sur.dt,tunits=EOBNRv2_sur.t_units)"""
 
-  t, hp, hc = EOBNRv2_sur(1.7,80.0,1.0)
+  t, hp, hc  = EOBNRv2_sur(1.7,80.0,1.0)
   eim_pts    = EOBNRv2_sur.eim_indices
   T_eim      = t[eim_pts]
   greedy_pts = EOBNRv2_sur.greedy_points
@@ -84,12 +89,12 @@ np.savez('data_notebook_basics_lesson3.npz',eim_pts=eim_pts, T_eim=T_eim,
   # load regression data
   reg_data = np.load('test/data_notebook_basics_lesson3.npz')
 
-  np.testing.assert_array_almost_equal_nulp(eim_pts,reg_data['eim_pts'])
-  np.testing.assert_array_almost_equal_nulp(T_eim,reg_data['T_eim'])
-  np.testing.assert_array_almost_equal_nulp(greedy_pts,reg_data['greedy_pts'])
-  np.testing.assert_array_almost_equal_nulp(dt,reg_data['dt'])
-  np.testing.assert_array_almost_equal_nulp(tmax,reg_data['tmax'])
-  np.testing.assert_array_almost_equal_nulp(tmin,reg_data['tmin'])
+  np.testing.assert_allclose(eim_pts,reg_data['eim_pts'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(T_eim,reg_data['T_eim'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(greedy_pts,reg_data['greedy_pts'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(dt,reg_data['dt'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(tmax,reg_data['tmax'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(tmin,reg_data['tmin'], rtol=rtol, atol=atol)
 
   assert(tunits == str(reg_data['tunits']))
 
@@ -113,10 +118,10 @@ np.savez('data_notebook_basics_lesson4.npz',times=times,b_5=b_5,
   # load regression data
   reg_data = np.load('test/data_notebook_basics_lesson4.npz')
 
-  np.testing.assert_array_almost_equal_nulp(b_5,reg_data['b_5'])
-  np.testing.assert_array_almost_equal_nulp(e_5,reg_data['e_5'])
-  np.testing.assert_array_almost_equal_nulp(h_5,reg_data['h_5'])
-  np.testing.assert_array_almost_equal_nulp(h_5_surr,reg_data['h_5_surr'])
+  np.testing.assert_allclose(b_5,reg_data['b_5'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(e_5,reg_data['e_5'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(h_5,reg_data['h_5'], rtol=rtol, atol=atol)
+  np.testing.assert_allclose(h_5_surr,reg_data['h_5_surr'], rtol=rtol, atol=atol)
 
   # basis orthogonality
   dt  = 1.0/2048.0 # found from surrogate *.dat file
