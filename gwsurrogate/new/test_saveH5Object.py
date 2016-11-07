@@ -103,6 +103,9 @@ class DataTester(BaseTest):
     def test_list(self):
         self._test_items({'empty': [], 'assorted': ['string', 123, 0.52]})
 
+    def test_tuple(self):
+        self._test_items({'empty': (), 'assorted': ('string', 3, 0.5, None)})
+
     def test_dict(self):
         d = {'empty': {}, 'assorted': {'string': 'asdf', 'int': 1}}
         self._test_items(d)

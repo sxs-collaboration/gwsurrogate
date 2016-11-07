@@ -27,15 +27,16 @@ THE SOFTWARE.
 
 import h5py
 import numpy as np
-
+import os
 
 NONE_STR = "NONE_TYPE"
 RESERVED_VALUE_STRINGS = [NONE_STR]
 
 DICT_PREFIX = "DICT_"
 LIST_PREFIX = "LIST_"
+TUPLE_PREFIX = "TUPLE_"
 OBJ_DICT_KEY_STR = "KEYS" # Does not need to be reserved
-RESERVED_KEY_STRINGS = [DICT_PREFIX, LIST_PREFIX]
+RESERVED_KEY_STRINGS = [DICT_PREFIX, LIST_PREFIX, TUPLE_PREFIX]
 
 
 def _ensure_not_reserved(k, v):
@@ -75,6 +76,10 @@ def _write_attr(f, k, v):
         g = f.create_group(LIST_PREFIX + k)
         for i in range(len(v)):
             _write_attr(g, _list_item_string(i), v[i])
+    elif type(v) == tuple:
+        g = f.create_group(TUPLE_PREFIX + k)
+        for i in range(len(v)):
+            _write_attr(g, _list_item_string(i), v[i])
     else:
         f.create_dataset(k, data=v)
 
@@ -90,9 +95,13 @@ def _read_attrs(f):
         if k[:len(DICT_PREFIX)] == DICT_PREFIX:
             d[k[len(DICT_PREFIX):]] = _read_attrs(item)
         elif k[:len(LIST_PREFIX)] == LIST_PREFIX:
-            list_d = _read_attrs(item)
-            v = [list_d[_list_item_string(i)] for i in range(len(list_d))]
+            tmp_d = _read_attrs(item)
+            v = [tmp_d[_list_item_string(i)] for i in range(len(tmp_d))]
             d[k[len(LIST_PREFIX):]] = v
+        elif k[:len(TUPLE_PREFIX)] == TUPLE_PREFIX:
+            tmp_d = _read_attrs(item)
+            v = tuple(tmp_d[_list_item_string(i)] for i in range(len(tmp_d)))
+            d[k[len(TUPLE_PREFIX):]] = v
         elif type(item) == h5py._hl.dataset.Dataset:
             v = item.value
             if type(v) == np.string_:
@@ -123,6 +132,8 @@ class SimpleH5Object(object):
 
     def save(self, filename):
         """Save data to h5 file"""
+        if os.path.exists(filename):
+            raise Exception("Will not overwrite %s"%(filename))
         with h5py.File(filename, 'w') as f:
             self._write_h5(f)
 
@@ -259,6 +270,6 @@ class H5ObjectDict(SimpleH5Object):
     def __len__(self):
         return len(self.object_dict)
 
-    def __iteritems__(self):
+    def iteritems(self):
         for k, v in self.object_dict.items():
             yield k, v
