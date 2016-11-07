@@ -48,9 +48,10 @@ class DummyNodeTester(BaseTest):
         dnf2 = nf.DummyNodeFunction()
         dnf2.load(TEST_FILE)
         self._verify_output(dnf, inputs, return_val)
+        _tear_down()
 
     def test_dummy_node_function(self):
-        inputs = [1.0, [2.0], np.array([3, 4.0]), np.ones((2, 3))]
+        inputs = [[1.0], [2.0], np.array([3, 4.0]), np.ones((2, 3))]
         self._test(inputs, None)
         self._test(inputs, 1.2)
 
@@ -59,7 +60,7 @@ class Polyfit1DTester(BaseTest):
 
     def _verify_output(self, pf1d, inputs, outputs):
         for x, y in zip(inputs, outputs):
-            yfit = pf1d(x)
+            yfit = pf1d([x])
             self.assertEqual(y, yfit)
 
     def _test(self, inputs, n_coefs, function_name):
@@ -73,6 +74,7 @@ class Polyfit1DTester(BaseTest):
         pf1d2 = nf.Polyfit1D()
         pf1d2.load(TEST_FILE)
         self._verify_output(pf1d2, inputs, outputs)
+        _tear_down()
 
     def test_all_functions(self):
         inputs = [0.1, 0.5]

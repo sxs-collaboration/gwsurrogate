@@ -30,6 +30,7 @@ THE SOFTWARE.
 from saveH5Object import SimpleH5Object
 import parametric_funcs
 import numpy as np
+import gwtools
 
 class DummyNodeFunction(SimpleH5Object):
     """Used for testing, returns the input or a constant."""
@@ -59,12 +60,24 @@ class Polyfit1D(SimpleH5Object):
 
     def __call__(self, x):
         func = parametric_funcs.function_dict[self.function_name]
-        return func(self.coefs, x)
+        return func(self.coefs, x[0])
+
+
+class MappedPolyFit1D_q10_q_to_nu(Polyfit1D):
+    """
+    Transforms the input before evaluating the fit. Used for the SpEC q 1 to 10
+    non-spinning surrogate. This could be generalized later.
+    """
+
+    def __call__(self, x):
+        mapped_x = 4*gwtools.q_to_nu(x)
+        return super(MappedPolyFit1D_q10_q_to_nu, self).__call__(mapped_x)
 
 
 NODE_CLASSES = {
     "Dummy": DummyNodeFunction,
     "Polyfit1D": Polyfit1D,
+    "SpEC_q10_non_spinning": MappedPolyFit1D_q10_q_to_nu,
         }
 
 
@@ -86,7 +99,7 @@ class NodeFunction(SimpleH5Object):
         self.node_class = None
         if node_function is not None:
             for k, v in NODE_CLASSES.iteritems():
-                if isinstance(node_function, v):
+                if node_function.__class__.__name__ == v.__name__:
                     self.node_class = k
             if self.node_class is None:
                 raise Exception("node_function must be in NODE_CLASSES!")
