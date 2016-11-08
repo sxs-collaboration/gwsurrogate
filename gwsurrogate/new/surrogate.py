@@ -32,12 +32,12 @@ THE SOFTWARE.
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as _iuspline
 from gwtools.harmonics import sYlm as _sYlm
+import itertools
 
 from saveH5Object import SimpleH5Object
 from saveH5Object import H5ObjectList
 from saveH5Object import H5ObjectDict
 from nodeFunction import NodeFunction
-from nodeFunction import FastTensorSplineNodeReIm
 from spline_evaluation import TensorSplineGrid
 
 
@@ -420,42 +420,41 @@ class ManyFunctionSurrogate(_ManyFunctionSurrogate_NoChecks):
         return super(ManyFunctionSurrogate, self)(x)
 
 
-class TensorSplineSurrogate(ManyFunctionSurrogate):
+class FastTensorSplineSurrogate(SimpleH5Object):
+    """
+    A special case of having a complex empirical interpolant combined with
+    tensor splines for the real and imaginary parts of each empirical node,
+    for each waveform mode. All tensor splines must use the same grid.
+    Written for speed, minimizing python operations
+    between tensor spline interpolations, which are done simultaneously for
+    each mode to keep numpy busy. Obtained ~25ms evaluation time per waveform
+    for 12 waveform modes. This was ~66ms when using the python class
+    hierarchy, and using a separate call to numpy for each tensor spline
+    interpolation. Note that similar C code written with gsl splines takes
+    ~50ms, but should have room for optimization.
+    """
+
     def __init__(self, name=None, domain=None, param_space=None,
                  knot_vecs=[], mode_data={}, modes=None):
-        """
-        name: A descriptive name for this surrogate.
-        domain: A 1d array of the monotonically increasing domain
-                (time/frequency) values
-        param_space: A ParamSpace for this surrogate.
-        knot_vecs: A list of one knot vector per parameter space dimension,
-                   giving the parameters of the tensor spline grid.
-        mode_data: A dictionary of modes with (l, m) integer keys, where the
-                   values are (ei_basis, re_coefs, im_coefs) and the real and
-                   imaginary spline coefficients have shape
-                   (len(ei_basis), len(knot_vecs[0]), ..., len(knot_vecs[-1])).
-        modes: A list of (ell, m) modes giving an ordering to mode_data.keys().
-               If None, uses mode_data.keys().
-        """
-        spline_node_data = {}
-        for k, (ei_basis, re_coefs, im_coefs) in mode_data.iteritems():
-            nodes = []
-            for i, (cre, cim) in enumerate(zip(re_coefs, im_coefs)):
-                nodes.append(NodeFunction('%s_node_%s'%(name, i),
-                                          FastTensorSplineNodeReIm(cre, cim)))
-            spline_node_data[k] = (ei_basis, nodes)
-        super(TensorSplineSurrogate, self).__init__(name, domain, param_space,
-                                                    spline_node_data, {})
 
+        super(FastTensorSplineSurrogate, self).__init__(
+                sub_keys=['param_space', 'ts_grid'],
+                data_keys=['name', 'domain', 'ei', 'cre', 'cim', 'mode_list',
+                           'mode_indices'])
+
+        self.name = name
+        self.domain = domain
+        self.param_space = param_space
+        if param_space is None:
+            self.param_space = ParamSpace()
         if modes is None:
-            self.modes = mode_data.keys()
-        else:
-            self.modes = modes
-
+            modes = mode_data.keys()
+        self.mode_list = modes
+        self.mode_indices = {str(k): i for i, k in enumerate(modes)}
+        self.ei = [mode_data[k][0] for k in modes]
+        self.cre = [mode_data[k][1] for k in modes]
+        self.cim = [mode_data[k][2] for k in modes]
         self.ts_grid = TensorSplineGrid(knot_vecs)
-
-        self._h5_data_keys.append('modes')
-        self._h5_subordinate_keys.append('ts_grid')
 
     def __call__(self, x, theta=None, phi=None, modes=None):
         """
@@ -472,18 +471,44 @@ class TensorSplineSurrogate(ManyFunctionSurrogate):
                 If theta and phi are given, h = h_plus - i * h_cross is a
                 complex array given by the sum of the modes.
         """
-        print 'ts_grid...'
         if (theta is None) != (phi is None):
             raise Exception("Either give theta and phi or neither")
 
         x = self.param_space.nudge_params(x)
-        x = self.ts_grid(x)
 
-        print 'coefs...'
+        # All splines use the same grid, so we determine the 4^d potentially
+        # non-zero spline basis function products here which can be used for
+        # all interpolations.
+        imin_vals, eval_prods = self.ts_grid(x)
+
+        # This slice can be passed to a numpy grid of spline coefficients
+        # to extract the 4^d relevant coefficients
+        sl_base = tuple( slice(i0, i0+4, None) for i0 in imin_vals )
+
+        # We will have arrays of shape (n_EI, n1, n2, ..., nd) where n_EI
+        # is the number of empirical nodes, and n1, ..., nd are the number of
+        # spline coefficients (2 + the number of grid points) in each dimension.
+        # We want to sum over everything except the first index to evaluate the
+        # n_EI different splines.
+        summed_axes = tuple( i+1 for i in range(self.ts_grid.dim) )
+
         if modes is None:
-            modes = self.modes
+            modes = self.mode_list
 
-        h_modes = {k: self._eval_func(x, k) for k in modes}
+        h_modes = {}
+        for k in modes:
+            i = self.mode_indices[str(k)]
+
+            # Build a single slice so we can make better use of np.sum:
+            sl = tuple( itertools.chain([slice(None)], sl_base) )
+
+            # Sum up the spline basis function products multiplied with the
+            # appropriate spline coefficients
+            nre = np.sum(self.cre[i][sl] * eval_prods, axis=summed_axes)
+            nim = np.sum(self.cim[i][sl] * eval_prods, axis=summed_axes)
+
+            # Evaluate the empirical interpolant
+            h_modes[k] = (nre + 1.j*nim).dot(self.ei[i])
 
         if theta is not None:
             return _mode_sum(h_modes, theta, phi)
