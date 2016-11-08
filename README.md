@@ -1,5 +1,4 @@
-Welcome to GWSurrogate!
------------------------
+# Welcome to GWSurrogate! #
 
 GWSurrogate is an easy to use interface to gravitational wave surrogate models.
 
@@ -19,12 +18,11 @@ if available, the relevant paper describing the specific surrogate used.
 gwsurrogate is available at https://pypi.python.org
 
 
-Installation
-------------
+# Installation #
 
 gwsurrogate is a pure-Python module, thus installation is very easy. 
 
-From pip: 
+## From pip ##
 
 The python package pip supports installing from PyPI (the Python Package 
 Index). gwsurrogate can be installed to the standard location 
@@ -34,7 +32,7 @@ Index). gwsurrogate can be installed to the standard location
 >>> pip install gwsurrogate
 ```
 
-From source: 
+## From source ##
 
 Download and unpack gwsurrogate-X.X.tar.gz to any folder gws_folder of your 
 choosing. The gwsurrogate module can be used immediately by adding
@@ -62,8 +60,7 @@ For a "proper" installation into gws_folder run
 and edit the PYTHONPATH environment variable as described above.
 
 
-Getting Started
----------------
+# Getting Started #
 
 Please read the gwsurrogate docstring found in the __init__.py file
 or from ipython with
@@ -83,16 +80,15 @@ basics.ipynb, do
 from the directory 'notebooks'
 
 
-Where to find surrogates?
--------------------------
+# Where to find surrogates? #
+
 
 Surrogates can be downloaded directly from gwsurrogate.
 
 For download instructions see the basics.ipynb ipython notebook.
 
 
-Tests
------
+# Tests #
 
 If you have downloaded the entire project as a tar.gz file, from the 
 top folder, do
@@ -101,8 +97,7 @@ top folder, do
 >>> py.test
 ```
 
-NSF Support
------------
+# NSF Support #
 
 This package is based upon work supported by the National Science Foundation 
 under PHY-1316424 and PHY-1208861.
