@@ -37,6 +37,9 @@ from saveH5Object import SimpleH5Object
 from saveH5Object import H5ObjectList
 from saveH5Object import H5ObjectDict
 from nodeFunction import NodeFunction
+from nodeFunction import FastTensorSplineNodeReIm
+from spline_evaluation import TensorSplineGrid
+
 
 PARAM_NUDGE_TOL = 1.e-10 # Default relative tolerance for nudging edge cases
 
@@ -239,8 +242,8 @@ class _SingleFunctionSurrogate_NoChecks(SimpleH5Object):
         """
         Evaluates the surrogate at x, returning the result.
         """
-        res = np.array([nf(x) for nf in self.node_functions]).dot(self.ei_basis)
-        return res
+        nodes = np.array([nf(x) for nf in self.node_functions])
+        return nodes.dot(self.ei_basis)
 
     def h5_prepare_subs(self):
         """Setup NodeFunctions before loading them"""
@@ -417,6 +420,77 @@ class ManyFunctionSurrogate(_ManyFunctionSurrogate_NoChecks):
         return super(ManyFunctionSurrogate, self)(x)
 
 
+class TensorSplineSurrogate(ManyFunctionSurrogate):
+    def __init__(self, name=None, domain=None, param_space=None,
+                 knot_vecs=[], mode_data={}, modes=None):
+        """
+        name: A descriptive name for this surrogate.
+        domain: A 1d array of the monotonically increasing domain
+                (time/frequency) values
+        param_space: A ParamSpace for this surrogate.
+        knot_vecs: A list of one knot vector per parameter space dimension,
+                   giving the parameters of the tensor spline grid.
+        mode_data: A dictionary of modes with (l, m) integer keys, where the
+                   values are (ei_basis, re_coefs, im_coefs) and the real and
+                   imaginary spline coefficients have shape
+                   (len(ei_basis), len(knot_vecs[0]), ..., len(knot_vecs[-1])).
+        modes: A list of (ell, m) modes giving an ordering to mode_data.keys().
+               If None, uses mode_data.keys().
+        """
+        spline_node_data = {}
+        for k, (ei_basis, re_coefs, im_coefs) in mode_data.iteritems():
+            nodes = []
+            for i, (cre, cim) in enumerate(zip(re_coefs, im_coefs)):
+                nodes.append(NodeFunction('%s_node_%s'%(name, i),
+                                          FastTensorSplineNodeReIm(cre, cim)))
+            spline_node_data[k] = (ei_basis, nodes)
+        super(TensorSplineSurrogate, self).__init__(name, domain, param_space,
+                                                    spline_node_data, {})
+
+        if modes is None:
+            self.modes = mode_data.keys()
+        else:
+            self.modes = modes
+
+        self.ts_grid = TensorSplineGrid(knot_vecs)
+
+        self._h5_data_keys.append('modes')
+        self._h5_subordinate_keys.append('ts_grid')
+
+    def __call__(self, x, theta=None, phi=None, modes=None):
+        """
+        Return surrogate evaluation.
+        Arguments:
+            x : The intrinsic parameters (see self.param_space)
+            theta/phi : polar and azimuthal angles of the direction of
+                        gravitational wave emission. If given, sums up modes
+                        and returns h_plus and h_cross (default returns modes)
+            modes : A list of (ell, m) modes to be evaluated (default: all)
+        Returns h:
+            h : If theta and phi are None, h is a dictionary of waveform modes
+                sampled at self.domain with (ell, m) keys.
+                If theta and phi are given, h = h_plus - i * h_cross is a
+                complex array given by the sum of the modes.
+        """
+        print 'ts_grid...'
+        if (theta is None) != (phi is None):
+            raise Exception("Either give theta and phi or neither")
+
+        x = self.param_space.nudge_params(x)
+        x = self.ts_grid(x)
+
+        print 'coefs...'
+        if modes is None:
+            modes = self.modes
+
+        h_modes = {k: self._eval_func(x, k) for k in modes}
+
+        if theta is not None:
+            return _mode_sum(h_modes, theta, phi)
+
+        return h_modes
+
+
 class MultiModalSurrogate(ManyFunctionSurrogate):
     """
     A surrogate for multimodal waveforms, where each waveform mode has
@@ -445,8 +519,8 @@ class MultiModalSurrogate(ManyFunctionSurrogate):
             super(MultiModalSurrogate, self).__init__(name, domain, param_space,
                                                       mode_data, {}, 'identity')
         elif mode_type in ['amp_phase', 're_im']:
-            mode_data = {k: (mode_type, ei, nf)
-                         for k, (ei, nf) in mode_data.iteritems()}
+            mode_data = {k: (mode_type, v, {})
+                         for k, v in mode_data.iteritems()}
             super(MultiModalSurrogate, self).__init__(name, domain, param_space,
                                                       {}, mode_data, mode_type)
         else:

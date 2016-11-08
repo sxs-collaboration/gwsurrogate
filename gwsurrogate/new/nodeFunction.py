@@ -28,6 +28,8 @@ THE SOFTWARE.
 """
 
 from saveH5Object import SimpleH5Object
+from spline_evaluation import TensorSplineCoefEvaluator
+
 import parametric_funcs
 import numpy as np
 import gwtools
@@ -74,10 +76,24 @@ class MappedPolyFit1D_q10_q_to_nu(Polyfit1D):
         return super(MappedPolyFit1D_q10_q_to_nu, self).__call__(mapped_x)
 
 
+class FastTensorSplineNodeReIm(SimpleH5Object):
+    """Accepts imin_vals and eval_prods and just sums up coefficients"""
+
+    def __init__(self, coefs_re=None, coefs_im=None):
+        super(FastTensorSplineNodeReIm, self).__init__(sub_keys=['re_spl',
+                                                                 'im_spl'])
+        self.re_spl = TensorSplineCoefEvaluator(coefs_re)
+        self.im_spl = TensorSplineCoefEvaluator(coefs_im)
+
+    def __call__(self, x):
+        return self.re_spl(*x) + 1.j*self.im_spl(*x)
+
+
 NODE_CLASSES = {
     "Dummy": DummyNodeFunction,
     "Polyfit1D": Polyfit1D,
     "SpEC_q10_non_spinning": MappedPolyFit1D_q10_q_to_nu,
+    "FastTensorSpline": FastTensorSplineNodeReIm,
         }
 
 

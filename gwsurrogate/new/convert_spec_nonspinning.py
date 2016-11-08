@@ -37,7 +37,7 @@ for (ell, m) in lm_modes:
     print 'loading (%s, %s)...'%(ell, m)
     g = f['l%s_m%s'%(ell, m)]
     name = 'mode_%s_%s'%(ell, m)
-    mode_data[(ell, m)] = (get_mode_surrogate_data(g, name), {})
+    mode_data[(ell, m)] = get_mode_surrogate_data(g, name)
 
 t = np.arange(-2750.0, 100.00001, 0.1)
 
