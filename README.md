@@ -30,26 +30,34 @@ The python package pip supports installing from PyPI (the Python Package
 Index). gwsurrogate can be installed to the standard location 
 (e.g. /usr/local/lib/pythonX.X/dist-packages) with
 
+```
 >>> pip install gwsurrogate
+```
 
 From source: 
 
 Download and unpack gwsurrogate-X.X.tar.gz to any folder gws_folder of your 
 choosing. The gwsurrogate module can be used immediately by adding
 
+```
   import sys
   sys.path.append('absolute_path_to_gws_folder')
+```
 
 at the beginning of any script/notebook which uses gwsurrogate. 
 
 Alternatively, if you are a bash or sh user, edit your .profile 
 (or .bash_profile) file and add the line
 
+```
   export PYTHONPATH=~absolute_path_to_gws_folder:$PYTHONPATH
+```
 
 For a "proper" installation into gws_folder run
 
+```
 >>> python setup.py install --prefix=absolute_path_to_gws_folder
+```
 
 and edit the PYTHONPATH environment variable as described above.
 
@@ -60,15 +68,18 @@ Getting Started
 Please read the gwsurrogate docstring found in the __init__.py file
 or from ipython with
 
+```
 >>> import gwsurrogate as gws
 >>> gws?
+```
 
 Additional examples can be found in the accompanying ipython notebooks
 located in the 'tutorial' folder. To open a notebook, for example
 basics.ipynb, do
 
+```
   >>> ipython notebook example1.ipynb
-
+```
 from the directory 'notebooks'
 
 
@@ -86,8 +97,9 @@ Tests
 If you have downloaded the entire project as a tar.gz file, from the 
 top folder, do
 
+```
 >>> py.test
-
+```
 
 NSF Support
 -----------
@@ -98,5 +110,3 @@ under PHY-1316424 and PHY-1208861.
 Any opinions, findings, and conclusions or recommendations expressed in 
 gwsurrogate are those of the authors and do not necessarily reflect the 
 views of the National Science Foundation.
-
-
