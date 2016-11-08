@@ -75,7 +75,7 @@ located in the 'tutorial' folder. To open a notebook, for example
 basics.ipynb, do
 
 ```
-  >>> ipython notebook example1.ipynb
+  >>> ipython notebook basics.ipynb
 ```
 from the directory 'notebooks'
 
@@ -83,9 +83,7 @@ from the directory 'notebooks'
 # Where to find surrogates? #
 
 
-Surrogates can be downloaded directly from gwsurrogate.
-
-For download instructions see the basics.ipynb ipython notebook.
+Surrogates can be downloaded directly from gwsurrogate. For download instructions see the basics.ipynb ipython notebook. Also visit the NR surrogate [database](https://www.black-holes.org/surrogates/).
 
 
 # Tests #
