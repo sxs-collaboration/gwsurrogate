@@ -1,6 +1,6 @@
 import h5py
-import surrogate
-import nodeFunction
+import gwsurrogate.new.surrogate as surrogate
+import gwsurrogate.new.nodeFunction as nodeFunction
 import numpy as np
 
 def chars_to_string(chars):
@@ -29,7 +29,7 @@ def get_mode_surrogate_data(g, name):
     return {'amp': (B, nodes), 'phase': (B_phase, phase_nodes)}
 
 
-f = h5py.File('../../surrogates/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5')
+f = h5py.File('../surrogates/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5')
 
 lm_modes = [(int(k[1]), int(k[4])) for k in f.keys()]
 mode_data = {}
