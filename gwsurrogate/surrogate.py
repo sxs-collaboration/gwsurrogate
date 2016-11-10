@@ -1123,16 +1123,19 @@ def CompareSingleModeSurrogate(sur1,sur2):
 
     result = "Checking attribute %s... "%str(key)
 
+    # surrogate data (ie numbers or array of numbers) 
     if key in ['B','V','R','fitparams_phase','fitparams_amp',\
                'fitparams_norm','greedy_points','eim_indices',\
                'time_info','fit_interval','tmin','tmax',\
-               'modeled_data','fits_required','dt','times']:
+               'modeled_data','fits_required','dt','times',\
+               'fit_min','fit_max']:
 
       if np.max(np.abs(sur1.__dict__[key] - sur2.__dict__[key])) != 0:
         different.append(key)
       else:
         agrees.append(key)
 
+    # surrogate tags (ie strings)
     elif key in ['fit_type_phase','fit_type_amp','fit_type_norm',\
                  'parameterization','affine_map','surrogate_mode_type',
                  't_units','surrogate_units','norms']:
