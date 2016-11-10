@@ -364,7 +364,7 @@ class H5Surrogate(H5SurrogateIO):
       print "\n>>> Warning: No quadrature weights found or generated."
     
     if self._t_units_grp in self.keys:
-      self.t_units = self.file[subdir+self._t_units_grp][()]
+      self.t_units = self.chars_to_string(self.file[subdir+self._t_units_grp][()])
     else:
       self.t_units = 'TOverMtot'
 
@@ -378,18 +378,22 @@ class H5Surrogate(H5SurrogateIO):
     self.greedy_points = self.file[subdir+self._greedy_points_grp][:]
     
     ### Empirical time index (ordered by EIM selection) ###
-    if self.surrogate_mode_type == self._amp_phase_basis_grp:
+    if self.surrogate_mode_type == 'amp_phase_basis':
       self.eim_indices_amp = self.file[subdir+self._eim_indices_grp][:]
       self.eim_indices_phase = self.file[subdir+self._eim_indices_phase_grp][:]
-    else:
+    elif self.surrogate_mode_type  == 'waveform_basis':
       self.eim_indices = self.file[subdir+self._eim_indices_grp][:]
-    
+    else:
+      raise ValueError('invalid surrogate type')
+
     ### Complex B coefficients ###
-    if self.surrogate_mode_type == self._amp_phase_basis_grp:
+    if self.surrogate_mode_type == 'amp_phase_basis':
       self.B_1 = self.file[subdir+self._B_grp][:]
       self.B_2 = self.file[subdir+self._B_phase_grp][:]
-    else:
+    elif self.surrogate_mode_type  == 'waveform_basis':
       self.B = self.file[subdir+self._B_grp][:]	
+    else:
+      raise ValueError('invalid surrogate type')
     
     ### Information about phase/amp parametric fit ###
     if self._affine_map_grp in self.keys:
@@ -424,7 +428,8 @@ class H5Surrogate(H5SurrogateIO):
       self.eim_phase = self.file[subdir+self._eim_phase_grp][:]
     
     ### Transpose matrices if surrogate was built using ROMpy ###
-    if not self.surrogate_mode_type == self._amp_phase_basis_grp:
+    transposeB = False
+    if not self.surrogate_mode_type == 'amp_phase_basis':
       Bshape = np.shape(self.B)
     
       if Bshape[0] < Bshape[1]:
@@ -436,7 +441,7 @@ class H5Surrogate(H5SurrogateIO):
       else:
         self.dim_rb = Bshape[1]
         self.time_samples = Bshape[0]
-    else:
+    else: # TODO: elif... to match other similar control statements
         Bshape = np.shape(self.B_1)
         self.dim_rb = Bshape[0]
         self.time_samples = Bshape[1]
