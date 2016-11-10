@@ -85,9 +85,10 @@ class ExportSurrogate(_H5Surrogate, _TextSurrogateWrite):
 class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   """Evaluate single-mode surrogate in terms of the waveforms' amplitude and phase"""
 
+
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __init__(self, path, deg=3, subdir='', closeQ=True):
-    
+
     # Load HDF5 or Text surrogate data depending on input file extension
     if type(path) == h5py._hl.files.File:
       ext = 'h5'
@@ -1110,30 +1111,46 @@ class EvaluateSurrogate():
 
 
 ####################################################
+# TODO: loop over all data defined in IO class
 def CompareSingleModeSurrogate(sur1,sur2):
   """ Compare data defining two surrogates"""
 
-  #TODO: loop over necessary and optional data fields in SurrogateIO class
+  agrees = []
+  different = []
+  no_check = []
 
   for key in sur1.__dict__.keys():
 
+    result = "Checking attribute %s... "%str(key)
+
     if key in ['B','V','R','fitparams_phase','fitparams_amp',\
-               'fitparams_norm','greedy_points','eim_indices']:
+               'fitparams_norm','greedy_points','eim_indices',\
+               'time_info','fit_interval','tmin','tmax',\
+               'modeled_data','fits_required','dt','times']:
 
       if np.max(np.abs(sur1.__dict__[key] - sur2.__dict__[key])) != 0:
-        print "checking attribute "+str(key)+"...DIFFERENT!!!"
+        different.append(key)
       else:
-        print "checking attribute "+str(key)+"...agrees"
+        agrees.append(key)
 
-    elif key in ['fit_type_phase','fit_type_amp','fit_type_norm']:
+    elif key in ['fit_type_phase','fit_type_amp','fit_type_norm',\
+                 'parameterization','affine_map','surrogate_mode_type',
+                 't_units','surrogate_units','norms']:
 
       if sur1.__dict__[key] == sur2.__dict__[key]:
-        print "checking attribute "+str(key)+"...agrees"
+        agrees.append(key)
       else:
-         print "checking attribute "+str(key)+"...DIFFERENT!!!"
+        different.append(key)
 
     else:
-      print "not checking attribute "+str(key)
+      no_check.append(key)
+
+  print("Agrees:")
+  print agrees
+  print("Different:")
+  print different
+  print("Did not check:")
+  print no_check
 
 
 
