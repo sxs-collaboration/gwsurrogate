@@ -9,7 +9,7 @@ except ImportError:
 
 
 setup(name='gwsurrogate',
-      version='0.4.0',
+      version='0.4.1',
       author='Scott Field, Chad Galley',
       author_email='sfield@astro.cornell.edu',
       packages=['gwsurrogate'],
