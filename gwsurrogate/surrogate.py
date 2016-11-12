@@ -34,6 +34,8 @@ from scipy.interpolate import splrep as _splrep
 from scipy.interpolate import splev as _splev
 from gwtools.harmonics import sYlm as _sYlm
 import gwtools as _gwtools
+import matplotlib.pyplot as plt
+from gwtools import plot_pretty as _plot_pretty
 from parametric_funcs import function_dict as my_funcs
 from surrogateIO import H5Surrogate as _H5Surrogate
 from surrogateIO import TextSurrogateRead as _TextSurrogateRead
@@ -109,11 +111,6 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     else:
       raise ValueError('invalid surrogate type')
 
-    # Convenience for plotting purposes
-    import matplotlib.pyplot as plt
-    self.plt = plt
-    self.plot_pretty = _gwtools.plot_pretty
- 
     pass
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -379,10 +376,10 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
     # Compute surrogate approximation of RB waveform
     basis = self.basis(i)
-    fig   = self.plot_pretty(self.times,[basis.real,basis.imag])
+    fig   = _plot_pretty(self.times,[basis.real,basis.imag])
 
     if showQ:
-      self.plt.show()
+      plt.show()
     
     # Return figure method to allow for saving plot with fig.savefig
     return fig
@@ -411,13 +408,13 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       xlab = 'Time, $t$ (sec)'
 
     # Plot surrogate waveform
-    fig = self.plot_pretty(t, y[htype], flavor=flavor, color=color, linestyle=linestyle, \
+    fig = _plot_pretty(t, y[htype], flavor=flavor, color=color, linestyle=linestyle, \
                 label=label, legendQ=legendQ, showQ=False)
-    self.plt.xlabel(xlab)
-    self.plt.ylabel('Surrogate waveform')
+    plt.xlabel(xlab)
+    plt.ylabel('Surrogate waveform')
     
     if showQ:
-      self.plt.show()
+      plt.show()
         
     # Return figure method to allow for saving plot with fig.savefig
     return fig
@@ -427,7 +424,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   def plot_eim_data(self, inode=None, htype='Amp', nuQ=False, fignum=1, showQ=True):
     """Plot empirical interpolation data used for performing fits in parameter"""
     
-    fig = self.plt.figure(fignum)
+    fig = plt.figure(fignum)
     ax1 = fig.add_subplot(111)
     
     y = {
@@ -439,23 +436,23 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       nu = _gwtools.q_to_nu(self.greedy_points)
       
       if inode is None:
-        [self.plt.plot(nu, ee, 'ko') for ee in y[htype]]
+        [plt.plot(nu, ee, 'ko') for ee in y[htype]]
       else:
-        self.plt.plot(nu, y[htype][inode], 'ko')
+        plt.plot(nu, y[htype][inode], 'ko')
       
-      self.plt.xlabel('Symmetric mass ratio, $\\nu$')
+      plt.xlabel('Symmetric mass ratio, $\\nu$')
     
     else:
       
       if inode is None:
-        [self.plt.plot(self.greedy_points, ee, 'ko') for ee in y[htype]]
+        [plt.plot(self.greedy_points, ee, 'ko') for ee in y[htype]]
       else:
-        self.plt.plot(self.greedy_points, y[htype][inode], 'ko')
+        plt.plot(self.greedy_points, y[htype][inode], 'ko')
       
-      self.plt.xlabel('Mass ratio, $q$')
+      plt.xlabel('Mass ratio, $q$')
     
     if showQ:
-      self.plt.show()
+      plt.show()
     
     return fig
   
@@ -464,7 +461,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   def plot_eim_fits(self, inode=None, htype='Amp', nuQ=False, fignum=1, num=200, showQ=True):
     """Plot empirical interpolation data and fits"""
     
-    fig = self.plt.figure(fignum)
+    fig = plt.figure(fignum)
     ax1 = fig.add_subplot(111)
     
     fitfn = {
@@ -486,18 +483,18 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     # Plot fits to EIM data points
     if nuQ:
       if inode is None:
-        [self.plt.plot(nus, fitfn[htype](cc, qs), 'k-') for cc in coeffs[htype]]
+        [plt.plot(nus, fitfn[htype](cc, qs), 'k-') for cc in coeffs[htype]]
       else:
-        self.plt.plot(nus, fitfn[htype](coeffs[htype][inode], qs), 'k-')  
+        plt.plot(nus, fitfn[htype](coeffs[htype][inode], qs), 'k-')  
     
     else:
       if inode is None:
-        [self.plt.plot(qs, fitfn[htype](cc, qs), 'k-') for cc in coeffs[htype]]
+        [plt.plot(qs, fitfn[htype](cc, qs), 'k-') for cc in coeffs[htype]]
       else:
-        self.plt.plot(qs, fitfn[htype](coeffs[htype][inode], qs), 'k-')
+        plt.plot(qs, fitfn[htype](coeffs[htype][inode], qs), 'k-')
       
     if showQ:
-      self.plt.show()
+      plt.show()
     
     return fig
   
@@ -646,11 +643,6 @@ class EvaluateSurrogate():
 
     if excluded is None:
       excluded = []
-
-    # Convenience for plotting purposes
-    import matplotlib.pyplot as plt
-    self.plt = plt
-    self.plot_pretty = _gwtools.plot_pretty
 
     ### fill up dictionary with single mode surrogate class ###
     self.single_mode_dict = dict()
