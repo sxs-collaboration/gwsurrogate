@@ -625,6 +625,119 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     return hp, hc
 
 
+def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded):
+  """For each surrogate mode an EvaluateSingleModeSurrogate class
+     is created.
+
+     INPUT
+     =====
+     path: the path to the surrogate
+     deg: the degree of the splines representing the basis (default 3, cubic)
+     ell_m: A list of (ell, m) modes to load, for example [(2,2),(3,3)].
+            None (default) loads all modes.
+     excluded: A list of (ell, m) modes to skip loading.
+        The default ('DEFAULT') excludes any modes with an 'EXCLUDED' dataset.
+        Use [] or None to load these modes as well.
+
+     Returns single_mode_dict. Keys are (ell, m) mode and value is an
+     instance of EvaluateSingleModeSurrogate."""
+
+
+  if excluded is None:
+    excluded = []
+
+  ### fill up dictionary with single mode surrogate class ###
+  single_mode_dict = dict()
+
+  # Load HDF5 or Text surrogate data depending on input file extension
+  if type(path) == h5py._hl.files.File:
+    ext = 'h5'
+    filemode = path.mode
+  else:
+    ext = path.split('.')[-1]
+    filemode = 'r'
+
+  # path, excluded 
+  if ext == 'hdf5' or ext == 'h5':
+      
+    if filemode not in ['r+', 'w']:
+      fp = h5py.File(path, filemode)
+
+      ### compile list of excluded modes ###
+      if type(excluded) == list:
+        exc_modes = excluded
+      elif excluded == 'DEFAULT':
+        exc_modes = []
+      else:
+        raise ValueError('Invalid excluded option: %s'%excluded)
+      for kk, vv in fp.iteritems():
+        if 'EXCLUDED' in vv:
+          splitkk = kk.split('_')
+          if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
+            ell = int(splitkk[0][1])
+            emm = int(splitkk[1][1:])
+            if excluded == 'DEFAULT':
+              exc_modes.append((ell,emm))
+            elif not (ell, emm) in exc_modes:
+              print "Warning: Including mode (%d,%d) which is excluded by default"%(ell, emm)
+       ### compile list of available modes ###
+      if ell_m is None:
+        mode_keys = []
+        for kk in fp.keys():
+          splitkk = kk.split('_')
+          if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
+            ell = int(splitkk[0][1])
+            emm = int(splitkk[1][1:])
+            if not (ell, emm) in exc_modes:
+              mode_keys.append((ell,emm))
+      else:
+        mode_keys = []
+        for i, mode in enumerate(ell_m):
+          if mode in exc_modes:
+            print "WARNING: Mode (%d,%d) is both included and excluded! Excluding it."%mode 
+          else:
+            mode_keys.append(mode)
+       ### load the single mode surrogates ###
+      for mode_key in mode_keys:
+        assert(mode_keys.count(mode_key)==1)
+        mode_key_str = 'l'+str(mode_key[0])+'_m'+str(mode_key[1])
+        print "loading surrogate mode... " + mode_key_str
+        single_mode_dict[mode_key] = \
+          EvaluateSingleModeSurrogate(fp,subdir=mode_key_str+'/',closeQ=False)
+      fp.close()
+      
+      modes = mode_keys
+    
+  else:
+    ### compile list of available modes ###
+    # assumes (i) single mode folder format l#_m#_ 
+    #         (ii) ell<=9, m>=0
+    import os
+    for single_mode in _list_folders(path,'l'):
+      ell = int(single_mode[1])
+      emm = int(single_mode[4])
+      mode_key = (ell,emm)
+      if (ell_m is None) or (mode_key in ell_m):
+        if ((type(excluded) == list and not mode_key in excluded) or
+            (excluded == 'DEFAULT' and not
+             os.path.isfile(path+single_mode+'/EXCLUDED.txt'))):
+          assert(not single_mode_dict.has_key(mode_key))
+          if os.path.isfile(path+single_mode+'/EXCLUDED.txt'):
+            print "Warning: Including mode (%d,%d) which is excluded by default"%(ell, emm)
+          print "loading surrogate mode... "+single_mode[0:5]
+          single_mode_dict[mode_key] = \
+            EvaluateSingleModeSurrogate(path+single_mode+'/')
+    ### check all requested modes have been loaded ###
+    if ell_m is not None:
+      for tmp in ell_m:
+        try:
+          single_mode_dict[tmp]
+        except KeyError:
+          print 'Could not find mode '+str(tmp)
+ 
+  return single_mode_dict
+
+
 ##############################################
 class EvaluateSurrogate():
   """Evaluate multi-mode surrogates"""
@@ -641,114 +754,22 @@ class EvaluateSurrogate():
         The default ('DEFAULT') excludes any modes with an 'EXCLUDED' dataset.
         Use [] or None to load these modes as well."""
 
-    if excluded is None:
-      excluded = []
-
-    ### fill up dictionary with single mode surrogate class ###
-    self.single_mode_dict = dict()
-
-    # Load HDF5 or Text surrogate data depending on input file extension
-    if type(path) == h5py._hl.files.File:
-      ext = 'h5'
-      filemode = path.mode
-    else:
-      ext = path.split('.')[-1]
-      filemode = 'r'
-
-    if ext == 'hdf5' or ext == 'h5':
-      
-      if filemode not in ['r+', 'w']:
-        fp = h5py.File(path, filemode)
-
-        ### compile list of excluded modes ###
-        if type(excluded) == list:
-          exc_modes = excluded
-        elif excluded == 'DEFAULT':
-          exc_modes = []
-        else:
-          raise ValueError('Invalid excluded option: %s'%excluded)
-        for kk, vv in fp.iteritems():
-          if 'EXCLUDED' in vv:
-            splitkk = kk.split('_')
-            if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
-              ell = int(splitkk[0][1])
-              emm = int(splitkk[1][1:])
-              if excluded == 'DEFAULT':
-                exc_modes.append((ell,emm))
-              elif not (ell, emm) in exc_modes:
-                print "Warning: Including mode (%d,%d) which is excluded by default"%(ell, emm)
-
-        ### compile list of available modes ###
-        if ell_m is None:
-          mode_keys = []
-          for kk in fp.keys():
-            splitkk = kk.split('_')
-            if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
-              ell = int(splitkk[0][1])
-              emm = int(splitkk[1][1:])
-              if not (ell, emm) in exc_modes:
-                mode_keys.append((ell,emm))
-        else:
-          mode_keys = []
-          for i, mode in enumerate(ell_m):
-            if mode in exc_modes:
-              print "WARNING: Mode (%d,%d) is both included and excluded! Excluding it."%mode 
-            else:
-              mode_keys.append(mode)
-
-        ### load the single mode surrogates ###
-        for mode_key in mode_keys:
-          assert(mode_keys.count(mode_key)==1)
-          mode_key_str = 'l'+str(mode_key[0])+'_m'+str(mode_key[1])
-          print "loading surrogate mode... " + mode_key_str
-          self.single_mode_dict[mode_key] = \
-            EvaluateSingleModeSurrogate(fp,subdir=mode_key_str+'/',closeQ=False)
-        fp.close()
-        
-        self.modes = mode_keys
-      
-    else:
-      ### compile list of available modes ###
-      # assumes (i) single mode folder format l#_m#_ 
-      #         (ii) ell<=9, m>=0
-      import os
-      for single_mode in _list_folders(path,'l'):
-        ell = int(single_mode[1])
-        emm = int(single_mode[4])
-        mode_key = (ell,emm)
-        if (ell_m is None) or (mode_key in ell_m):
-          if ((type(excluded) == list and not mode_key in excluded) or
-              (excluded == 'DEFAULT' and not
-               os.path.isfile(path+single_mode+'/EXCLUDED.txt'))):
-            assert(not self.single_mode_dict.has_key(mode_key))
-            if os.path.isfile(path+single_mode+'/EXCLUDED.txt'):
-              print "Warning: Including mode (%d,%d) which is excluded by default"%(ell, emm)
-            print "loading surrogate mode... "+single_mode[0:5]
-            self.single_mode_dict[mode_key] = \
-              EvaluateSingleModeSurrogate(path+single_mode+'/')
-      ### check all requested modes have been loaded ###
-      if ell_m is not None:
-        for tmp in ell_m:
-          try:
-            self.single_mode_dict[tmp]
-          except KeyError:
-            print 'Could not find mode '+str(tmp)
-
+    self.single_mode_dict = \
+      CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded)
 
     ### Load/deduce multi-mode surrogate properties ###
+    #if filemode not in ['r+', 'w']:      
+    if len(self.single_mode_dict) == 0:
+      raise IOError('Modes not found. Mode subdirectories begins with l#_m#_')
 
-    if filemode not in ['r+', 'w']:      
-      if len(self.single_mode_dict) == 0:
-        raise IOError('Modes not found. Mode subdirectories begins with l#_m#_')
-
-      ### Check single mode temporal grids are collocated ###
-      grid_shape = self.single_mode_dict[self.single_mode_dict.keys()[0]].time().shape
-      for key in self.single_mode_dict.keys():
-        tmp_shape = self.single_mode_dict[self.single_mode_dict.keys()[0]].time().shape
-        if(grid_shape != tmp_shape):
-          raise ValueError('inconsistent single mode temporal grids')
+    ### Check single mode temporal grids are collocated ###
+    grid_shape = self.single_mode_dict[self.single_mode_dict.keys()[0]].time().shape
+    for key in self.single_mode_dict.keys():
+      tmp_shape = self.single_mode_dict[self.single_mode_dict.keys()[0]].time().shape
+      if(grid_shape != tmp_shape):
+        raise ValueError('inconsistent single mode temporal grids')
       
-      self.time_all_modes = self.single_mode_dict[self.single_mode_dict.keys()[0]].time
+    self.time_all_modes = self.single_mode_dict[self.single_mode_dict.keys()[0]].time
 
       # TODO: other common data to merge: surrogate parameter intervals
       # Bad idea? if modes use different parameterization -- better to let modes handle this?
