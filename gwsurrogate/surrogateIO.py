@@ -522,27 +522,25 @@ class H5Surrogate(H5SurrogateIO):
 
         print("key = %s"%kk)
 
-        if kk != 'mode':
-          if kk != 'surrogate_ID':
+        if kk not in ['mode', 'surrogate_ID', 'B1_spline_params', 'B2_spline_params']:
             
-            dtype = type(data_to_write[kk])
-            
-            if dtype is str:
-              chars = self.string_to_chars(data_to_write[kk])
-              group.create_dataset(kk, data=chars, dtype='int')
-            elif dtype is np.ndarray:
-              group.create_dataset(kk, data=data_to_write[kk], dtype=data_to_write[kk].dtype, compression='gzip')
-            elif callable(data_to_write[kk]):
-              print("key %s is a function. Not writing to h5 file"%kk)
-            elif data_to_write[kk] is None:
-              print("key %s has a value of none. Not writing to h5 file"%kk)
-            else:
-              group.create_dataset(kk, data=data_to_write[kk], dtype=type(data_to_write[kk]))
-          
+          dtype = type(data_to_write[kk])
+          if dtype is str:
+            chars = self.string_to_chars(data_to_write[kk])
+            group.create_dataset(kk, data=chars, dtype='int')
+          elif dtype is np.ndarray:
+            group.create_dataset(kk, data=data_to_write[kk], dtype=data_to_write[kk].dtype, compression='gzip')
+          elif callable(data_to_write[kk]):
+            print("key %s is a function. Not writing to h5 file"%kk)
+          elif data_to_write[kk] is None:
+            print("key %s has a value of none. Not writing to h5 file"%kk)
           else:
-            name = file.filename.split('/')[-1].split('.')[0]
-            group.create_dataset('surrogate_ID', data=self.string_to_chars(name), dtype='int')
-            #group.create_dataset('surrogate_ID', data=self.string_to_chars(data_to_write[kk]), dtype='int')
+            group.create_dataset(kk, data=data_to_write[kk], dtype=type(data_to_write[kk]))
+
+        elif kk=='surrogate_ID':
+          name = file.filename.split('/')[-1].split('.')[0]
+          group.create_dataset('surrogate_ID', data=self.string_to_chars(name), dtype='int')
+          #group.create_dataset('surrogate_ID', data=self.string_to_chars(data_to_write[kk]), dtype='int')
     
     ### Close file, if requested ###
     if closeQ:
