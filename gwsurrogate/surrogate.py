@@ -647,12 +647,6 @@ class EvaluateSurrogate():
     if excluded is None:
       excluded = []
 
-    # Make list of required data for reading/writing surrogate data
-    self.required = ['tmin', 'tmax', 'greedy_points', 'eim_indices', 'B', \
-                     'fitparams_amp', 'fitparams_phase', \
-                     'fit_min', 'fit_max', 'fit_type_amp', 'fit_type_phase', \
-                     'surrogate_mode_type', 'parameterization']
-    
     # Convenience for plotting purposes
     import matplotlib.pyplot as plt
     self.plt = plt
