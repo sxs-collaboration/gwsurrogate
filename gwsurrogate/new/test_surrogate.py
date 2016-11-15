@@ -57,13 +57,13 @@ class ParamSpaceTester(BaseTest):
 
     def _test_ParamDim_nudge(self, tol, xmin, xmax):
         pd = surrogate.ParamDim("mass", xmin, xmax, rtol=tol/(xmax - xmin))
-        self.assertEqual(pd.nudge(xmin - 0.9*tol), xmin)
-        self.assertEqual(pd.nudge(xmax + 0.9*tol), xmax)
+        self.assertEqual(pd.nudge(xmin - 0.9*tol), xmin + tol)
+        self.assertEqual(pd.nudge(xmax + 0.9*tol), xmax - tol)
         with self.assertRaises(Exception):
             pd.nudge(xmin - 1.1*tol)
         with self.assertRaises(Exception):
             pd.nudge(xmax + 1.1*tol)
-        for x in [xmin, 0.5*(xmin + xmax), xmax]:
+        for x in [xmin + tol, 0.5*(xmin + xmax), xmax - tol]:
             self.assertEqual(pd.nudge(x), x)
 
     def test_ParamDim(self):
@@ -96,8 +96,8 @@ class ParamSpaceTester(BaseTest):
         xmin = ps.nudge_params(xmin)
         xmax = ps.nudge_params(xmax)
         for i in range(len(xmins)):
-            self.assertEqual(xmin[i], xmins[i])
-            self.assertEqual(xmax[i], xmaxs[i])
+            self.assertEqual(xmin[i], xmins[i] + tols[i])
+            self.assertEqual(xmax[i], xmaxs[i] - tols[i])
 
         # Nudge one
         xmin = np.array([x for x in xmins])
@@ -107,8 +107,8 @@ class ParamSpaceTester(BaseTest):
             xmax[i] += 0.9 * tols[i]
             xmin = ps.nudge_params(xmin)
             xmax = ps.nudge_params(xmax)
-            self.assertEqual(xmin[i], xmins[i])
-            self.assertEqual(xmax[i], xmaxs[i])
+            self.assertEqual(xmin[i], xmins[i] + tols[i])
+            self.assertEqual(xmax[i], xmaxs[i] - tols[i])
 
         # Check Exceptions
         for i in range(len(xmins)):
@@ -122,13 +122,13 @@ class ParamSpaceTester(BaseTest):
                 ps.nudge_params(xmax)
 
         # Check unmodified
-        x = np.array([x for x in xmins])
+        x = np.array([x + tol for x, tol in zip(xmins, tols)])
         check_params = [1*x]
         for i in range(len(xmins)):
-            x[i] += 0.5*(xmaxs[i] - xmins[i])
+            x[i] += 0.5*(xmaxs[i] - xmins[i]) - tols[i]
             check_params.append(1*x)
         for i in range(len(xmins)):
-            x[i] += 0.5*(xmaxs[i] - xmins[i])
+            x[i] += 0.5*(xmaxs[i] - xmins[i]) - tols[i]
             check_params.append(1*x)
         for x in check_params:
             x2 = ps.nudge_params(x)
@@ -199,9 +199,9 @@ class SingleFunctionSurrogateTester(BaseTest):
                 self.assertEqual(r, a)
 
         def check_cases(sur):
-            check(1.0, 1.0, sur)
-            check(np.array([1.0]), 1.0, sur)
-            check(1.0 - 1.e-11, 1.0, sur)
+            check(1.0, 1.0 + 1.e-12, sur)
+            check(np.array([1.0]), 1.0 + 1.e-12, sur)
+            check(1.0 - 1.e-13, 1.0 + 1.e-12, sur)
 
         check_cases(sfs)
 

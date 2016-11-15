@@ -41,7 +41,7 @@ from nodeFunction import NodeFunction
 from spline_evaluation import TensorSplineGrid
 
 
-PARAM_NUDGE_TOL = 1.e-10 # Default relative tolerance for nudging edge cases
+PARAM_NUDGE_TOL = 1.e-12 # Default relative tolerance for nudging edge cases
 
 
 def _identity(r1, r2):
@@ -102,6 +102,8 @@ class ParamDim(SimpleH5Object):
         self.min_val = min_val
         self.max_val = max_val
         self.tol = tol
+        self.tol_max = max_val - tol
+        self.tol_min = min_val + tol
 
     def __str__(self):
         return self.name
@@ -112,24 +114,24 @@ class ParamDim(SimpleH5Object):
 
     def nudge(self, x):
         """
-        Returns a nudged version of x lying within [min_val, max_val].
+        Returns a nudged version of x lying within [min_val+tol, max_val-tol].
         x can have any shape. Returns x if it already lies in the interval.
         x must already lie within [min_val - tol, max_val + tol].
         """
         xmax = np.max(x)
         xmin = np.min(x)
 
-        if xmax > self.max_val:
+        if xmax > self.tol_max:
             if xmax > self.max_val + self.tol:
                 raise Exception("The maximum allowed %s is %s, got %s"%(
                                 self.name, self.max_val, xmax))
-            x = np.amin([x, np.ones(np.shape(x)) * self.max_val], axis=0)
+            x = np.amin([x, np.ones(np.shape(x)) * self.tol_max], axis=0)
 
-        if xmin < self.min_val:
+        if xmin < self.tol_min:
             if xmin < self.min_val - self.tol:
                 raise Exception("The maximum allowed %s is %s, got %s"%(
                                 self.name, self.min_val, xmin))
-            x = np.amax([x, np.ones(np.shape(x)) * self.min_val], axis=0)
+            x = np.amax([x, np.ones(np.shape(x)) * self.tol_min], axis=0)
 
         return x
 
