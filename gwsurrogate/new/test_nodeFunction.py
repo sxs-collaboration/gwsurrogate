@@ -5,7 +5,7 @@ import os
 import unittest
 
 import nodeFunction as nf
-import parametric_funcs as pf
+from gwsurrogate import parametric_funcs as pf
 
 TEST_FILE = 'test.h5' # Gets created and deleted
 

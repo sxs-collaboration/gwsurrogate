@@ -29,7 +29,7 @@ THE SOFTWARE.
 
 from saveH5Object import SimpleH5Object
 
-import parametric_funcs
+from gwsurrogate import parametric_funcs
 import numpy as np
 import gwtools
 
