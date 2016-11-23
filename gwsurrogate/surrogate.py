@@ -568,6 +568,30 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def _eim_coeffs(self, x, surrogate_mode_type):
+    """Evaluate EIM coefficients at parameter value x. x could be mass ratio, symmetric
+       mass ratio or something else -- it depends on the surrogate's parameterization. 
+
+       see __call__ for the parameterization and _h_sur for how these 
+       coefficients are used. """
+
+    ### x to the standard interval on which the fits were performed ###
+    x_0 = self._affine_mapper(x)
+
+    ### Evaluate amp/phase/norm fits ###
+    amp_eval   = self._amp_eval(x_0)
+    phase_eval = self._phase_eval(x_0)
+    nrm_eval   = self._norm_eval(x_0)
+
+    if self.surrogate_mode_type  == 'waveform_basis':
+      h_EIM = nrm_eval*amp_eval*np.exp(1j*phase_eval) # dim_RB-vector fit evaluation of h
+      return h_EIM
+    elif self.surrogate_mode_type  == 'amp_phase_basis':
+      return amp_eval, phase_eval, nrm_eval
+    else: 
+      raise ValueError('invalid surrogate type')
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _h_sur(self, x, samples=None):
     """Evaluate surrogate at parameter value x. x could be mass ratio, symmetric
        mass ratio or something else -- it depends on the surrogate's parameterization. 
@@ -577,28 +601,21 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
        This should ONLY be called by the __call__ method which accounts for 
        different parameterization choices. """
 
-    ### Map q to the standard interval ###
-    x_0 = self._affine_mapper(x)
-
-    ### Evaluate amp/phase/norm fits ###
-    amp_eval   = self._amp_eval(x_0)
-    phase_eval = self._phase_eval(x_0)
-    nrm_eval   = self._norm_eval(x_0)
 
     if self.surrogate_mode_type  == 'waveform_basis':
 
-      ### Build dim_RB-vector fit evaluation of h ###
-      # TODO: amp/phase and waveform basis types need to be better integrated
-      #       e.g.... resample_B should handle both cases
-      h_EIM = amp_eval*np.exp(1j*phase_eval)
-		
+      h_EIM = self._eim_coeffs(x, 'waveform_basis')
+
       if samples is None:
         surrogate = np.dot(self.B, h_EIM)
       else:
         surrogate = np.dot(self.resample_B(samples), h_EIM)
 
+      #surrogate = nrm_eval * surrogate
 
     elif self.surrogate_mode_type  == 'amp_phase_basis':
+
+      amp_eval, phase_eval, nrm_eval = self._eim_coeffs(x, 'amp_phase_basis')
 
       if samples is None:
         sur_A = np.dot(self.B_1, amp_eval)
@@ -609,14 +626,13 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
         sur_A = np.dot(self.resample_B_1(samples), amp_eval)
         sur_P = np.dot(self.resample_B_2(samples), phase_eval)
 
-      surrogate = sur_A*np.exp(1j*sur_P)
+      surrogate = nrm_eval * sur_A * np.exp(1j*sur_P)
 
 
     else:
       raise ValueError('invalid surrogate type')
 
 
-    surrogate = nrm_eval * surrogate
     hp = surrogate.real
     #hp = hp.reshape([self.time_samples,])
     hc = surrogate.imag

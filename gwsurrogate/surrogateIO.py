@@ -97,7 +97,7 @@ surrogate_description = """* Description of tags:
 
 
 ##############################################
-class TextSurrogateIO:
+class SurrogateBaseIO:
   """
 * Summary (IO base class): 
 
@@ -110,111 +110,95 @@ class TextSurrogateIO:
 """
   __doc__+=surrogate_description
 
-  # format variable_name_file   = file_name
-  _surrogate_mode_type_file  = 'surrogate_mode_type.txt'
-  _parameterization          = 'parameterization.txt'
-  _affine_map_file           = 'affine_map.txt'
-  _fit_type_phase_file       = 'fit_type_phase.txt'
-  _fit_type_amp_file         = 'fit_type_amp.txt'
-  _fit_type_norm_file        = 'fit_type_norm.txt'
+  # format variable_name_{h5,txt} = {file_name,h5_group}
+  # Note: some of these fields are optional
 
-  # mandatory data files # 
-  _time_info_file            = 'time_info.txt'
-  _fit_interval_file         = 'param_fit_interval.txt'
-  _fitparams_phase_file      = 'fitparams_phase.txt' # switched from fit_coeff_phase.txt 11/9/2016
-  _fitparams_amp_file        = 'fitparams_amp.txt'   # switched from fit_coeff_amp.txt 11/9/2016
-  _B_1_file                  = 'B_1.txt'
-  _B_2_file                  = 'B_2.txt'
+  ## REQUIRED DATA ##
 
-  # optional data files #
-  _greedy_points_file   = 'greedy_points.txt'
-  _fitparams_norm_file  = 'fitparams_norm.txt' # switched from fit_coeff_norm.txt 11/9/2016
-  _eim_indices_file     = 'eim_indices.txt'
-  _V_1_file             = 'V_1.txt'
-  _V_2_file             = 'V_2.txt'
-  _R_1_file             = 'R_1.txt'
-  _R_2_file             = 'R_2.txt'
-  _t_units_file         = 't_units.txt'
+  _surrogate_ID_h5          = 'surrogate_ID' # From local folder name for text surrogates 
 
+  _surrogate_mode_type_txt  = 'surrogate_mode_type.txt'
+  _surrogate_mode_type_h5   = 'surrogate_mode_type' # .txt
 
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def __init__(self, sdir):
-    pass
+  _parameterization_txt     = 'parameterization.txt'
+  _parameterization_h5      = 'parameterization' # .txt
 
+  _time_info_txt            = 'time_info.txt' # with min, max, dt or (times, quad weights). depricated (11/23/2016)
+  _tmin_h5                  = 'tmin' # 
+  _tmax_h5                  = 'tmax' # Pass tmin, tmax and dt, or... 
+  _dt_h5                    = 'dt'   #
 
-##############################################
-class H5SurrogateIO:
-  """
-* Summary (IO base class): 
+  _times_h5                 = 'times'              # pass a grid of times and quadrature weights 
+  _quadrature_weights_h5    = 'quadrature_weights' # 
 
-    Base class for single-mode text-based surrogate format. This class
-    organizes a common set of mandatory and optional data files and
-    bookkeeping tags. It serves as a base class from which surrogate read
-    and write classes will inherit.
+  _fit_interval_txt         = 'param_fit_interval.txt'
+  _fit_min_h5               = 'fit_min' #  _fit_interval_txt = 'param_fit_interval.txt' (both max and min)
+  _fit_max_h5               = 'fit_max'
+
+  _B_1_txt                  = 'B_1.txt'
+  _B_2_txt                  = 'B_2.txt'
+  _B_h5                     = 'B' # B_1.txt
+  _B_phase_h5               = 'B_phase' # B_2.txt
 
 
-"""
-  __doc__ += surrogate_description
+  ## COULD BE OPTIONAL DATA (depends on surrogate type) ###
 
-  # hdf5 data group name
+  _affine_map_txt           = 'affine_map.txt'
+  _affine_map_h5            = 'affine_map' # .txt
 
-  # data which maps simply to corresponding text-based surrogate
-  _surrogate_ID_grp          = 'surrogate_ID' # From local folder name
-  _surrogate_mode_type_grp   = 'surrogate_mode_type' # .txt
-  _parameterization_grp      = 'parameterization' # .txt
-  _affine_map_grp            = 'affine_map' # .txt
-  _greedy_points_grp         = 'greedy_points' # .txt
-  _t_units_grp               = 't_units' # .txt
-  _V_grp                     = 'V' # V_1.txt V_2.txt
-  _R_grp                     = 'R' # R_1.txt R_2.txt
-  _B_grp                     = 'B' # B_1.txt
-  _B_phase_grp               = 'B_phase' # B_2.txt
-  _fitparams_phase_grp      = 'fitparams_phase' #  .txt
-  _fit_type_phase_grp       = 'fit_type_phase'   # .txt
-  _fitparams_amp_grp        = 'fitparams_amp'  # .txt
-  _fit_type_amp_grp         = 'fit_type_amp' # .txt
-  _fit_type_norm_grp        = 'fit_type_norm' # .txt
-  _fitparams_norm_grp       = 'fitparams_norm' # .txt
+  _fit_type_phase_txt       = 'fit_type_phase.txt'
+  _fit_type_phase_h5        = 'fit_type_phase'   # .txt
 
+  _fit_type_amp_txt         = 'fit_type_amp.txt'
+  _fit_type_amp_h5          = 'fit_type_amp' # .txt
 
-  # data with more complicated mapping between hdf5 and text naming conventions
-  #_time_info_file = 'time_info.txt' # txt: time_info.txt with min, max, dt
-  _tmin_grp   = 'tmin' # rolled into time_info.txt
-  _tmax_grp   = 'tmax' # rolled into time_info.txt
-  _times_grp  = 'times' # rolled into time_info.txt (from dt)
-  _quadrature_weights_grp  = 'quadrature_weights' # rolled into time_info.txt
-  _dt_grp  = 'dt' # rolled into time_info.txt
+  _fit_type_norm_txt        = 'fit_type_norm.txt'
+  _fit_type_norm_h5         = 'fit_type_norm' # .txt
 
-  _eim_indices_grp        = 'eim_indices'       # .txt... text: eim_indices contains 2 vectors if amp/phase
-  _eim_indices_phase_grp  = 'eim_indices_phase' # rolled into eim_indices
+  _fitparams_phase_txt      = 'fitparams_phase.txt' # switched from fit_coeff_phase.txt 11/9/2016
+  _fitparams_phase_h5       = 'fitparams_phase' #  .txt
 
-  _fit_min_grp = 'fit_min' #  _fit_interval_file = 'param_fit_interval.txt' (both max and min)
-  _fit_max_grp = 'fit_max'
+  _fitparams_amp_txt        = 'fitparams_amp.txt'   # switched from fit_coeff_amp.txt 11/9/2016
+  _fitparams_amp_h5         = 'fitparams_amp'  # .txt
+
+  _fitparams_norm_txt  = 'fitparams_norm.txt' # switched from fit_coeff_norm.txt 11/9/2016
+  _fitparams_norm_h5   = 'fitparams_norm' # .txt
 
 
-  _eim_amp_grp    = 'eim_amp' # text analog? only used to plot 
-  _eim_phase_grp  = 'eim_phase' # text analog? only used to plot
+  ## OPTIONAL DATA ##
+  _greedy_points_txt   = 'greedy_points.txt'
+  _greedy_points_h5    = 'greedy_points' # .txt
+
+  _eim_indices_txt       = 'eim_indices.txt'
+  _eim_indices_h5        = 'eim_indices'       # .txt... text: eim_indices contains 2 vectors if amp/phase
+  _eim_indices_phase_h5  = 'eim_indices_phase' # rolled into eim_indices
+  _eim_amp_h5            = 'eim_amp' # text analog? only used to plot 
+  _eim_phase_h5          = 'eim_phase' # text analog? only used to plot
+
+  _V_1_txt             = 'V_1.txt'
+  _V_2_txt             = 'V_2.txt'
+  _V_h5                = 'V' # V_1.txt V_2.txt
+
+  _R_1_txt             = 'R_1.txt'
+  _R_2_txt             = 'R_2.txt'
+  _R_h5                = 'R' # R_1.txt R_2.txt
+
+  _t_units_txt         = 't_units.txt'
+  _t_units_h5          = 't_units' # .txt
+
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __init__(self):
-  
+
     ### Make list of required data for reading/writing surrogate data ###
-    self.required = ['tmin', 'tmax', 'greedy_points', 'eim_indices', 'B', \
-                     'fitparams_amp', 'fitparams_phase', \
+    # this is the minimum data. Surrogate evalutions may require more than 
+    # the minimum
+    self.required = ['times', 'B', 'fitparams_amp', 'fitparams_phase', \
                      'fit_min', 'fit_max', 'fit_type_amp', 'fit_type_phase', \
                      'surrogate_mode_type', 'parameterization']
-    
-    pass
-  
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def chars_to_string(self, chars):
-    return "".join(chr(cc) for cc in chars)
 
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def string_to_chars(self, string):
-    return [ord(cc) for cc in string]
-  
+
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def print_required(self):
     """ Print variable names required for importing and exporting surrogate data"""
@@ -239,15 +223,16 @@ class H5SurrogateIO:
     return dict.keys()
 
 
+
 ##############################################
-class H5Surrogate(H5SurrogateIO):
+class H5Surrogate(SurrogateBaseIO):
   """Load or export a single-mode surrogate in terms of the function's amplitude and phase from HDF5 data format"""
 
   __doc__ += surrogate_description
   
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __init__(self, file=None, mode=None, subdir='', closeQ=True):
-    H5SurrogateIO.__init__(self)
+    SurrogateBaseIO.__init__(self)
     
     ### Get mode name if supplied and check if subdir ends with '/' ###
     if subdir != '':
@@ -305,6 +290,14 @@ class H5Surrogate(H5SurrogateIO):
     return dict
   
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def chars_to_string(self, chars):
+    return "".join(chr(cc) for cc in chars)
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def string_to_chars(self, string):
+    return [ord(cc) for cc in string]
+  
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def prepare_data(self, data_class):
     """ Prepare a dictionary to export with entries filled from imported surrogate data"""
     return [self.prepare_mode_data(data_class.single_modes[mm]) for mm in data_class.modes]
@@ -331,8 +324,8 @@ class H5Surrogate(H5SurrogateIO):
       
     ### Get SurrogateID ####
     name = self.file.filename.split('/')[-1].split('.')[0]
-    if self._surrogate_ID_grp in self.keys:
-      self.surrogate_ID = self.chars_to_string(self.file[subdir+self._surrogate_ID_grp][()])
+    if self._surrogate_ID_h5 in self.keys:
+      self.surrogate_ID = self.chars_to_string(self.file[subdir+self._surrogate_ID_h5][()])
       if self.surrogate_ID != name:
         print "\n>>> Warning: SurrogateID does not have expected name."
     else:
@@ -340,31 +333,36 @@ class H5Surrogate(H5SurrogateIO):
     
     ### Get type of basis used to build surrogate 
     # (e.g., basis for complex waveform or for amplitude and phase)
-    self.surrogate_mode_type = self.chars_to_string(self.file[subdir+self._surrogate_mode_type_grp][()])
+    self.surrogate_mode_type = self.chars_to_string(self.file[subdir+self._surrogate_mode_type_h5][()])
     
     ### Unpack time info ###
-    self.tmin = self.file[subdir+self._tmin_grp][()]
-    self.tmax = self.file[subdir+self._tmax_grp][()]
+    #self.tmin = self.file[subdir+self._tmin_h5][()]
+    #self.tmax = self.file[subdir+self._tmax_h5][()]
+    #if self._dt_h5 in self.keys:
+    #  self.dt = self.file[subdir+self._dt_h5][()]
+    #  self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
+    #  self.quadrature_weights = self.dt * np.ones(self.times.shape)
+
+    if self._dt_h5 in self.keys or self._tmin_h5 in self.keys:
+      raise ValueError("tmin, tmax, dt are depricated as of 11/23/2016.")
+
+    #if self._times_h5 in self.keys:
+    self.times = self.file[subdir+self._times_h5][:]
     
-    if self._times_grp in self.keys:
-      self.times = self.file[subdir+self._times_grp][:]
+    #if self._quadrature_weights_h5 in self.keys:
+    try:
+      self.quadrature_weights = self.file[subdir+self._quadrature_weights_h5][:]
+    except:
+      print "\n>>> Warning: Guessing quadrature points."
+      self.quadrature_weights = (self.times[1] - self.times[0]) * np.ones(self.times.shape)
+
+    #if self._times_h5 not in self.__dict__.keys():
+    #  print "\n>>> Warning: No time samples found or generated."
+    #if self._quadrature_weights_h5 not in self.__dict__.keys():
+    #  print "\n>>> Warning: No quadrature weights found or generated."
     
-    if self._quadrature_weights_grp in self.keys:
-      self.quadrature_weights = self.file[subdir+self._quadrature_weights_grp][:]
-    
-    if self._dt_grp in self.keys:
-      self.dt = self.file[subdir+self._dt_grp][()]
-      self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
-      self.quadrature_weights = self.dt * np.ones(self.times.shape)
-    
-    if self._times_grp not in self.__dict__.keys():
-      print "\n>>> Warning: No time samples found or generated."
-    
-    if self._quadrature_weights_grp not in self.__dict__.keys():
-      print "\n>>> Warning: No quadrature weights found or generated."
-    
-    if self._t_units_grp in self.keys:
-      self.t_units = self.chars_to_string(self.file[subdir+self._t_units_grp][()])
+    if self._t_units_h5 in self.keys:
+      self.t_units = self.chars_to_string(self.file[subdir+self._t_units_h5][()])
     else:
       self.t_units = 'TOverMtot'
 
@@ -375,57 +373,56 @@ class H5Surrogate(H5SurrogateIO):
       raise ValueError('surrogates must be dimensionless')
 
     ### Greedy points (ordered by RB selection) ###
-    self.greedy_points = self.file[subdir+self._greedy_points_grp][:]
+    self.greedy_points = self.file[subdir+self._greedy_points_h5][:]
     
     ### Empirical time index (ordered by EIM selection) ###
     if self.surrogate_mode_type == 'amp_phase_basis':
-      self.eim_indices_amp = self.file[subdir+self._eim_indices_grp][:]
-      self.eim_indices_phase = self.file[subdir+self._eim_indices_phase_grp][:]
+      self.eim_indices_amp = self.file[subdir+self._eim_indices_h5][:]
+      self.eim_indices_phase = self.file[subdir+self._eim_indices_phase_h5][:]
     elif self.surrogate_mode_type  == 'waveform_basis':
-      self.eim_indices = self.file[subdir+self._eim_indices_grp][:]
+      self.eim_indices = self.file[subdir+self._eim_indices_h5][:]
     else:
       raise ValueError('invalid surrogate type')
 
     ### Complex B coefficients ###
     if self.surrogate_mode_type == 'amp_phase_basis':
-      self.B_1 = self.file[subdir+self._B_grp][:]
-      self.B_2 = self.file[subdir+self._B_phase_grp][:]
+      self.B_1 = self.file[subdir+self._B_h5][:]
+      self.B_2 = self.file[subdir+self._B_phase_h5][:]
     elif self.surrogate_mode_type  == 'waveform_basis':
-      self.B = self.file[subdir+self._B_grp][:]	
+      self.B = self.file[subdir+self._B_h5][:]	
     else:
       raise ValueError('invalid surrogate type')
     
     ### Information about phase/amp parametric fit ###
-    if self._affine_map_grp in self.keys:
-      self.affine_map = self.chars_to_string(self.file[subdir+self._affine_map_grp][()])
+    if self._affine_map_h5 in self.keys:
+      self.affine_map = self.chars_to_string(self.file[subdir+self._affine_map_h5][()])
     else:
       self.affine_map = 'none'
-    self.fitparams_amp = self.file[subdir+self._fitparams_amp_grp][:]
-    self.fitparams_phase = self.file[subdir+self._fitparams_phase_grp][:]
-    self.fit_min = self.file[subdir+self._fit_min_grp][()]
-    self.fit_max = self.file[subdir+self._fit_max_grp][()]
+    self.fitparams_amp = self.file[subdir+self._fitparams_amp_h5][:]
+    self.fitparams_phase = self.file[subdir+self._fitparams_phase_h5][:]
+    self.fit_min = self.file[subdir+self._fit_min_h5][()]
+    self.fit_max = self.file[subdir+self._fit_max_h5][()]
     self.fit_interval = [self.fit_min, self.fit_max]
     
-    self.fit_type_amp = self.chars_to_string(self.file[subdir+self._fit_type_amp_grp][()])
-    self.fit_type_phase = self.chars_to_string(self.file[subdir+self._fit_type_phase_grp][()])
+    self.fit_type_amp = self.chars_to_string(self.file[subdir+self._fit_type_amp_h5][()])
+    self.fit_type_phase = self.chars_to_string(self.file[subdir+self._fit_type_phase_h5][()])
     
     self.amp_fit_func   = my_funcs[self.fit_type_amp]
     self.phase_fit_func = my_funcs[self.fit_type_phase]
     
-    if self._fit_type_norm_grp in self.keys:
-      self.fitparams_norm = self.file[subdir+self._fitparams_norm_grp][:]
-      self.fit_type_norm = self.chars_to_string(self.file[subdir+self._fit_type_norm_grp][()])
+    if self._fit_type_norm_h5 in self.keys:
+      self.fitparams_norm = self.file[subdir+self._fitparams_norm_h5][:]
+      self.fit_type_norm = self.chars_to_string(self.file[subdir+self._fit_type_norm_h5][()])
       self.norm_fit_func  = my_funcs[self.fit_type_norm]
       self.norms = True
-    
     else:
       self.norms = False
     
-    if self._eim_amp_grp in self.keys:
-      self.eim_amp = self.file[subdir+self._eim_amp_grp][:]
+    if self._eim_amp_h5 in self.keys:
+      self.eim_amp = self.file[subdir+self._eim_amp_h5][:]
     
-    if self._eim_phase_grp in self.keys:
-      self.eim_phase = self.file[subdir+self._eim_phase_grp][:]
+    if self._eim_phase_h5 in self.keys:
+      self.eim_phase = self.file[subdir+self._eim_phase_h5][:]
     
     ### Transpose matrices if surrogate was built using ROMpy ###
     transposeB = False
@@ -448,19 +445,19 @@ class H5Surrogate(H5SurrogateIO):
         self.dim_rb_phase = np.shape(self.B_2)[0]
 
     ### Vandermonde V such that E (orthogonal basis) is E = BV ###
-    if self._V_grp in self.keys:
-      self.V = self.file[subdir+self._V_grp][:]
+    if self._V_h5 in self.keys:
+      self.V = self.file[subdir+self._V_h5][:]
       if transposeB:
         self.V = np.transpose(self.V)
     
     ### R matrix such that waveform basis H = ER ###
-    if self._R_grp in self.keys:
-      self.R = self.file[subdir+self._R_grp][:]
+    if self._R_h5 in self.keys:
+      self.R = self.file[subdir+self._R_h5][:]
       if transposeB:
         self.R = np.transpose(self.R)
         
     ### Information about surrogate's parameterization ###
-    self.parameterization = self.chars_to_string(self.file[subdir+self._parameterization_grp][()])
+    self.parameterization = self.chars_to_string(self.file[subdir+self._parameterization_h5][()])
     self.get_surr_params  = my_funcs[self.parameterization]
     
     if closeQ:
@@ -550,7 +547,7 @@ class H5Surrogate(H5SurrogateIO):
 
 
 ##############################################
-class TextSurrogateRead(TextSurrogateIO):
+class TextSurrogateRead(SurrogateBaseIO):
   """Load single-mode, text-based surrogate"""
   __doc__+=surrogate_description
 
@@ -566,11 +563,11 @@ class TextSurrogateRead(TextSurrogateIO):
 
     ### type of surrogate (for harmonic mode) ###
     self.surrogate_mode_type = \
-      self.get_string_key(sdir+self._surrogate_mode_type_file)
+      self.get_string_key(sdir+self._surrogate_mode_type_txt)
 
     ### Surrogate's sampling rate and mass ratio (for fits) ###
-    self.time_info    = np.loadtxt(sdir+self._time_info_file)
-    self.fit_interval = np.loadtxt(sdir+self._fit_interval_file)
+    self.time_info    = np.loadtxt(sdir+self._time_info_txt)
+    self.fit_interval = np.loadtxt(sdir+self._fit_interval_txt)
     self.fit_min = self.fit_interval[0]
     self.fit_max = self.fit_interval[1]
 
@@ -595,7 +592,7 @@ class TextSurrogateRead(TextSurrogateIO):
     self.dt           = self.times[1] - self.times[0]
 
     try:
-      self.t_units = self.get_string_key(sdir+self._t_units_file)
+      self.t_units = self.get_string_key(sdir+self._t_units_txt)
     except IOError:
       self.t_units = 'TOverMtot'
 
@@ -606,8 +603,8 @@ class TextSurrogateRead(TextSurrogateIO):
       raise ValueError('surrogates must be dimensionless')
 
     ### Complex B coefficients - set ndim=2 in case only 1 basis vector ###
-    B_1    = np.loadtxt(sdir+self._B_1_file,ndmin=2)
-    B_2    = np.loadtxt(sdir+self._B_2_file,ndmin=2)
+    B_1    = np.loadtxt(sdir+self._B_1_txt,ndmin=2)
+    B_2    = np.loadtxt(sdir+self._B_2_txt,ndmin=2)
 
     ### Consistency check that self.time_samples = B_X.shape[0] ###
     if(self.time_samples != B_1.shape[0] or
@@ -634,19 +631,19 @@ class TextSurrogateRead(TextSurrogateIO):
       raise ValueError('invalid surrogate type')
 
     ### Information about phase/amp parametric fits ###
-    self.fitparams_phase = np.loadtxt(sdir+self._fitparams_phase_file,ndmin=2)
-    self.fitparams_amp   = np.loadtxt(sdir+self._fitparams_amp_file,ndmin=2)
+    self.fitparams_phase = np.loadtxt(sdir+self._fitparams_phase_txt,ndmin=2)
+    self.fitparams_amp   = np.loadtxt(sdir+self._fitparams_amp_txt,ndmin=2)
 
-    self.affine_map      = self.get_string_key(sdir+self._affine_map_file)
+    self.affine_map      = self.get_string_key(sdir+self._affine_map_txt)
 
-    self.fit_type_phase  = self.get_string_key(sdir+self._fit_type_phase_file)
-    self.fit_type_amp    = self.get_string_key(sdir+self._fit_type_amp_file)
+    self.fit_type_phase  = self.get_string_key(sdir+self._fit_type_phase_txt)
+    self.fit_type_amp    = self.get_string_key(sdir+self._fit_type_amp_txt)
 
     self.phase_fit_func = my_funcs[self.fit_type_phase]
     self.amp_fit_func   = my_funcs[self.fit_type_amp]
 
     ### Information about surrogate's parameterization ###
-    self.parameterization = self.get_string_key(sdir+self._parameterization)
+    self.parameterization = self.get_string_key(sdir+self._parameterization_txt)
     self.get_surr_params  = my_funcs[self.parameterization]
 
 
@@ -654,8 +651,8 @@ class TextSurrogateRead(TextSurrogateIO):
 
     ### Vandermonde V such that E (orthogonal basis) is E = BV ###
     try:
-      V_1    = np.loadtxt(sdir+self._V_1_file)
-      V_2    = np.loadtxt(sdir+self._V_2_file)
+      V_1    = np.loadtxt(sdir+self._V_1_txt)
+      V_2    = np.loadtxt(sdir+self._V_2_txt)
       self.V = V_1 + (1j)*V_2
     except IOError:
       surrogate_load_info +='Vandermonde not found, '
@@ -664,23 +661,23 @@ class TextSurrogateRead(TextSurrogateIO):
 
     ### greedy points (ordered by RB selection) ###
     try:
-      self.greedy_points = np.loadtxt(sdir+self._greedy_points_file)
+      self.greedy_points = np.loadtxt(sdir+self._greedy_points_txt)
     except IOError:
       surrogate_load_info += 'Greedy points not found, '
       self.greedy_points = False
 
     ### R matrix such that waveform basis H = ER ###
     try:
-      R_1    = np.loadtxt(sdir+self._R_1_file)
-      R_2    = np.loadtxt(sdir+self._R_2_file)
+      R_1    = np.loadtxt(sdir+self._R_1_txt)
+      R_2    = np.loadtxt(sdir+self._R_2_txt)
       self.R = R_1 + (1j)*R_2
     except IOError:
       surrogate_load_info += 'R matrix not found, '
       self.R = False
 
     try: 
-      self.fitparams_norm = np.loadtxt(sdir+self._fitparams_norm_file)
-      self.fit_type_norm  = self.get_string_key(sdir+self._fit_type_norm_file)
+      self.fitparams_norm = np.loadtxt(sdir+self._fitparams_norm_txt)
+      self.fit_type_norm  = self.get_string_key(sdir+self._fit_type_norm_txt)
       self.norm_fit_func  = my_funcs[self.fit_type_norm]
       self.norms = True
     except IOError:
@@ -689,7 +686,7 @@ class TextSurrogateRead(TextSurrogateIO):
 
     ### empirical time index (ordered by EIM selection) ###
     try:
-      self.eim_indices = np.loadtxt(sdir+self._eim_indices_file,dtype=int)
+      self.eim_indices = np.loadtxt(sdir+self._eim_indices_txt,dtype=int)
     except IOError:
       surrogate_load_info += 'EIM indices not found.'
       self.eim_indices = False
@@ -709,7 +706,7 @@ class TextSurrogateRead(TextSurrogateIO):
 
 
 ##############################################
-class TextSurrogateWrite(TextSurrogateIO):
+class TextSurrogateWrite(SurrogateBaseIO):
   """Export single-mode, text-based surrogate"""
   __doc__+=surrogate_description
 
@@ -742,37 +739,37 @@ class TextSurrogateWrite(TextSurrogateIO):
     # TODO: flag to zip folder and save full time series
 
     ### pack mass ratio interval (for fits) and time info ###
-    self._np_savetxt_safe(self.SurrogateID+self._fit_interval_file,fit_interval)
-    self._np_savetxt_safe(self.SurrogateID+self._time_info_file,time_info)
-    self._np_savetxt_safe(self.SurrogateID+self._greedy_points_file,\
+    self._np_savetxt_safe(self.SurrogateID+self._fit_interval_txt,fit_interval)
+    self._np_savetxt_safe(self.SurrogateID+self._time_info_txt,time_info)
+    self._np_savetxt_safe(self.SurrogateID+self._greedy_points_txt,\
                          greedy_points,fmt='%2.16f')
-    self._np_savetxt_safe(self.SurrogateID+self._eim_indices_file,\
+    self._np_savetxt_safe(self.SurrogateID+self._eim_indices_txt,\
                          eim_indices,fmt='%i')
-    self._np_savetxt_safe(self.SurrogateID+self._B_1_file,B.real)
-    self._np_savetxt_safe(self.SurrogateID+self._B_2_file,B.imag)
-    self._np_savetxt_safe(self.SurrogateID+self._fitparams_phase_file,\
+    self._np_savetxt_safe(self.SurrogateID+self._B_1_txt,B.real)
+    self._np_savetxt_safe(self.SurrogateID+self._B_2_txt,B.imag)
+    self._np_savetxt_safe(self.SurrogateID+self._fitparams_phase_txt,\
                          fitparams_phase)
-    self._np_savetxt_safe(self.SurrogateID+self._fitparams_amp_file,\
+    self._np_savetxt_safe(self.SurrogateID+self._fitparams_amp_txt,\
                          fitparams_amp)
-    #self._np_savetxt_safe(self.SurrogateID+self._affine_map_file,\
+    #self._np_savetxt_safe(self.SurrogateID+self._affine_map_txt,\
     #                     np.array([int(affine_map)]),fmt='%i')
-    self._np_savetxt_safe(self.SurrogateID+self._affine_map_file,\
+    self._np_savetxt_safe(self.SurrogateID+self._affine_map_txt,\
                          [affine_map],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._V_1_file,V.real)
-    self._np_savetxt_safe(self.SurrogateID+self._V_2_file,V.imag)
-    self._np_savetxt_safe(self.SurrogateID+self._R_1_file,R.real)
-    self._np_savetxt_safe(self.SurrogateID+self._R_2_file,R.imag)
-    self._np_savetxt_safe(self.SurrogateID+self._fitparams_norm_file,\
+    self._np_savetxt_safe(self.SurrogateID+self._V_1_txt,V.real)
+    self._np_savetxt_safe(self.SurrogateID+self._V_2_txt,V.imag)
+    self._np_savetxt_safe(self.SurrogateID+self._R_1_txt,R.real)
+    self._np_savetxt_safe(self.SurrogateID+self._R_2_txt,R.imag)
+    self._np_savetxt_safe(self.SurrogateID+self._fitparams_norm_txt,\
                          fitparams_norm)
-    self._np_savetxt_safe(self.SurrogateID+self._fit_type_phase_file,\
+    self._np_savetxt_safe(self.SurrogateID+self._fit_type_phase_txt,\
                          [fit_type_phase],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._fit_type_amp_file,\
+    self._np_savetxt_safe(self.SurrogateID+self._fit_type_amp_txt,\
                          [fit_type_amp],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._fit_type_norm_file,\
+    self._np_savetxt_safe(self.SurrogateID+self._fit_type_norm_txt,\
                          [fit_type_norm],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._parameterization,\
+    self._np_savetxt_safe(self.SurrogateID+self._parameterization_txt,\
                          [parameterization],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._surrogate_mode_type_file,\
+    self._np_savetxt_safe(self.SurrogateID+self._surrogate_mode_type_txt,\
                          [surrogate_mode_type],'%s')
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
