@@ -37,6 +37,7 @@ THE SOFTWARE.
 import numpy as np
 import h5py
 from saveH5Object import SimpleH5Object
+import itertools
 
 def _cubic_spline_breaks(knot_vec):
     """
@@ -111,7 +112,27 @@ def _bspline_eval(x, bvec, k, check=True):
         c2 *= (bvec[-1] - x)/(bvec[-1] - bvec[1])
     return c1 + c2
 
-#-----------------------------------------------------------------------------
+
+def memoize_spline_call(func):
+    """Decorator for TensorSplineGrid's __call__ method.
+
+       Multiple calls to __call__ typically have the same xvec
+       value, in which case we can return the last result without
+       recomputing anything.
+
+       A decorator is needed because member variables of TensorSplineGrid
+       are expected to be loaded from an hdf5 file."""
+
+    last_call   = [np.nan]
+    last_return = [np.nan, np.nan, np.nan]
+
+    def decorated_function(self,xvec):
+        if np.abs(last_call[0] - xvec) != 0:
+            last_call[0] = xvec
+            last_return[0], last_return[1], last_return[2] = func(self,xvec)
+        return last_return[0], last_return[1], last_return[2]
+    return decorated_function
+
 
 class TensorSplineGrid(SimpleH5Object):
 
@@ -143,16 +164,28 @@ Each element of spline_evals consists of the 4 potentially non-zero
         imin_vals, spline_evals = [list(t) for t in zip(*res)]
         return imin_vals, spline_evals
 
+    @memoize_spline_call
     def __call__(self, xvec):
         """
 Evaluates potentially non-zero spline basis function products.
 xvec: The point in parameter space.
 Returns:
-    imin_vals: The minimum index of up to 4 potentially non-zero splines
     eval_prods: Products of spline evaluations in all parameter space
                 directions, which can be summed up with spline coefficients.
+    sl: Single slice so we can make better use of np.sum:
+    summed_axes: See below
+
+    With these three items, we can evaluate a spline from its coefficients:
+
+       >>> y = np.sum(c[sl] * eval_prods, axis=summed_axes)
+
+    See FastTensorSplineSurrogate's call method
+
         """
 
+        # All splines use the same grid, so we determine the 4^d potentially
+        # non-zero spline basis function products here which can be used for
+        # all interpolations.
         imin_vals, spline_evals = self.bspline_eval_nonzero(xvec)
 
         # Create 4^d hypercube of bspline products
@@ -160,6 +193,41 @@ Returns:
         eval_prods = reduce(lambda a, b: np.array([a*x for x in b]),
                             spline_evals[::-1])
 
-        return imin_vals, eval_prods
+        # This slice can be passed to a numpy grid of spline coefficients
+        # to extract the 4^d relevant coefficients
+        sl_base = tuple( slice(i0, i0+4, None) for i0 in imin_vals )
+
+        # We will have arrays of shape (n_EI, n1, n2, ..., nd) where n_EI
+        # is the number of empirical nodes, and n1, ..., nd are the number of
+        # spline coefficients (2 + the number of grid points) in each dimension.
+        # We want to sum over everything except the first index to evaluate the
+        # n_EI different splines.
+        summed_axes = tuple( i+1 for i in range(self.dim) )
+
+        # Build a single slice so we can make better use of np.sum:
+        sl = tuple( itertools.chain([slice(None)], sl_base) )
+
+        self.last_return = [eval_prods, sl, summed_axes]
+
+        return eval_prods, sl, summed_axes
 
 #-----------------------------------------------------------------------------
+
+def fast_tensor_spline_eval(x,ts_grid,spline_coeffs):
+    """ Evaluate SPLINE_COEFFS defined on the grid TS_GRID
+        at an n-dimensional value X. """
+
+    # See TensorSplineGrid's call method for documentation
+    eval_prods, sl, summed_axes =  ts_grid(x)
+
+    return np.sum(spline_coeffs[sl] * eval_prods, axis=summed_axes)
+
+def fast_complex_tensor_spline_eval(x,ts_grid,spline_coeffs_real,spline_coeffs_imag):
+    """ Evaluate SPLINE_COEFFS_REAL and SPLINE_COEFFS_IMAG defined on the 
+        grid TS_GRID at an n-dimensional value X. """
+
+    nre = fast_tensor_spline_eval(x,ts_grid,spline_coeffs_real)
+    nim = fast_tensor_spline_eval(x,ts_grid,spline_coeffs_imag)
+
+    return nre + 1.j*nim
+

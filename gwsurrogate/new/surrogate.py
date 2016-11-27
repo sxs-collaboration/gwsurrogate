@@ -32,14 +32,12 @@ THE SOFTWARE.
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as _iuspline
 from gwtools.harmonics import sYlm as _sYlm
-import itertools
 
 from saveH5Object import SimpleH5Object
 from saveH5Object import H5ObjectList
 from saveH5Object import H5ObjectDict
 from nodeFunction import NodeFunction
-from spline_evaluation import TensorSplineGrid
-
+from spline_evaluation import TensorSplineGrid, fast_complex_tensor_spline_eval
 
 PARAM_NUDGE_TOL = 1.e-12 # Default relative tolerance for nudging edge cases
 
@@ -421,7 +419,6 @@ class ManyFunctionSurrogate(_ManyFunctionSurrogate_NoChecks):
         x = self.param_space.nudge_params(x)
         return super(ManyFunctionSurrogate, self)(x)
 
-
 class FastTensorSplineSurrogate(SimpleH5Object):
     """
     A special case of having a complex empirical interpolant combined with
@@ -478,22 +475,6 @@ class FastTensorSplineSurrogate(SimpleH5Object):
 
         x = self.param_space.nudge_params(x)
 
-        # All splines use the same grid, so we determine the 4^d potentially
-        # non-zero spline basis function products here which can be used for
-        # all interpolations.
-        imin_vals, eval_prods = self.ts_grid(x)
-
-        # This slice can be passed to a numpy grid of spline coefficients
-        # to extract the 4^d relevant coefficients
-        sl_base = tuple( slice(i0, i0+4, None) for i0 in imin_vals )
-
-        # We will have arrays of shape (n_EI, n1, n2, ..., nd) where n_EI
-        # is the number of empirical nodes, and n1, ..., nd are the number of
-        # spline coefficients (2 + the number of grid points) in each dimension.
-        # We want to sum over everything except the first index to evaluate the
-        # n_EI different splines.
-        summed_axes = tuple( i+1 for i in range(self.ts_grid.dim) )
-
         if modes is None:
             modes = self.mode_list
 
@@ -501,16 +482,10 @@ class FastTensorSplineSurrogate(SimpleH5Object):
         for k in modes:
             i = self.mode_indices[str(k)]
 
-            # Build a single slice so we can make better use of np.sum:
-            sl = tuple( itertools.chain([slice(None)], sl_base) )
-
-            # Sum up the spline basis function products multiplied with the
-            # appropriate spline coefficients
-            nre = np.sum(self.cre[i][sl] * eval_prods, axis=summed_axes)
-            nim = np.sum(self.cim[i][sl] * eval_prods, axis=summed_axes)
+            h_eim = fast_complex_tensor_spline_eval(x,self.ts_grid,self.cre[i],self.cim[i])
 
             # Evaluate the empirical interpolant
-            h_modes[k] = (nre + 1.j*nim).dot(self.ei[i])
+            h_modes[k] = h_eim.dot(self.ei[i])
 
         if theta is not None:
             return _mode_sum(h_modes, theta, phi)
