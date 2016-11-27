@@ -158,11 +158,15 @@ class SimpleH5Object(object):
 
     def _write_data(self, f, keys):
         for k in keys:
-            v = getattr(self, k)
-            _write_attr(f, k, v)
+            #print k
+            # TODO: how to block auto-save mechanism?
+            if k != "last_return":
+              v = getattr(self, k)
+              _write_attr(f, k, v)
 
     def _write_subordinates(self, f):
         for k in self._h5_subordinate_keys:
+            #print k
             g = f.create_group(k)
             getattr(self, k)._write_h5(g)
 
