@@ -168,7 +168,7 @@ Each element of spline_evals consists of the 4 potentially non-zero
     def __call__(self, xvec):
         """
 Evaluates potentially non-zero spline basis function products.
-xvec: The point in parameter space.
+xvec: The point in parameter space. Must be of type numpy.ndarray
 Returns:
     eval_prods: Products of spline evaluations in all parameter space
                 directions, which can be summed up with spline coefficients.
@@ -205,6 +205,8 @@ Returns:
         summed_axes = tuple( i+1 for i in range(self.dim) )
 
         # Build a single slice so we can make better use of np.sum:
+        # NOTE: sl object is meant to be used with spline coefficients
+        # for multiple EIM nodes
         sl = tuple( itertools.chain([slice(None)], sl_base) )
 
         self.last_return = [eval_prods, sl, summed_axes]
@@ -213,6 +215,8 @@ Returns:
 
 #-----------------------------------------------------------------------------
 
+# TODO: maybe ts_grid(x) should return sl_base and build sl here.
+# the sl oject should also get cached
 def fast_tensor_spline_eval(x,ts_grid,spline_coeffs):
     """ Evaluate SPLINE_COEFFS defined on the grid TS_GRID
         at an n-dimensional value X. """

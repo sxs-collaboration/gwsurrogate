@@ -343,18 +343,22 @@ class H5Surrogate(SurrogateBaseIO):
     #  self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
     #  self.quadrature_weights = self.dt * np.ones(self.times.shape)
 
-    if self._dt_h5 in self.keys or self._tmin_h5 in self.keys:
-      raise ValueError("tmin, tmax, dt are depricated as of 11/23/2016.")
-
-    #if self._times_h5 in self.keys:
-    self.times = self.file[subdir+self._times_h5][:]
-    
-    #if self._quadrature_weights_h5 in self.keys:
-    try:
-      self.quadrature_weights = self.file[subdir+self._quadrature_weights_h5][:]
-    except:
-      print "\n>>> Warning: Guessing quadrature points."
-      self.quadrature_weights = (self.times[1] - self.times[0]) * np.ones(self.times.shape)
+    if self._dt_h5 in self.keys and self._tmin_h5 in self.keys:
+      print(">>> tmin, tmax, dt are depricated as of 11/23/2016.")
+      self.tmin = self.file[subdir+self._tmin_h5][()]
+      self.tmax = self.file[subdir+self._tmax_h5][()]
+      self.dt = self.file[subdir+self._dt_h5][()]
+      self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
+      self.quadrature_weights = self.dt * np.ones(self.times.shape)
+    else:
+      self.times = self.file[subdir+self._times_h5][:]
+      self.tmin  = self.times[0]
+      self.tmax  = self.times[-1]
+      try:
+        self.quadrature_weights = self.file[subdir+self._quadrature_weights_h5][:]
+      except:
+        self.quadrature_weights = (self.times[1] - self.times[0]) * np.ones(self.times.shape)
+        print("\n>>> Warning: Guessing quadrature weights to be identical with %f"%self.quadrature_weights[0])
 
     #if self._times_h5 not in self.__dict__.keys():
     #  print "\n>>> Warning: No time samples found or generated."
@@ -373,14 +377,24 @@ class H5Surrogate(SurrogateBaseIO):
       raise ValueError('surrogates must be dimensionless')
 
     ### Greedy points (ordered by RB selection) ###
-    self.greedy_points = self.file[subdir+self._greedy_points_h5][:]
+    if self._greedy_points_h5 in self.keys:
+      self.greedy_points = self.file[subdir+self._greedy_points_h5][:]
+    else:
+      self.greedy_points = None
+      print("Cannot load greedy points...OK")
     
     ### Empirical time index (ordered by EIM selection) ###
     if self.surrogate_mode_type == 'amp_phase_basis':
-      self.eim_indices_amp = self.file[subdir+self._eim_indices_h5][:]
-      self.eim_indices_phase = self.file[subdir+self._eim_indices_phase_h5][:]
+      try:
+        self.eim_indices_amp = self.file[subdir+self._eim_indices_h5][:]
+        self.eim_indices_phase = self.file[subdir+self._eim_indices_phase_h5][:]
+      except KeyError:
+        print("Cannot load eim points...OK") 
     elif self.surrogate_mode_type  == 'waveform_basis':
-      self.eim_indices = self.file[subdir+self._eim_indices_h5][:]
+      try:
+        self.eim_indices = self.file[subdir+self._eim_indices_h5][:]
+      except KeyError:
+        print("Cannot load eim points...OK")
     else:
       raise ValueError('invalid surrogate type')
 
@@ -406,7 +420,7 @@ class H5Surrogate(SurrogateBaseIO):
     
     self.fit_type_amp = self.chars_to_string(self.file[subdir+self._fit_type_amp_h5][()])
     self.fit_type_phase = self.chars_to_string(self.file[subdir+self._fit_type_phase_h5][()])
-    
+
     self.amp_fit_func   = my_funcs[self.fit_type_amp]
     self.phase_fit_func = my_funcs[self.fit_type_phase]
     
