@@ -31,7 +31,7 @@ import numpy as np
 import os as os
 import h5py
 from parametric_funcs import function_dict as my_funcs
-
+from new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
 
 surrogate_description = """* Description of tags:
      
@@ -421,9 +421,40 @@ class H5Surrogate(SurrogateBaseIO):
     self.fit_type_amp = self.chars_to_string(self.file[subdir+self._fit_type_amp_h5][()])
     self.fit_type_phase = self.chars_to_string(self.file[subdir+self._fit_type_phase_h5][()])
 
-    self.amp_fit_func   = my_funcs[self.fit_type_amp]
-    self.phase_fit_func = my_funcs[self.fit_type_phase]
-    
+    # TODO: node fitting functions need to be generalized to their own class by using gws.new
+    if self.fit_type_amp == "fast_spline_real" and self.fit_type_phase == "fast_spline_imag":
+      print("Special case: using fast tensor spline for real and imaginary parts instead of amp/phase")
+      print("Loading fast tensor spline breakpoints")
+
+      # TODO: promote to global data -- but better to use gws.new
+      spline_knots = self.file[subdir+'spline_knots'][:]
+
+      # setup the function which will be used to evaluate splines
+      # TODO: unfortunately, this creates a new grid for each mode.
+      #       which does not take advantage of grids that are identical
+      #       for different modes.
+      #       This will also be slow: each mode will need to find the fast spline data for all modes 
+      #       without reusing already computed data
+      self.ts_grid = TensorSplineGrid([spline_knots]) # TODO: assumes 1d grid... FIX ON THIS COMMIT
+
+      # NOTE: this evaluates the real part -- but its called amp to keep with naming convention -- terrible! (TODO)
+      def amp_fit_func(coeffs,xvec):
+        amp_eval = fast_tensor_spline_eval(xvec,self.ts_grid,coeffs)
+        return amp_eval
+
+      self.amp_fit_func = amp_fit_func
+
+      # NOTE: this evaluates the imaginar part -- but its called phase to keep with naming convention -- terrible! (TODO)
+      def phase_fit_func(coeffs,xvec):
+        phase_eval = fast_tensor_spline_eval(xvec,self.ts_grid,coeffs)
+        return phase_eval
+
+      self.phase_fit_func = phase_fit_func
+      
+    else:
+      self.amp_fit_func   = my_funcs[self.fit_type_amp]
+      self.phase_fit_func = my_funcs[self.fit_type_phase]
+
     if self._fit_type_norm_h5 in self.keys:
       self.fitparams_norm = self.file[subdir+self._fitparams_norm_h5][:]
       self.fit_type_norm = self.chars_to_string(self.file[subdir+self._fit_type_norm_h5][()])

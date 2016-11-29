@@ -558,13 +558,19 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _amp_eval(self, x_0):
     """evaluate set of amplitude fits at x_0"""
-    return np.array([ self.amp_fit_func(self.fitparams_amp[jj,:], x_0) for jj in range(self.fitparams_amp.shape[0]) ])
+    if self.fit_type_amp == 'fast_spline_real':
+      return self.amp_fit_func(self.fitparams_amp, x_0)
+    else:
+      return np.array([ self.amp_fit_func(self.fitparams_amp[jj,:], x_0) for jj in range(self.fitparams_amp.shape[0]) ])
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _phase_eval(self, x_0):
     """evaluate set of phase fit at x_0"""
-    return np.array([ self.phase_fit_func(self.fitparams_phase[jj,:], x_0) for jj in range(self.fitparams_phase.shape[0]) ])
+    if self.fit_type_phase == 'fast_spline_imag':
+      return self.phase_fit_func(self.fitparams_phase, x_0)
+    else:
+      return np.array([ self.phase_fit_func(self.fitparams_phase[jj,:], x_0) for jj in range(self.fitparams_phase.shape[0]) ])
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -584,9 +590,14 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     nrm_eval   = self._norm_eval(x_0)
 
     if self.surrogate_mode_type  == 'waveform_basis':
-      h_EIM = nrm_eval*amp_eval*np.exp(1j*phase_eval) # dim_RB-vector fit evaluation of h
+      if self.fit_type_amp == 'fast_spline_real':
+        h_EIM = nrm_eval * (amp_eval + 1j*phase_eval)
+      else:
+        h_EIM = nrm_eval*amp_eval*np.exp(1j*phase_eval) # dim_RB-vector fit evaluation of h
       return h_EIM
     elif self.surrogate_mode_type  == 'amp_phase_basis':
+      if self.fit_type_amp == 'fast_spline_real':
+        raise ValueError("invalid combination")
       return amp_eval, phase_eval, nrm_eval
     else: 
       raise ValueError('invalid surrogate type')

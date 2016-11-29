@@ -66,6 +66,18 @@ breakpoints[i+4], so the supports are:
     return np.append(np.append(np.ones(3)*knot_vec[0], knot_vec),
                      np.ones(3)*knot_vec[-1])
 
+def cubic_spline_breaksToknots(bvec):
+    """
+Given breakpoints generated from _cubic_spline_breaks,
+[x0, x0, x0, x0, x1, x2, ..., xN-2, xf, xf, xf, xf],
+return the spline knots [x0, x1, ..., xN-1=xf]. 
+This function ``undoes" _cubic_spline_breaks:
+knot_vec = _cubic_spline_breaks2knots(_cubic_spline_breaks(knot_vec))
+    """
+
+    return bvec[3:-3]
+
+
 #-----------------------------------------------------------------------------
 
 def _cubic_bspline_eval_nonzero_1d(x, bvec):
@@ -127,6 +139,18 @@ def memoize_spline_call(func):
     last_return = [np.nan, np.nan, np.nan]
 
     def decorated_function(self,xvec):
+
+        # TODO: make this next code block its own function? Used elsewhere
+        xshape = np.shape(xvec)
+
+        # It's convenient to be able to accept a float instead of a length-1
+        # array for 1d parameter spaces.
+
+        if len(xshape) == 0:
+            xvec = np.array([xvec])
+            xshape = np.shape(xvec)
+
+
         if np.abs(last_call[0] - xvec) != 0:
             last_call[0] = xvec
             last_return[0], last_return[1], last_return[2] = func(self,xvec)
@@ -209,7 +233,7 @@ Returns:
         # for multiple EIM nodes
         sl = tuple( itertools.chain([slice(None)], sl_base) )
 
-        self.last_return = [eval_prods, sl, summed_axes]
+        #self.last_return = [eval_prods, sl, summed_axes]
 
         return eval_prods, sl, summed_axes
 
