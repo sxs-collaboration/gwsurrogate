@@ -80,7 +80,7 @@ knot_vec = _cubic_spline_breaks2knots(_cubic_spline_breaks(knot_vec))
 
 #-----------------------------------------------------------------------------
 
-def _cubic_bspline_eval_nonzero_1d(x, bvec):
+def _cubic_bspline_eval_nonzero_1d(x, bvec, tol=1.e-12):
     """
 Given a point x and an array of breakpoints bvec, determine the 4
 potentially non-zero bsplines and evaluate them at x.
@@ -88,6 +88,13 @@ Returns i0, bspline_evals.
     """
 
     knots = bvec[3:-3]
+
+    # Nudge parameters if barely outside domain
+    if knots[0] - tol < x <= knots[0]:
+        x = knots[0]
+    if knots[-1] - tol < x < knots[-1] + tol:
+        # The domain is [knots[0], knots[-1]) so nudge inwards a little
+        x = knots[-1] - tol
 
     if x < knots[0] or x > knots[-1]:
         raise Exception("%s outside of [%s, %s] parameter range!"%(
