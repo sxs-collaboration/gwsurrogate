@@ -31,7 +31,7 @@ import numpy as np
 import os as os
 import h5py
 from parametric_funcs import function_dict as my_funcs
-
+from new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
 
 surrogate_description = """* Description of tags:
      
@@ -343,18 +343,22 @@ class H5Surrogate(SurrogateBaseIO):
     #  self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
     #  self.quadrature_weights = self.dt * np.ones(self.times.shape)
 
-    if self._dt_h5 in self.keys or self._tmin_h5 in self.keys:
-      raise ValueError("tmin, tmax, dt are depricated as of 11/23/2016.")
-
-    #if self._times_h5 in self.keys:
-    self.times = self.file[subdir+self._times_h5][:]
-    
-    #if self._quadrature_weights_h5 in self.keys:
-    try:
-      self.quadrature_weights = self.file[subdir+self._quadrature_weights_h5][:]
-    except:
-      print "\n>>> Warning: Guessing quadrature points."
-      self.quadrature_weights = (self.times[1] - self.times[0]) * np.ones(self.times.shape)
+    if self._dt_h5 in self.keys and self._tmin_h5 in self.keys:
+      print(">>> tmin, tmax, dt are depricated as of 11/23/2016.")
+      self.tmin = self.file[subdir+self._tmin_h5][()]
+      self.tmax = self.file[subdir+self._tmax_h5][()]
+      self.dt = self.file[subdir+self._dt_h5][()]
+      self.times = np.arange(self.tmin, self.tmax+self.dt, self.dt)
+      self.quadrature_weights = self.dt * np.ones(self.times.shape)
+    else:
+      self.times = self.file[subdir+self._times_h5][:]
+      self.tmin  = self.times[0]
+      self.tmax  = self.times[-1]
+      try:
+        self.quadrature_weights = self.file[subdir+self._quadrature_weights_h5][:]
+      except:
+        self.quadrature_weights = (self.times[1] - self.times[0]) * np.ones(self.times.shape)
+        print("\n>>> Warning: Guessing quadrature weights to be identical with %f"%self.quadrature_weights[0])
 
     #if self._times_h5 not in self.__dict__.keys():
     #  print "\n>>> Warning: No time samples found or generated."
@@ -373,14 +377,24 @@ class H5Surrogate(SurrogateBaseIO):
       raise ValueError('surrogates must be dimensionless')
 
     ### Greedy points (ordered by RB selection) ###
-    self.greedy_points = self.file[subdir+self._greedy_points_h5][:]
+    if self._greedy_points_h5 in self.keys:
+      self.greedy_points = self.file[subdir+self._greedy_points_h5][:]
+    else:
+      self.greedy_points = None
+      print("Cannot load greedy points...OK")
     
     ### Empirical time index (ordered by EIM selection) ###
     if self.surrogate_mode_type == 'amp_phase_basis':
-      self.eim_indices_amp = self.file[subdir+self._eim_indices_h5][:]
-      self.eim_indices_phase = self.file[subdir+self._eim_indices_phase_h5][:]
+      try:
+        self.eim_indices_amp = self.file[subdir+self._eim_indices_h5][:]
+        self.eim_indices_phase = self.file[subdir+self._eim_indices_phase_h5][:]
+      except KeyError:
+        print("Cannot load eim points...OK") 
     elif self.surrogate_mode_type  == 'waveform_basis':
-      self.eim_indices = self.file[subdir+self._eim_indices_h5][:]
+      try:
+        self.eim_indices = self.file[subdir+self._eim_indices_h5][:]
+      except KeyError:
+        print("Cannot load eim points...OK")
     else:
       raise ValueError('invalid surrogate type')
 
@@ -406,10 +420,41 @@ class H5Surrogate(SurrogateBaseIO):
     
     self.fit_type_amp = self.chars_to_string(self.file[subdir+self._fit_type_amp_h5][()])
     self.fit_type_phase = self.chars_to_string(self.file[subdir+self._fit_type_phase_h5][()])
-    
-    self.amp_fit_func   = my_funcs[self.fit_type_amp]
-    self.phase_fit_func = my_funcs[self.fit_type_phase]
-    
+
+    # TODO: node fitting functions need to be generalized to their own class by using gws.new
+    if self.fit_type_amp == "fast_spline_real" and self.fit_type_phase == "fast_spline_imag":
+      print("Special case: using fast tensor spline for real and imaginary parts instead of amp/phase")
+      print("Loading fast tensor spline breakpoints")
+
+      # TODO: promote to global data -- but better to use gws.new
+      spline_knots = self.file[subdir+'spline_knots'][:]
+
+      # setup the function which will be used to evaluate splines
+      # TODO: unfortunately, this creates a new grid for each mode.
+      #       which does not take advantage of grids that are identical
+      #       for different modes.
+      #       This will also be slow: each mode will need to find the fast spline data for all modes 
+      #       without reusing already computed data
+      self.ts_grid = TensorSplineGrid([spline_knots]) # TODO: assumes 1d grid... FIX ON THIS COMMIT
+
+      # NOTE: this evaluates the real part -- but its called amp to keep with naming convention -- terrible! (TODO)
+      def amp_fit_func(coeffs,xvec):
+        amp_eval = fast_tensor_spline_eval(xvec,self.ts_grid,coeffs)
+        return amp_eval
+
+      self.amp_fit_func = amp_fit_func
+
+      # NOTE: this evaluates the imaginar part -- but its called phase to keep with naming convention -- terrible! (TODO)
+      def phase_fit_func(coeffs,xvec):
+        phase_eval = fast_tensor_spline_eval(xvec,self.ts_grid,coeffs)
+        return phase_eval
+
+      self.phase_fit_func = phase_fit_func
+      
+    else:
+      self.amp_fit_func   = my_funcs[self.fit_type_amp]
+      self.phase_fit_func = my_funcs[self.fit_type_phase]
+
     if self._fit_type_norm_h5 in self.keys:
       self.fitparams_norm = self.file[subdir+self._fitparams_norm_h5][:]
       self.fit_type_norm = self.chars_to_string(self.file[subdir+self._fit_type_norm_h5][()])

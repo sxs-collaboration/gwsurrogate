@@ -37,6 +37,7 @@ THE SOFTWARE.
 import numpy as np
 import h5py
 from saveH5Object import SimpleH5Object
+import itertools
 
 def _cubic_spline_breaks(knot_vec):
     """
@@ -65,9 +66,21 @@ breakpoints[i+4], so the supports are:
     return np.append(np.append(np.ones(3)*knot_vec[0], knot_vec),
                      np.ones(3)*knot_vec[-1])
 
+def cubic_spline_breaksToknots(bvec):
+    """
+Given breakpoints generated from _cubic_spline_breaks,
+[x0, x0, x0, x0, x1, x2, ..., xN-2, xf, xf, xf, xf],
+return the spline knots [x0, x1, ..., xN-1=xf]. 
+This function ``undoes" _cubic_spline_breaks:
+knot_vec = _cubic_spline_breaks2knots(_cubic_spline_breaks(knot_vec))
+    """
+
+    return bvec[3:-3]
+
+
 #-----------------------------------------------------------------------------
 
-def _cubic_bspline_eval_nonzero_1d(x, bvec):
+def _cubic_bspline_eval_nonzero_1d(x, bvec, tol=1.e-12):
     """
 Given a point x and an array of breakpoints bvec, determine the 4
 potentially non-zero bsplines and evaluate them at x.
@@ -75,6 +88,13 @@ Returns i0, bspline_evals.
     """
 
     knots = bvec[3:-3]
+
+    # Nudge parameters if barely outside domain
+    if knots[0] - tol < x <= knots[0]:
+        x = knots[0]
+    if knots[-1] - tol < x < knots[-1] + tol:
+        # The domain is [knots[0], knots[-1]) so nudge inwards a little
+        x = knots[-1] - tol
 
     if x < knots[0] or x > knots[-1]:
         raise Exception("%s outside of [%s, %s] parameter range!"%(
@@ -111,7 +131,39 @@ def _bspline_eval(x, bvec, k, check=True):
         c2 *= (bvec[-1] - x)/(bvec[-1] - bvec[1])
     return c1 + c2
 
-#-----------------------------------------------------------------------------
+
+def memoize_spline_call(func):
+    """Decorator for TensorSplineGrid's __call__ method.
+
+       Multiple calls to __call__ typically have the same xvec
+       value, in which case we can return the last result without
+       recomputing anything.
+
+       A decorator is needed because member variables of TensorSplineGrid
+       are expected to be loaded from an hdf5 file."""
+
+    last_call   = [np.nan]
+    last_return = [np.nan, np.nan, np.nan]
+
+    def decorated_function(self,xvec):
+
+        # TODO: make this next code block its own function? Used elsewhere
+        xshape = np.shape(xvec)
+
+        # It's convenient to be able to accept a float instead of a length-1
+        # array for 1d parameter spaces.
+
+        if len(xshape) == 0:
+            xvec = np.array([xvec])
+            xshape = np.shape(xvec)
+
+
+        if np.abs(last_call[0] - xvec) != 0:
+            last_call[0] = xvec
+            last_return[0], last_return[1], last_return[2] = func(self,xvec)
+        return last_return[0], last_return[1], last_return[2]
+    return decorated_function
+
 
 class TensorSplineGrid(SimpleH5Object):
 
@@ -143,16 +195,28 @@ Each element of spline_evals consists of the 4 potentially non-zero
         imin_vals, spline_evals = [list(t) for t in zip(*res)]
         return imin_vals, spline_evals
 
+    @memoize_spline_call
     def __call__(self, xvec):
         """
 Evaluates potentially non-zero spline basis function products.
-xvec: The point in parameter space.
+xvec: The point in parameter space. Must be of type numpy.ndarray
 Returns:
-    imin_vals: The minimum index of up to 4 potentially non-zero splines
     eval_prods: Products of spline evaluations in all parameter space
                 directions, which can be summed up with spline coefficients.
+    sl: Single slice so we can make better use of np.sum:
+    summed_axes: See below
+
+    With these three items, we can evaluate a spline from its coefficients:
+
+       >>> y = np.sum(c[sl] * eval_prods, axis=summed_axes)
+
+    See FastTensorSplineSurrogate's call method
+
         """
 
+        # All splines use the same grid, so we determine the 4^d potentially
+        # non-zero spline basis function products here which can be used for
+        # all interpolations.
         imin_vals, spline_evals = self.bspline_eval_nonzero(xvec)
 
         # Create 4^d hypercube of bspline products
@@ -160,6 +224,45 @@ Returns:
         eval_prods = reduce(lambda a, b: np.array([a*x for x in b]),
                             spline_evals[::-1])
 
-        return imin_vals, eval_prods
+        # This slice can be passed to a numpy grid of spline coefficients
+        # to extract the 4^d relevant coefficients
+        sl_base = tuple( slice(i0, i0+4, None) for i0 in imin_vals )
+
+        # We will have arrays of shape (n_EI, n1, n2, ..., nd) where n_EI
+        # is the number of empirical nodes, and n1, ..., nd are the number of
+        # spline coefficients (2 + the number of grid points) in each dimension.
+        # We want to sum over everything except the first index to evaluate the
+        # n_EI different splines.
+        summed_axes = tuple( i+1 for i in range(self.dim) )
+
+        # Build a single slice so we can make better use of np.sum:
+        # NOTE: sl object is meant to be used with spline coefficients
+        # for multiple EIM nodes
+        sl = tuple( itertools.chain([slice(None)], sl_base) )
+
+        #self.last_return = [eval_prods, sl, summed_axes]
+
+        return eval_prods, sl, summed_axes
 
 #-----------------------------------------------------------------------------
+
+# TODO: maybe ts_grid(x) should return sl_base and build sl here.
+# the sl oject should also get cached
+def fast_tensor_spline_eval(x,ts_grid,spline_coeffs):
+    """ Evaluate SPLINE_COEFFS defined on the grid TS_GRID
+        at an n-dimensional value X. """
+
+    # See TensorSplineGrid's call method for documentation
+    eval_prods, sl, summed_axes =  ts_grid(x)
+
+    return np.sum(spline_coeffs[sl] * eval_prods, axis=summed_axes)
+
+def fast_complex_tensor_spline_eval(x,ts_grid,spline_coeffs_real,spline_coeffs_imag):
+    """ Evaluate SPLINE_COEFFS_REAL and SPLINE_COEFFS_IMAG defined on the 
+        grid TS_GRID at an n-dimensional value X. """
+
+    nre = fast_tensor_spline_eval(x,ts_grid,spline_coeffs_real)
+    nim = fast_tensor_spline_eval(x,ts_grid,spline_coeffs_imag)
+
+    return nre + 1.j*nim
+
