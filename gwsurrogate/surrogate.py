@@ -34,12 +34,16 @@ from scipy.interpolate import splrep as _splrep
 from scipy.interpolate import splev as _splev
 from gwtools.harmonics import sYlm as _sYlm
 import gwtools as _gwtools
-import matplotlib.pyplot as plt
 from gwtools import plot_pretty as _plot_pretty
 from parametric_funcs import function_dict as my_funcs
 from surrogateIO import H5Surrogate as _H5Surrogate
 from surrogateIO import TextSurrogateRead as _TextSurrogateRead
 from surrogateIO import TextSurrogateWrite as _TextSurrogateWrite
+
+try:
+  import matplotlib.pyplot as plt
+except ImportError:
+  print("Cannot load matplotlib.")
 
 try:
   import h5py
