@@ -494,12 +494,16 @@ class H5Surrogate(SurrogateBaseIO):
       self.V = self.file[subdir+self._V_h5][:]
       if transposeB:
         self.V = np.transpose(self.V)
+    else:
+       self.V = None
     
     ### R matrix such that waveform basis H = ER ###
     if self._R_h5 in self.keys:
       self.R = self.file[subdir+self._R_h5][:]
       if transposeB:
         self.R = np.transpose(self.R)
+    else:
+      self.R = None
         
     ### Information about surrogate's parameterization ###
     self.parameterization = self.chars_to_string(self.file[subdir+self._parameterization_h5][()])
