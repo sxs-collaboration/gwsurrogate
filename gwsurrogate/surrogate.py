@@ -42,7 +42,7 @@ from surrogateIO import TextSurrogateWrite as _TextSurrogateWrite
 
 try:
   import matplotlib.pyplot as plt
-except ImportError:
+except:
   print("Cannot load matplotlib.")
 
 try:
