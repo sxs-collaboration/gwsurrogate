@@ -181,7 +181,9 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       samples = samples / t_scale
 
     ### Evaluate dimensionless single mode surrogates ###
+    # TODO: this will (redundently) check for each mode. Multimode surrogate should directly check it
     self._check_training_interval(x) # warning if x outside of training interval
+
     hp, hc = self._h_sur(x, samples=samples)
 
     ### adjust mode's phase by an overall constant ###
@@ -189,7 +191,6 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       h  = self.adjust_merger_phase(hp + 1.0j*hc,phi_ref)
       hp = h.real
       hc = h.imag
-
 
     ### Restore amplitude scalings ###
     hp     = amp0 * hp
@@ -669,8 +670,10 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, use_orbit
      excluded: A list of (ell, m) modes to skip loading.
         The default ('DEFAULT') excludes any modes with an 'EXCLUDED' dataset.
         Use [] or None to load these modes as well.
-     use_orbital_plane_symmetry: If set to True, does not load negative m modes
-        which can then be faked.
+     enforce_orbital_plane_symmetry: If set to True and exception is raised if the 
+        surrogate data contains negative modes. This can be used to gaurd against
+        mixing spin-aligned and precessing surrogates...which have different
+        evaluation patterns for m<0.
 
      Returns single_mode_dict. Keys are (ell, m) mode and value is an
      instance of EvaluateSingleModeSurrogate."""
@@ -732,10 +735,10 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, use_orbit
             mode_keys.append(mode)
 
       # If we are using orbital symmetry, make sure we aren't loading any negative m modes
-      if use_orbital_plane_symmetry:
+      if enforce_orbital_plane_symmetry:
         for ell, emm in mode_keys:
           if emm < 0:
-            raise Exception("When using use_orbital_plane_symmetry, do not load negative m modes!")
+            raise Exception("When using enforce_orbital_plane_symmetry, do not load negative m modes!")
 
        ### load the single mode surrogates ###
       for mode_key in mode_keys:
@@ -762,8 +765,8 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, use_orbit
           assert(not single_mode_dict.has_key(mode_key))
           if os.path.isfile(path+single_mode+'/EXCLUDED.txt'):
             print "Warning: Including mode (%d,%d) which is excluded by default"%(ell, emm)
-          if use_orbital_plane_symmetry and emm < 0:
-            raise Exception("When using use_orbital_plane_symmetry, do not load negative m modes!")
+          if enforce_orbital_plane_symmetry and emm < 0:
+            raise Exception("When using enforce_orbital_plane_symmetry, do not load negative m modes!")
 
           print "loading surrogate mode... "+single_mode[0:5]
           single_mode_dict[mode_key] = \
@@ -788,12 +791,18 @@ class EvaluateSurrogate():
     """Loads a surrogate.
 
     path: the path to the surrogate
-    deg: the degree of the splines representing the basis (default 3, cubic)
+    deg: the degree of the splines representing the basis (default 3, cubic). 
+        Unless there is good reason to use deg !=3 one should not change this.
+        Some surrogates (e.g. 4d2s) are validated with this in mind.
     ell_m: A list of (ell, m) modes to load, for example [(2,2),(3,3)].
         None (default) loads all modes.
     excluded: A list of (ell, m) modes to skip loading.
         The default ('DEFAULT') excludes any modes with an 'EXCLUDED' dataset.
-        Use [] or None to load these modes as well."""
+        Use [] or None to load these modes as well.
+    use_orbital_plane_symmetry: If set to true (i) CreateManyEvaluateSingleModeSurrogates
+        will explictly check that m<0 do not exist in the data file and (ii) m<0 modes
+        are inferred from m>0 modes. If set to false no symmetry is assumed -- typical
+        of precessing models. When False, fake_neg_modes must be false."""
 
     self.single_mode_dict = \
       CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, use_orbital_plane_symmetry)
@@ -846,6 +855,9 @@ class EvaluateSurrogate():
        coordinate system. """
 
 
+    if use_orbital_plane_symmetry and fake_neg_modes:
+      raise ValueError("if use_orbital_plane_symmetry is not assumed, it is not possible to fake m<0 modes")
+
     ### deduce single mode dictionary keys from ell, m and fake_neg_modes input ###
     modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
 
@@ -857,7 +869,7 @@ class EvaluateSurrogate():
       modes_to_evaluate = self.sort_mode_list(modes_to_evaluate)
 
     # Modes actually modeled by the surrogate. We will fake negative m
-    # modes later if needed.
+    # modes later if needed. 
     modeled_modes = self.all_model_modes(False)
 
     ### allocate arrays for multimode polarizations ###
@@ -874,11 +886,11 @@ class EvaluateSurrogate():
       ### if the mode is modelled, evaluate it. Otherwise its zero ###
       is_modeled = (ell,m) in modeled_modes
       neg_modeled = (ell,-m) in modeled_modes
-      if is_modeled or (neg_modeled and fake_neg_modeled):
+      if is_modeled or (neg_modeled and fake_neg_modes):
 
         if is_modeled:
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,samples,samples_units,ell,m)
-        else:
+        else: # then we must have neg_modeled=True and fake_neg_modes=True
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,samples,samples_units,ell,m)
 
         if z_rot is not None:

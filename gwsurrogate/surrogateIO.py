@@ -426,7 +426,7 @@ class H5Surrogate(SurrogateBaseIO):
       print("Special case: using fast tensor spline for real and imaginary parts instead of amp/phase")
       print("Loading fast tensor spline breakpoints")
 
-      # TODO: promote to global data -- but better to use gws.new
+      # TODO: promote data fields (e.g. splint_knots) to SurrogateBaseIO data -- but better to use gws.new
       remaining_spline_knots = self.file[subdir+'spline_knots'][:]
       n_spline_knots = self.file[subdir+'n_spline_knots'][:]
       spline_knots = []
