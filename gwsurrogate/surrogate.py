@@ -181,8 +181,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       samples = samples / t_scale
 
     ### Evaluate dimensionless single mode surrogates ###
-    if singlemode_call:
-      self._check_training_interval(x) # warning if x outside of training interval
+    self._check_training_interval(x) # warning if x outside of training interval
     hp, hc = self._h_sur(x, samples=samples)
 
     ### adjust mode's phase by an overall constant ###
@@ -536,12 +535,13 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   # TODO: strong_checking should be kwargs
+  # TODO: only check once in multimode surrogates
   def _check_training_interval(self, x, strong_checking=True):
     """Check if parameter value x within the training interval."""
 
     x_min, x_max = self.fit_interval
 
-    if(x < x_min or x > x_max):
+    if(np.any(x < x_min) or np.any(x > x_max)):
       if strong_checking:
         raise ValueError('Surrogate not trained at requested parameter value')
       else:
@@ -656,7 +656,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     return hp, hc
 
 
-def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded):
+def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, use_orbital_plane_symmetry):
   """For each surrogate mode an EvaluateSingleModeSurrogate class
      is created.
 
@@ -669,6 +669,8 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded):
      excluded: A list of (ell, m) modes to skip loading.
         The default ('DEFAULT') excludes any modes with an 'EXCLUDED' dataset.
         Use [] or None to load these modes as well.
+     use_orbital_plane_symmetry: If set to True, does not load negative m modes
+        which can then be faked.
 
      Returns single_mode_dict. Keys are (ell, m) mode and value is an
      instance of EvaluateSingleModeSurrogate."""
@@ -728,6 +730,13 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded):
             print "WARNING: Mode (%d,%d) is both included and excluded! Excluding it."%mode 
           else:
             mode_keys.append(mode)
+
+      # If we are using orbital symmetry, make sure we aren't loading any negative m modes
+      if use_orbital_plane_symmetry:
+        for ell, emm in mode_keys:
+          if emm < 0:
+            raise Exception("When using use_orbital_plane_symmetry, do not load negative m modes!")
+
        ### load the single mode surrogates ###
       for mode_key in mode_keys:
         assert(mode_keys.count(mode_key)==1)
@@ -736,9 +745,7 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded):
         single_mode_dict[mode_key] = \
           EvaluateSingleModeSurrogate(fp,subdir=mode_key_str+'/',closeQ=False)
       fp.close()
-      
-      modes = mode_keys
-    
+
   else:
     ### compile list of available modes ###
     # assumes (i) single mode folder format l#_m#_ 
@@ -755,6 +762,9 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded):
           assert(not single_mode_dict.has_key(mode_key))
           if os.path.isfile(path+single_mode+'/EXCLUDED.txt'):
             print "Warning: Including mode (%d,%d) which is excluded by default"%(ell, emm)
+          if use_orbital_plane_symmetry and emm < 0:
+            raise Exception("When using use_orbital_plane_symmetry, do not load negative m modes!")
+
           print "loading surrogate mode... "+single_mode[0:5]
           single_mode_dict[mode_key] = \
             EvaluateSingleModeSurrogate(path+single_mode+'/')
@@ -774,7 +784,7 @@ class EvaluateSurrogate():
   """Evaluate multi-mode surrogates"""
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def __init__(self, path, deg=3, ell_m=None, excluded='DEFAULT'):
+  def __init__(self, path, deg=3, ell_m=None, excluded='DEFAULT', use_orbital_plane_symmetry=True):
     """Loads a surrogate.
 
     path: the path to the surrogate
@@ -786,7 +796,7 @@ class EvaluateSurrogate():
         Use [] or None to load these modes as well."""
 
     self.single_mode_dict = \
-      CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded)
+      CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, use_orbital_plane_symmetry)
 
     ### Load/deduce multi-mode surrogate properties ###
     #if filemode not in ['r+', 'w']:      
@@ -846,8 +856,9 @@ class EvaluateSurrogate():
     if not mode_sum:
       modes_to_evaluate = self.sort_mode_list(modes_to_evaluate)
 
-    ### by default, m<0 included as potentially available for evaluation ###
-    avail_modes = self.all_model_modes(True)
+    # Modes actually modeled by the surrogate. We will fake negative m
+    # modes later if needed.
+    modeled_modes = self.all_model_modes(False)
 
     ### allocate arrays for multimode polarizations ###
     if mode_sum:
@@ -861,12 +872,14 @@ class EvaluateSurrogate():
     for ell,m in modes_to_evaluate:
 
       ### if the mode is modelled, evaluate it. Otherwise its zero ###
-      if (ell,m) in avail_modes:
+      is_modeled = (ell,m) in modeled_modes
+      neg_modeled = (ell,-m) in modeled_modes
+      if is_modeled or (neg_modeled and fake_neg_modeled):
 
-        if m>=0:
+        if is_modeled:
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,samples,samples_units,ell,m)
         else:
-          t_mode, hp_mode, hc_mode = self.evaluate_single_mode_minus(q,M,dist,f_low,samples,samples_units,ell,m)
+          t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,samples,samples_units,ell,m)
 
         if z_rot is not None:
           h_tmp   = _gwtools.modify_phase(hp_mode+1.0j*hc_mode,z_rot*m)
@@ -922,18 +935,16 @@ class EvaluateSurrogate():
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def evaluate_single_mode(self,q, M, dist, f_low, samples, samples_units,ell,m):
-    """ light wrapper around single mode evaluator to guard against m < 0 modes """
+    """ light wrapper around single mode evaluator"""
 
-    if m >=0:
-      t_mode, hp_mode, hc_mode = self.single_mode_dict[(ell,m)](q, M, dist, None, f_low, samples, samples_units,singlemode_call=False)
-    else:
-      raise ValueError('m must be non-negative. evaluate m < 0 modes with evaluate_single_mode_minus')
+    t_mode, hp_mode, hc_mode = self.single_mode_dict[(ell,m)](q, M, dist, None, f_low, samples,
+                                                              samples_units,singlemode_call=False)
 
     return t_mode, hp_mode, hc_mode
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def evaluate_single_mode_minus(self,q, M, dist, f_low, samples,samples_units,ell,m):
+  def evaluate_single_mode_by_symmetry(self,q, M, dist, f_low, samples,samples_units,ell,m):
     """ evaluate m<0 mode from m>0 mode and relationship between these"""
 
     if m<0:
@@ -1089,7 +1100,7 @@ class EvaluateSurrogate():
   #### below here are "private" member functions ###
   # These routine's carry out inner workings of multimode surrogate
   # class (such as memory allocation)
- 
+
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _allocate_output_array(self,samples,num_modes,mode_sum):
     """ allocate memory for result of hp, hc.

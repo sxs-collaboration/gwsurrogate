@@ -427,7 +427,12 @@ class H5Surrogate(SurrogateBaseIO):
       print("Loading fast tensor spline breakpoints")
 
       # TODO: promote to global data -- but better to use gws.new
-      spline_knots = self.file[subdir+'spline_knots'][:]
+      remaining_spline_knots = self.file[subdir+'spline_knots'][:]
+      n_spline_knots = self.file[subdir+'n_spline_knots'][:]
+      spline_knots = []
+      for n in n_spline_knots:
+        spline_knots.append(remaining_spline_knots[:n])
+        remaining_spline_knots = remaining_spline_knots[n:]
 
       # setup the function which will be used to evaluate splines
       # TODO: unfortunately, this creates a new grid for each mode.
@@ -435,7 +440,7 @@ class H5Surrogate(SurrogateBaseIO):
       #       for different modes.
       #       This will also be slow: each mode will need to find the fast spline data for all modes 
       #       without reusing already computed data
-      self.ts_grid = TensorSplineGrid([spline_knots]) # TODO: assumes 1d grid... FIX ON THIS COMMIT
+      self.ts_grid = TensorSplineGrid(spline_knots)
 
       # NOTE: this evaluates the real part -- but its called amp to keep with naming convention -- terrible! (TODO)
       def amp_fit_func(coeffs,xvec):
