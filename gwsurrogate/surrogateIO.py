@@ -71,7 +71,10 @@ surrogate_description = """* Description of tags:
                          interpolation method
       R_1/R_2         -- (Optional) matrix coefficients relating the reduced 
                          basis to the selected waveforms
-
+      spline_knots    -- (Only for fast_spline surrogates) A concatenated list of spline
+                         knots in each dimension
+      n_spline_knots  -- (Only for fast_spline surrogates) A list of the number of knots
+                         in each dimension
 
 
 * Surrogate data's dependency on surrogate_mode_type:
