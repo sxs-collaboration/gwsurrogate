@@ -1148,7 +1148,7 @@ class EvaluateSurrogate():
     """ For m>0 positive modes hp_mode,hc_mode use h(l,-m) = (-1)^l h(l,m)^*
         to compute the m<0 mode. 
 
-  See Kidder,Physical Review D 77, 044016 (2008), arXiv:0710.0614v1 [gr-qc]."""
+  See Eq. 78 of Kidder,Physical Review D 77, 044016 (2008), arXiv:0710.0614v1 [gr-qc]."""
 
     if (m<=0):
       raise ValueError('m must be nonnegative. m<0 will be generated for you from the m>0 mode.')
