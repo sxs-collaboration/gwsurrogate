@@ -125,7 +125,9 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
        Input
        =====
-       q               --- mass ratio (dimensionless) 
+       q               --- binary parameter values EXCLUDING total mass M.
+                           In 1D, mass ratio (dimensionless) must be supplied.
+                           In nD, the surrogate's internal parameterization is assumed.
        M               --- total mass (solar masses) 
        dist            --- distance to binary system (megaparsecs)
        phi_ref         --- mode's phase phi(t), as h=A*exp(i*phi) at peak amplitude
@@ -154,10 +156,6 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if (samples_units != 'dimensionless') and (samples_units != 'mks'):
       raise ValueError('samples_units is not supported')
 
-    ### compute surrogate's parameter values from input ones (q,M) ###
-    # Ex: symmetric mass ratio x = q / (1+q)^2 might parameterize the surrogate
-    x = self.get_surr_params(q)
-
     ### if (M,distance) provided, a physical mode in mks units is returned ###
     if( M is not None and dist is not None):
       amp0    = ((M * _gwtools.Msun ) / (dist * _gwtools.Mpcinm )) * ( _gwtools.G / np.power(_gwtools.c,2.0) )
@@ -180,11 +178,12 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if samples is not None and samples_units == 'mks':
       samples = samples / t_scale
 
-    ### Evaluate dimensionless single mode surrogates ###
-    # TODO: this will (redundently) check for each mode. Multimode surrogate should directly check it
-    self._check_training_interval(x) # warning if x outside of training interval
+    # convert from input to internal surrogate parameter values, and check within training region #
+    x = self.get_surr_params_safe(q)
 
+    ### Evaluate dimensionless single mode surrogates ###
     hp, hc = self._h_sur(x, samples=samples)
+
 
     ### adjust mode's phase by an overall constant ###
     if (phi_ref is not None):
@@ -502,13 +501,65 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     
     return fig
   
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def norm_eval(self, q):
-    """evaluate norm fit at q. wrapper for norm evaluations called from outside of the class"""
 
-    x_0 = self._affine_mapper(q)
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  # TODO: strong_checking should be kwargs
+  # TODO: only check once in multimode surrogates
+  def check_training_interval(self, x, strong_checking=True):
+    """Check if parameter value x is within the training interval."""
+
+    x_min, x_max = self.fit_interval
+
+    if(np.any(x < x_min) or np.any(x > x_max)):
+      if strong_checking:
+        raise ValueError('Surrogate not trained at requested parameter value')
+      else:
+        print "Warning: Surrogate not trained at requested parameter value"
+        Warning("Surrogate not trained at requested parameter value")
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def get_surr_params_safe(self,x):
+    """ Compute the surrogate's *internal* parameter values from the input ones, x,
+        passed to __call__ with safe bounds checking.
+
+        The function get_surr_params used in the conversion is set in SurrogateIO
+        as specified by the surrogate's data value corresponding to the key PARAMETERIZATION.
+        Therefore, SurrogateIO must be aware of what x is expected to be. 
+
+          Example: The user may pass mass ratio q=x to __call__, but the
+                   symmetric mass ratio x_internal = q / (1+q)^2 might parameterize the surrogate
+
+        After the parameter change of coordinates is done, check its within the surrogate's
+        training region. Training regions is assumed to be an n-dim rectangle.
+
+        x is assumed to NOT have total mass M as a parameter. ``Bare" surrogates are always dimensionless."""
+
+    x_internal = self.get_surr_params(x)
+
+    # TODO: this will (redundently) check for each mode. Multimode surrogate should directly check it
+    self.check_training_interval(x_internal)
+
+    return x_internal
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def norm_eval(self, x):
+    """Evaluate norm fit at parameter value x.
+
+       Wrapper for norm evaluations called from outside of the class"""
+
+    self.check_training_interval(x, strong_checking=True)
+    x_0 = self._affine_mapper(x) # _norm_eval won't do its own affine mapping
     return self._norm_eval(x_0)
 
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def eim_coeffs(x, surrogate_mode_type):
+    """Evaluate EIM coefficients at parameter value x.
+
+       Wrapper for safe calls from outside of the class"""
+
+    self.check_training_interval(x, strong_checking=True)
+    return self._eim_coeffs(x, surrogate_mode_type)
 
   #### below here are "private" member functions ###
   # These routine's evaluate a "bare" surrogate, and should only be called
@@ -534,25 +585,12 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       raise ValueError('unknown affine map')
     return x_0
 
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  # TODO: strong_checking should be kwargs
-  # TODO: only check once in multimode surrogates
-  def _check_training_interval(self, x, strong_checking=True):
-    """Check if parameter value x within the training interval."""
-
-    x_min, x_max = self.fit_interval
-
-    if(np.any(x < x_min) or np.any(x > x_max)):
-      if strong_checking:
-        raise ValueError('Surrogate not trained at requested parameter value')
-      else:
-        print "Warning: Surrogate not trained at requested parameter value"
-        Warning("Surrogate not trained at requested parameter value")
-
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _norm_eval(self, x_0):
-    """evaluate norm fit at x_0"""
+    """Evaluate norm fit at x_0, where x_0 is the mapped parameter value.
+
+       WARNING: this function should NEVER be called from outside the class."""
 
     if not self.norms:
       return 1.
@@ -562,7 +600,10 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _amp_eval(self, x_0):
-    """evaluate set of amplitude fits at x_0"""
+    """Evaluate set of amplitude fits at x_0, where x_0 is the mapped parameter value.
+
+       WARNING: this function should NEVER be called from outside the class."""
+
     if self.fit_type_amp == 'fast_spline_real':
       return self.amp_fit_func(self.fitparams_amp, x_0)
     else:
@@ -571,7 +612,10 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _phase_eval(self, x_0):
-    """evaluate set of phase fit at x_0"""
+    """Evaluate set of phase fit at x_0, where x_0 is the mapped parameter value.
+
+       WARNING: this function should NEVER be called from outside the class."""
+
     if self.fit_type_phase == 'fast_spline_imag':
       return self.phase_fit_func(self.fitparams_phase, x_0)
     else:
@@ -584,7 +628,13 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
        mass ratio or something else -- it depends on the surrogate's parameterization. 
 
        see __call__ for the parameterization and _h_sur for how these 
-       coefficients are used. """
+       coefficients are used. 
+
+       If called from outside the class, check_training_interval should be used
+       to determine whether x is in the training interval.
+
+       WARNING: this function should NEVER be called from outside the class."""
+
 
     ### x to the standard interval on which the fits were performed ###
     x_0 = self._affine_mapper(x)
@@ -835,7 +885,9 @@ class EvaluateSurrogate():
 
       INPUT
       =====
-      q              --- mass ratio (dimensionless) 
+      q              --- binary parameter values EXCLUDING total mass M.
+                         In 1D, mass ratio (dimensionless) must be supplied.
+                         In nD, the surrogate's internal parameterization is assumed.
       M              --- total mass (solar masses) 
       dist           --- distance to binary system (megaparsecs)
       theta/phi      --- evaluate hp and hc modes at this location on sphere
