@@ -430,12 +430,15 @@ class H5Surrogate(SurrogateBaseIO):
       print("Loading fast tensor spline breakpoints")
 
       # TODO: promote data fields (e.g. splint_knots) to SurrogateBaseIO data -- but better to use gws.new
-      remaining_spline_knots = self.file[subdir+'spline_knots'][:]
-      n_spline_knots = self.file[subdir+'n_spline_knots'][:]
-      spline_knots = []
-      for n in n_spline_knots:
-        spline_knots.append(remaining_spline_knots[:n])
-        remaining_spline_knots = remaining_spline_knots[n:]
+      try: # TODO: 1d surrogates should include n_spline_knots in their data
+        n_spline_knots = self.file[subdir+'n_spline_knots'][:]
+        remaining_spline_knots = self.file[subdir+'spline_knots'][:]
+        spline_knots = []
+        for n in n_spline_knots:
+          spline_knots.append(remaining_spline_knots[:n])
+          remaining_spline_knots = remaining_spline_knots[n:]
+      except KeyError: # if n_spline_knots does not exist a KeyError is raised. Old 1d surrogate assumed
+        spline_knots = [self.file[subdir+'spline_knots'][:]]
 
       # setup the function which will be used to evaluate splines
       # TODO: unfortunately, this creates a new grid for each mode.
