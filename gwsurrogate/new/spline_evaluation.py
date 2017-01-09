@@ -157,8 +157,7 @@ def memoize_spline_call(func):
             xvec = np.array([xvec])
             xshape = np.shape(xvec)
 
-
-        if np.abs(last_call[0] - xvec) != 0:
+        if np.max(np.abs(last_call[0] - xvec)) != 0:
             last_call[0] = xvec
             last_return[0], last_return[1], last_return[2] = func(self,xvec)
         return last_return[0], last_return[1], last_return[2]

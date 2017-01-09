@@ -71,7 +71,10 @@ surrogate_description = """* Description of tags:
                          interpolation method
       R_1/R_2         -- (Optional) matrix coefficients relating the reduced 
                          basis to the selected waveforms
-
+      spline_knots    -- (Only for fast_spline surrogates) A concatenated list of spline
+                         knots in each dimension
+      n_spline_knots  -- (Only for fast_spline surrogates) A list of the number of knots
+                         in each dimension
 
 
 * Surrogate data's dependency on surrogate_mode_type:
@@ -426,8 +429,16 @@ class H5Surrogate(SurrogateBaseIO):
       print("Special case: using fast tensor spline for real and imaginary parts instead of amp/phase")
       print("Loading fast tensor spline breakpoints")
 
-      # TODO: promote to global data -- but better to use gws.new
-      spline_knots = self.file[subdir+'spline_knots'][:]
+      # TODO: promote data fields (e.g. splint_knots) to SurrogateBaseIO data -- but better to use gws.new
+      try: # TODO: 1d surrogates should include n_spline_knots in their data
+        n_spline_knots = self.file[subdir+'n_spline_knots'][:]
+        remaining_spline_knots = self.file[subdir+'spline_knots'][:]
+        spline_knots = []
+        for n in n_spline_knots:
+          spline_knots.append(remaining_spline_knots[:n])
+          remaining_spline_knots = remaining_spline_knots[n:]
+      except KeyError: # if n_spline_knots does not exist a KeyError is raised. Old 1d surrogate assumed
+        spline_knots = [self.file[subdir+'spline_knots'][:]]
 
       # setup the function which will be used to evaluate splines
       # TODO: unfortunately, this creates a new grid for each mode.
@@ -435,7 +446,7 @@ class H5Surrogate(SurrogateBaseIO):
       #       for different modes.
       #       This will also be slow: each mode will need to find the fast spline data for all modes 
       #       without reusing already computed data
-      self.ts_grid = TensorSplineGrid([spline_knots]) # TODO: assumes 1d grid... FIX ON THIS COMMIT
+      self.ts_grid = TensorSplineGrid(spline_knots)
 
       # NOTE: this evaluates the real part -- but its called amp to keep with naming convention -- terrible! (TODO)
       def amp_fit_func(coeffs,xvec):

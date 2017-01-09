@@ -125,7 +125,9 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
        Input
        =====
-       q               --- mass ratio (dimensionless) 
+       q               --- binary parameter values EXCLUDING total mass M.
+                           In 1D, mass ratio (dimensionless) must be supplied.
+                           In nD, the surrogate's internal parameterization is assumed.
        M               --- total mass (solar masses) 
        dist            --- distance to binary system (megaparsecs)
        phi_ref         --- mode's phase phi(t), as h=A*exp(i*phi) at peak amplitude
@@ -154,10 +156,6 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if (samples_units != 'dimensionless') and (samples_units != 'mks'):
       raise ValueError('samples_units is not supported')
 
-    ### compute surrogate's parameter values from input ones (q,M) ###
-    # Ex: symmetric mass ratio x = q / (1+q)^2 might parameterize the surrogate
-    x = self.get_surr_params(q)
-
     ### if (M,distance) provided, a physical mode in mks units is returned ###
     if( M is not None and dist is not None):
       amp0    = ((M * _gwtools.Msun ) / (dist * _gwtools.Mpcinm )) * ( _gwtools.G / np.power(_gwtools.c,2.0) )
@@ -180,17 +178,18 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if samples is not None and samples_units == 'mks':
       samples = samples / t_scale
 
+    # convert from input to internal surrogate parameter values, and check within training region #
+    x = self.get_surr_params_safe(q)
+
     ### Evaluate dimensionless single mode surrogates ###
-    if singlemode_call:
-      self._check_training_interval(x) # warning if x outside of training interval
     hp, hc = self._h_sur(x, samples=samples)
+
 
     ### adjust mode's phase by an overall constant ###
     if (phi_ref is not None):
       h  = self.adjust_merger_phase(hp + 1.0j*hc,phi_ref)
       hp = h.real
       hc = h.imag
-
 
     ### Restore amplitude scalings ###
     hp     = amp0 * hp
@@ -502,13 +501,65 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     
     return fig
   
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def norm_eval(self, q):
-    """evaluate norm fit at q. wrapper for norm evaluations called from outside of the class"""
 
-    x_0 = self._affine_mapper(q)
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  # TODO: strong_checking should be kwargs
+  # TODO: only check once in multimode surrogates
+  def check_training_interval(self, x, strong_checking=True):
+    """Check if parameter value x is within the training interval."""
+
+    x_min, x_max = self.fit_interval
+
+    if(np.any(x < x_min) or np.any(x > x_max)):
+      if strong_checking:
+        raise ValueError('Surrogate not trained at requested parameter value')
+      else:
+        print "Warning: Surrogate not trained at requested parameter value"
+        Warning("Surrogate not trained at requested parameter value")
+
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def get_surr_params_safe(self,x):
+    """ Compute the surrogate's *internal* parameter values from the input ones, x,
+        passed to __call__ with safe bounds checking.
+
+        The function get_surr_params used in the conversion is set in SurrogateIO
+        as specified by the surrogate's data value corresponding to the key PARAMETERIZATION.
+        Therefore, SurrogateIO must be aware of what x is expected to be. 
+
+          Example: The user may pass mass ratio q=x to __call__, but the
+                   symmetric mass ratio x_internal = q / (1+q)^2 might parameterize the surrogate
+
+        After the parameter change of coordinates is done, check its within the surrogate's
+        training region. Training regions is assumed to be an n-dim rectangle.
+
+        x is assumed to NOT have total mass M as a parameter. ``Bare" surrogates are always dimensionless."""
+
+    x_internal = self.get_surr_params(x)
+
+    # TODO: this will (redundently) check for each mode. Multimode surrogate should directly check it
+    self.check_training_interval(x_internal)
+
+    return x_internal
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def norm_eval(self, x):
+    """Evaluate norm fit at parameter value x.
+
+       Wrapper for norm evaluations called from outside of the class"""
+
+    self.check_training_interval(x, strong_checking=True)
+    x_0 = self._affine_mapper(x) # _norm_eval won't do its own affine mapping
     return self._norm_eval(x_0)
 
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def eim_coeffs(x, surrogate_mode_type):
+    """Evaluate EIM coefficients at parameter value x.
+
+       Wrapper for safe calls from outside of the class"""
+
+    self.check_training_interval(x, strong_checking=True)
+    return self._eim_coeffs(x, surrogate_mode_type)
 
   #### below here are "private" member functions ###
   # These routine's evaluate a "bare" surrogate, and should only be called
@@ -534,24 +585,12 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       raise ValueError('unknown affine map')
     return x_0
 
-  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  # TODO: strong_checking should be kwargs
-  def _check_training_interval(self, x, strong_checking=True):
-    """Check if parameter value x within the training interval."""
-
-    x_min, x_max = self.fit_interval
-
-    if(x < x_min or x > x_max):
-      if strong_checking:
-        raise ValueError('Surrogate not trained at requested parameter value')
-      else:
-        print "Warning: Surrogate not trained at requested parameter value"
-        Warning("Surrogate not trained at requested parameter value")
-
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _norm_eval(self, x_0):
-    """evaluate norm fit at x_0"""
+    """Evaluate norm fit at x_0, where x_0 is the mapped parameter value.
+
+       WARNING: this function should NEVER be called from outside the class."""
 
     if not self.norms:
       return 1.
@@ -561,7 +600,10 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _amp_eval(self, x_0):
-    """evaluate set of amplitude fits at x_0"""
+    """Evaluate set of amplitude fits at x_0, where x_0 is the mapped parameter value.
+
+       WARNING: this function should NEVER be called from outside the class."""
+
     if self.fit_type_amp == 'fast_spline_real':
       return self.amp_fit_func(self.fitparams_amp, x_0)
     else:
@@ -570,7 +612,10 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _phase_eval(self, x_0):
-    """evaluate set of phase fit at x_0"""
+    """Evaluate set of phase fit at x_0, where x_0 is the mapped parameter value.
+
+       WARNING: this function should NEVER be called from outside the class."""
+
     if self.fit_type_phase == 'fast_spline_imag':
       return self.phase_fit_func(self.fitparams_phase, x_0)
     else:
@@ -583,7 +628,13 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
        mass ratio or something else -- it depends on the surrogate's parameterization. 
 
        see __call__ for the parameterization and _h_sur for how these 
-       coefficients are used. """
+       coefficients are used. 
+
+       If called from outside the class, check_training_interval should be used
+       to determine whether x is in the training interval.
+
+       WARNING: this function should NEVER be called from outside the class."""
+
 
     ### x to the standard interval on which the fits were performed ###
     x_0 = self._affine_mapper(x)
@@ -656,7 +707,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     return hp, hc
 
 
-def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded):
+def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, enforce_orbital_plane_symmetry):
   """For each surrogate mode an EvaluateSingleModeSurrogate class
      is created.
 
@@ -669,6 +720,10 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded):
      excluded: A list of (ell, m) modes to skip loading.
         The default ('DEFAULT') excludes any modes with an 'EXCLUDED' dataset.
         Use [] or None to load these modes as well.
+     enforce_orbital_plane_symmetry: If set to True an exception is raised if the 
+        surrogate data contains negative modes. This can be used to gaurd against
+        mixing spin-aligned and precessing surrogates...which have different
+        evaluation patterns for m<0.
 
      Returns single_mode_dict. Keys are (ell, m) mode and value is an
      instance of EvaluateSingleModeSurrogate."""
@@ -728,6 +783,13 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded):
             print "WARNING: Mode (%d,%d) is both included and excluded! Excluding it."%mode 
           else:
             mode_keys.append(mode)
+
+      # If we are using orbital symmetry, make sure we aren't loading any negative m modes
+      if enforce_orbital_plane_symmetry:
+        for ell, emm in mode_keys:
+          if emm < 0:
+            raise Exception("When using enforce_orbital_plane_symmetry, do not load negative m modes!")
+
        ### load the single mode surrogates ###
       for mode_key in mode_keys:
         assert(mode_keys.count(mode_key)==1)
@@ -736,9 +798,7 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded):
         single_mode_dict[mode_key] = \
           EvaluateSingleModeSurrogate(fp,subdir=mode_key_str+'/',closeQ=False)
       fp.close()
-      
-      modes = mode_keys
-    
+
   else:
     ### compile list of available modes ###
     # assumes (i) single mode folder format l#_m#_ 
@@ -755,6 +815,9 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded):
           assert(not single_mode_dict.has_key(mode_key))
           if os.path.isfile(path+single_mode+'/EXCLUDED.txt'):
             print "Warning: Including mode (%d,%d) which is excluded by default"%(ell, emm)
+          if enforce_orbital_plane_symmetry and emm < 0:
+            raise Exception("When using enforce_orbital_plane_symmetry, do not load negative m modes!")
+
           print "loading surrogate mode... "+single_mode[0:5]
           single_mode_dict[mode_key] = \
             EvaluateSingleModeSurrogate(path+single_mode+'/')
@@ -774,19 +837,27 @@ class EvaluateSurrogate():
   """Evaluate multi-mode surrogates"""
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def __init__(self, path, deg=3, ell_m=None, excluded='DEFAULT'):
+  def __init__(self, path, deg=3, ell_m=None, excluded='DEFAULT', use_orbital_plane_symmetry=True):
     """Loads a surrogate.
 
     path: the path to the surrogate
-    deg: the degree of the splines representing the basis (default 3, cubic)
+    deg: the degree of the splines representing the basis (default 3, cubic). 
+        Unless there is good reason to use deg !=3 one should not change this.
+        Some surrogates (e.g. 4d2s) are validated with this in mind.
     ell_m: A list of (ell, m) modes to load, for example [(2,2),(3,3)].
         None (default) loads all modes.
     excluded: A list of (ell, m) modes to skip loading.
         The default ('DEFAULT') excludes any modes with an 'EXCLUDED' dataset.
-        Use [] or None to load these modes as well."""
+        Use [] or None to load these modes as well.
+    use_orbital_plane_symmetry: If set to true (i) CreateManyEvaluateSingleModeSurrogates
+        will explictly check that m<0 do not exist in the data file and (ii) m<0 modes
+        are inferred from m>0 modes. If set to false no symmetry is assumed -- typical
+        of precessing models. When False, fake_neg_modes must be false."""
 
     self.single_mode_dict = \
-      CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded)
+      CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, use_orbital_plane_symmetry)
+
+    self.use_orbital_plane_symmetry = use_orbital_plane_symmetry
 
     ### Load/deduce multi-mode surrogate properties ###
     #if filemode not in ['r+', 'w']:      
@@ -814,7 +885,9 @@ class EvaluateSurrogate():
 
       INPUT
       =====
-      q              --- mass ratio (dimensionless) 
+      q              --- binary parameter values EXCLUDING total mass M.
+                         In 1D, mass ratio (dimensionless) must be supplied.
+                         In nD, the surrogate's internal parameterization is assumed.
       M              --- total mass (solar masses) 
       dist           --- distance to binary system (megaparsecs)
       theta/phi      --- evaluate hp and hc modes at this location on sphere
@@ -836,6 +909,9 @@ class EvaluateSurrogate():
        coordinate system. """
 
 
+    if (not self.use_orbital_plane_symmetry) and fake_neg_modes:
+      raise ValueError("if use_orbital_plane_symmetry is not assumed, it is not possible to fake m<0 modes")
+
     ### deduce single mode dictionary keys from ell, m and fake_neg_modes input ###
     modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
 
@@ -846,8 +922,9 @@ class EvaluateSurrogate():
     if not mode_sum:
       modes_to_evaluate = self.sort_mode_list(modes_to_evaluate)
 
-    ### by default, m<0 included as potentially available for evaluation ###
-    avail_modes = self.all_model_modes(True)
+    # Modes actually modeled by the surrogate. We will fake negative m
+    # modes later if needed. 
+    modeled_modes = self.all_model_modes(False)
 
     ### allocate arrays for multimode polarizations ###
     if mode_sum:
@@ -861,12 +938,14 @@ class EvaluateSurrogate():
     for ell,m in modes_to_evaluate:
 
       ### if the mode is modelled, evaluate it. Otherwise its zero ###
-      if (ell,m) in avail_modes:
+      is_modeled = (ell,m) in modeled_modes
+      neg_modeled = (ell,-m) in modeled_modes
+      if is_modeled or (neg_modeled and fake_neg_modes):
 
-        if m>=0:
+        if is_modeled:
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,samples,samples_units,ell,m)
-        else:
-          t_mode, hp_mode, hc_mode = self.evaluate_single_mode_minus(q,M,dist,f_low,samples,samples_units,ell,m)
+        else: # then we must have neg_modeled=True and fake_neg_modes=True
+          t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,samples,samples_units,ell,m)
 
         if z_rot is not None:
           h_tmp   = _gwtools.modify_phase(hp_mode+1.0j*hc_mode,z_rot*m)
@@ -922,18 +1001,16 @@ class EvaluateSurrogate():
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def evaluate_single_mode(self,q, M, dist, f_low, samples, samples_units,ell,m):
-    """ light wrapper around single mode evaluator to guard against m < 0 modes """
+    """ light wrapper around single mode evaluator"""
 
-    if m >=0:
-      t_mode, hp_mode, hc_mode = self.single_mode_dict[(ell,m)](q, M, dist, None, f_low, samples, samples_units,singlemode_call=False)
-    else:
-      raise ValueError('m must be non-negative. evaluate m < 0 modes with evaluate_single_mode_minus')
+    t_mode, hp_mode, hc_mode = self.single_mode_dict[(ell,m)](q, M, dist, None, f_low, samples,
+                                                              samples_units,singlemode_call=False)
 
     return t_mode, hp_mode, hc_mode
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def evaluate_single_mode_minus(self,q, M, dist, f_low, samples,samples_units,ell,m):
+  def evaluate_single_mode_by_symmetry(self,q, M, dist, f_low, samples,samples_units,ell,m):
     """ evaluate m<0 mode from m>0 mode and relationship between these"""
 
     if m<0:
@@ -1089,7 +1166,7 @@ class EvaluateSurrogate():
   #### below here are "private" member functions ###
   # These routine's carry out inner workings of multimode surrogate
   # class (such as memory allocation)
- 
+
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _allocate_output_array(self,samples,num_modes,mode_sum):
     """ allocate memory for result of hp, hc.
@@ -1123,7 +1200,7 @@ class EvaluateSurrogate():
     """ For m>0 positive modes hp_mode,hc_mode use h(l,-m) = (-1)^l h(l,m)^*
         to compute the m<0 mode. 
 
-  See Kidder,Physical Review D 77, 044016 (2008), arXiv:0710.0614v1 [gr-qc]."""
+  See Eq. 78 of Kidder,Physical Review D 77, 044016 (2008), arXiv:0710.0614v1 [gr-qc]."""
 
     if (m<=0):
       raise ValueError('m must be nonnegative. m<0 will be generated for you from the m>0 mode.')
