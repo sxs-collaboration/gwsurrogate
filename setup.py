@@ -7,9 +7,16 @@ except ImportError:
   from distutils.core import setup
   setup
 
+# To render markdown. See https://github.com/pypa/pypi-legacy/issues/148
+try:
+    import pypandoc
+    long_description = pypandoc.convert('README.md', 'rst')
+except ImportError:
+    long_description = open('README.md').read()
+
 
 setup(name='gwsurrogate',
-      version='0.5',
+      version='0.6.1',
       author='Jonathan Blackman, Scott Field, Chad Galley',
       author_email='sfield@astro.cornell.edu',
       packages=['gwsurrogate'],
@@ -18,6 +25,7 @@ setup(name='gwsurrogate',
       # Alphabetical by last name.
       ""],
       description='An easy to use interface to gravitational wave surrogate models',
+      long_description=long_description,
       # will start new downloads if these are installed in a non-standard location
       # install_requires=["numpy","matplotlib","scipy"],
       classifiers=[
