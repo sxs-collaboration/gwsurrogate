@@ -1,168 +1,195 @@
+"""
+Module for evaluating cubic tensor spline coefficients given the data
+to be interpolated on a uniformly spaced tensor product grid.
+
+Apologies for not writing this up in LaTeX. Hopefully nobody will ever need
+to read it and the code will just work.
+
+Suppose we have a d-dimensional grid with dimensions (N1 x N2 x ... x Nd).
+Denote x_{i1, i2, ..., id} as the coordinates of the grid point with indices
+[i1, i2, ..., id]. We are interested in interpolating some function f(x),
+where x is a d-dimensional vector and f is real valued. Denote the grid data
+by f_{i1, ..., id} = f(x_{i1, ..., id}), which is known.
+
+A cubic tensor spline
+interpolant for f requires a grid of ((N1 + 2) x (N2 + 2) x ... x (Nd + 2))
+spline coefficients. We can extend the coordinate grid to a "coefficient grid"
+by adding one additional grid point on both boundaries of each grid dimension.
+We pad the grid data on these boundary points with zeros, and we will need to
+impose boundary conditions to determine these coefficients.
+
+The spline interpolant evaluated at x = (x1, ..., xd) is of the form
+  TS(x) = \sum_{j1, ..., jd} c_{j1, ..., jd} s1_{j1}(x1) ... sd_{jd}(xd)
+where the index ji runs over the (Ni + 2) spline coefficient indices,
+c_{j1, ..., jd} are the spline coefficients, and si_{ji} is a one-dimensional
+cubic BSpline associated with point ji in the j'th dimension of the coefficient
+grid. Evaluating this on the spline coefficient grid gives us
+((N1+2) x ... x (Nd+2)) equations:
+    f_{i1, ..., id} =
+        \sum_{j1, ..., jd} c_{j1, ..., jd} M1_{i1, j1} ... Md_{id, jd}
+where Mk_{ik, jk} is a ((Nk+2) x (Nk+2)) matrix giving the BSpline associated
+with point jk of the k'th dimension of the coefficient grid evaluated at the
+point ik of the k'th dimension of the *padded* coordinate grid. When ik is one
+of the boundary points (0 or Nk+1), we are free to set Mk_{ik, jk} as we wish
+to control the boundary conditions which will result when we solve this system
+of equations. 
+
+The matrices Mk are exactly those used when solving for coefficients of a
+one-dimensional cubic spline! For example, with 'not-a-knot' (constant third
+derivative) boundary conditions, we have:
+
+M= [[1,    -2,    3/2,   -2/3,    1/6,      0,      0,      0,      0],
+    [1,     0,      0,      0,      0,      0,      0,      0,      0],
+    [0,   1/4,   7/12,    1/6,      0,      0,      0,      0,      0],
+    [0,     0,    1/6,    2/3,    1/6,      0,      0,      0,      0],
+    [0,     0,      0,    1/6,    2/3,    1/6,      0,      0,      0],
+    [0,     0,      0,      0,    1/6,    2/3,    1/6,      0,      0],
+    [0,     0,      0,      0,      0,    1/6,   7/12,    1/4,      0],
+    [0,     0,      0,      0,      0,      0,      0,      0,      1],
+    [0,     0,      0,      0,    1/6,   -2/3,    3/2,     -2,      1]]
+
+Here, the first and last rows represent the 'not-a-knot' boundary condition.
+If we then look at column j, ignoring the first and last rows we have the
+j'th BSpline evaluated at each of the Nk grid points.
+The first three and last three columns differ from the middle (bulk) columns
+because the spline breakpoints are not uniformly spaced near the boundary and
+so the BSplines near the boundary are different.
+For example, this (9x9) matrix corresponds to a grid of 7 uniformly spaced
+points which we will take to be [0, 1, 2, 3, 4, 5, 6].
+The spline breakpoints would then be [0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 6, 6, 6].
+The first spline coefficient corresponds to a cubic BSpline with breakpoints
+[0, 0, 0, 0, 1], which is 0 outside of [0, 1), and rolls smoothly from 1 at x=0
+to 0 at x=1. So this BSpline is 1 at the first grid point and 0 at all other
+grid points, giving us the first column of the matrix (ignoring the first and
+last rows). The second spline coefficient corresponds to a cubic BSpline with
+breakpoints [0, 0, 0, 1, 2]. This BSpline 1/4 at x=1 and 0 at all other grid
+points, giving us the second column (again neglecting the first and final rows).
+The third column also corresponds to a boundary BSpline, but once we reach the
+fourth column we have a BSpline with breakpoints [0, 1, 2, 3, 4] which is a
+"typical" or "bulk" case - the breakpoints are uniformly spaced, and all "bulk"
+BSplines are identical up to a translation. This BSpline has support [0, 4),
+is 0 at the boundaries of its support, and takes on the values 1/6, 2/3, and 1/6
+at x=1, x=2, and x=3 respectively.
+
+Okay, now we are ready to solve our HUGE ((N1+2) x ... x (Nd+2)) linear system
+of equations without too much pain. We first find inverses of the Mk matrices,
+denoted MkInv, such that \sum_{i} MkInv{n, i} Mk_{i,j} = \delta_{n, j}.
+We can then compute
+    \sum_{i1, ..., id} f_{i1, ..., id} M1Inv{n1, i1} ... MdInv{nd, id} =
+    \sum_{j1, ..., jd} c_{j1, ..., jd} \delta_{n1, j1} ... \delta{nd, jd} =
+    c_{n1, ..., nd}
+So we can solve for all the coefficients just by summing our padded grid data
+against all of these (small) matrices! Of course, since we have many indices,
+this requires some nice numpy tensordot magic :)
+"""
+
 import numpy as np
-import scipy.sparse.linalg
-import os
+
+COEFS = {
+    "bulk": [(-1, 1./6.), (0, 2./3.), (1, 1./6.)],
+    "inner edge": [(-1, 1./4.), (0, 7./12.), (1, 1./6.)],
+    "outer edge": [(-1, 1.)],
+    "BC not-a-knot": [(0, 1.), (1, -2.), (2, 1.5), (3, -2./3.), (4, 1./6.)],
+    "BC natural": [(0, 1.), (1, -1.5), (2, 0.5)],
+        }
+
+def get_1d_spline_matrix(n, bc="not-a-knot"):
+    """
+    Constructs the matrix A such that A*c = f, where c is a vector of spline
+    coefficients and f is the solution evaluated on the knots, padded with one
+    zero on either side for boundary conditions.
+
+    n: The number of spline coefficients (number of knots + 2)
+    bc: The boundary condition. Can be "not-a-knot" (constant 3rd derivative)
+        or "natural".
+    """
+    if n < 6:
+        raise Exception("Not implemented for < 4 knots, using cubic splines!")
+    matrix = np.zeros((n, n))
+    bc_coef_key = "BC %s"%(bc)
+    if not bc_coef_key in COEFS.keys():
+        raise Exception("Unknown boundary condition: %s"%(bc))
+
+    # Start with the boundaries and work our way in
+    for j, c in COEFS[bc_coef_key]:
+        matrix[0, j] = c
+        matrix[-1, -1-j] = c
+
+    for j, c in COEFS["outer edge"]:
+        matrix[1, 1+j] = c
+        matrix[-2, -2-j] = c
+
+    for j, c in COEFS["inner edge"]:
+        matrix[2, 2+j] = c
+        matrix[-3, -3-j] = c
+
+    for i in range(3, n-3):
+        for j, c in COEFS["bulk"]:
+            matrix[i, i+j] = c
+    return matrix
+
 
 class UniformSpacingCubicSplineND:
-    """Computes coefficients for an N-dimensional spline
-    on uniformly-spaced grid data.
-    The spacing and grid size may be different in each dimension."""
+    """
+Computes coefficients for an N-dimensional cubic spline
+on uniformly-spaced grid data.
+    """
 
-    Bulk_coefs = [(-1, 1./6.), (0, 2./3.), (1, 1./6.)]
-    Inner_edge_coefs = [(-1, 1./4.), (0, 7./12.), (1, 1./6.)]
-    Outer_edge_coefs = [(-1, 1.)]
-    Bc_coefs_thirdDeriv = [(0, 1.), (1, -2.), (2, 1.5), (3, -2./3.), (4, 1./6.)]
-    Bc_coefs_natural = [(0, 1.), (1, -1.5), (2, 0.5)]
-
-
-    def __init__(self, dimensions, origin=None, spacings=None):
+    def __init__(self, dimensions, BC='not-a-knot'):
         """
 dimensions:
-    (nx_1, nx_2, ...nx_N), number of points per dimension
-origin:
-    Specify the coordinates of the corner data point [x0_1, x0_2, ..., x0_N].
-    None (default) becomes [0, ..., 0].
-spacings:
-    Specify the positive spacings [dx_1, dx_2, ..., dx_N].
-    None (default) becomes [1., ..., 1.].
-    """
+    (nx_1, nx_2, ...nx_d), number of points per dimension
+BC:
+    Boundary conditions for the splines. Can be 'not-a-knot' or 'natural'.
+        """
         self.dims = dimensions
+        self.d = len(dimensions)
         self.nCoefs = np.array([n+2 for n in dimensions])
         self.N = len(dimensions)
         self.nTotal = np.prod(self.nCoefs)
-#        self.coefs = np.zeros(dimensions)
-        if origin is None:
-            self.origin = np.zeros(self.N)
-        else:
-            self.origin = np.array(origin)
-        if spacings is None:
-            self.spacings = np.ones(self.N)
-        else:
-            self.spacings = np.array(spacings)
-        self.lu = None # Full L,U decomposition of matrix
+        self.BC = BC
 
+        t_seconds = self.nTotal * 4.e-7 # ~ order of magnitude
+        if t_seconds > .01:
+            print '%s coefficients: solves should take O(%0.1e seconds) each.'%(
+                self.nTotal, t_seconds)
 
-    def decompose(self, bdry_cond='third_deriv'):
+        self.setup_1d_matrices()
+
+    def setup_1d_matrices(self):
         """
-Finds the full LU decomposition of the matrix relating the spline
-coefficients to the data on the grid.  This is the computationally
-expensive step for large grids, and allows the spline coefficients
-to be determined quickly given a new set of data.
-
-bdry_cond: The boundary conditions to use for the tensor product spline.
-    'third_deriv' (default): on a (N-1) dimensional boundary surface,
-        sets the (constant) third partial derivative in the direction
-        of the surface normal to be continuous across the boundary between
-        the first and second intervals.
-        This has the best results near the boundary for simple test cases.
-    'natural': The natural spline termination condition sets the second
-        partial derivative in the direction of the surface normal to be
-        zero at the boundary grid points.
-        Seen to have reasonably good performance near the boundary in
-        simple test cases.
+Due to the tensor-product structure, we do not need to invert
+the ((nx_1 * ... * nx_d) X (nx_1 * ... * nx_d)) system of
+equations, and can instead solve a small system for each dimension.
+Here we find the necessary inverse matrices.
         """
-
-        matrix_i, matrix_j, matrix_data = self._get_sparse_matrix(bdry_cond=bdry_cond)
-        self._decompose(matrix_i, matrix_j, matrix_data)
-
-    def _get_sparse_matrix(self, bdry_cond='third_deriv'):
-        matrix_i = []
-        matrix_j = []
-        matrix_data = []
-        if bdry_cond == 'third_deriv':
-            bc_coefs = UniformSpacingCubicSplineND.Bc_coefs_thirdDeriv
-        elif bdry_cond == 'natural':
-            bc_coefs = UniformSpacingCubicSplineND.Bc_coefs_natural
-        else:
-            raise ValueError("Bad bdry_cond %s"%bdry_cond)
-
-        # Store as list for ease of access
-        forward_coefs = [bc_coefs, UniformSpacingCubicSplineND.Outer_edge_coefs, UniformSpacingCubicSplineND.Inner_edge_coefs, UniformSpacingCubicSplineND.Bulk_coefs]
-        reversed_coefs = [None, [(-i, x) for i, x in bc_coefs],
-                [(-i, x) for i, x in UniformSpacingCubicSplineND.Outer_edge_coefs], [(-i, x) for i, x in UniformSpacingCubicSplineND.Inner_edge_coefs]]
-
-        # Coordinates of the next matrix_i
-        i_indices = np.array([0 for _ in range(self.N)])
-
-        # Coordinates of the next matrix_j are i_indices + [c[0] for c in coefs]
-        # The matrix at the next matrix_i, matrix_j indices is prod([c[1] for c in coefs])
-        coefs = [bc_coefs for _ in range(self.N)]
-
-        while np.all(i_indices < self.nCoefs):
-            # Index each of the coefs lists
-            delta_indices = np.array([0 for _ in coefs])
-            nc = np.array([len(c) for c in coefs])
-
-            # Matrix first index associated with the coordinate
-            mi_idx = 0
-            for i in range(self.N):
-                mi_idx = mi_idx*self.nCoefs[i] + i_indices[i]
-
-            while np.all(delta_indices < nc):
-
-                # Matrix second index associated with the coordinate
-                mj_idx = 0
-                for i, dii in enumerate(delta_indices):
-                    mj_idx = mj_idx*self.nCoefs[i] + (i_indices[i] + coefs[i][dii][0])
-                matrix_i.append(mi_idx)
-                matrix_j.append(mj_idx)
-                matrix_data.append(np.prod([coefs[i][dii][1] for i, dii in enumerate(delta_indices)]))
-
-                # Increment last index of delta_indices
-                j = self.N - 1
-                delta_indices[j] += 1
-                while delta_indices[j] >= nc[j] and j > 0:
-                    delta_indices[j] = 0
-                    j -= 1
-                    delta_indices[j] += 1
-
-            # Increment last index of i_indices, carrying over as necessary and adjusting coefs
-            i = self.N - 1
-            i_indices[i] += 1
-            if i_indices[i] <= 3:
-                coefs[i] = forward_coefs[i_indices[i]]
-            elif i_indices[i] >= self.nCoefs[i] - 3:
-                coefs[i] = reversed_coefs[self.nCoefs[i] - i_indices[i]]
-            while i_indices[i] >= self.nCoefs[i] and i > 0:
-                i_indices[i] = 0
-                coefs[i] = bc_coefs
-                i -= 1
-                i_indices[i] += 1
-                if i_indices[i] <= 3: 
-                    coefs[i] = forward_coefs[i_indices[i]] 
-                elif i_indices[i] >= self.nCoefs[i] - 3: 
-                    coefs[i] = reversed_coefs[self.nCoefs[i] - i_indices[i]]
-
-        return matrix_i, matrix_j, matrix_data
-
-    def _decompose(self, matrix_i, matrix_j, matrix_data):
-        self.lu = scipy.sparse.linalg.splu(scipy.sparse.csc_matrix((matrix_data, (matrix_i, matrix_j)), shape=(self.nTotal, self.nTotal)))
+        self.inv_1d_matrices = []
+        for n in self.nCoefs:
+            matrix = get_1d_spline_matrix(n)
+            # TODO: Better method for inverting?
+            # These matrices are almost tridiagonal
+            self.inv_1d_matrices.append(np.linalg.inv(matrix))
 
     def solve(self, griddata):
+        """
+Given the function evaluated on the knots, computes the tensor-spline
+coefficients that can be used to interpolate the function.
+        """
         if not np.shape(griddata) == self.dims:
             raise ValueError("griddata should have shape {}".format(self.dims))
 
-        if self.lu is None:
-            print "First doing decomposition..."
-            self.decompose()
+        tmp_result = append_end_zeros(griddata)
 
-        padded_data = append_end_zeros(griddata)
-        self.coefs = self.lu.solve(padded_data.flatten()).reshape(np.shape(padded_data))
+        # We will apply the 1d inverse matrices from last to first.
+        # With each application, the shape of tmp_result goes from
+        # (for example) (a, b, c, d) -> (d, a, b, c) -> (c, d, a, b)
+        # so that we are always applying the 1d grid matrix to the last index.
+        # We also end up with the correct shape at the end and don't have to
+        # worry about multidimensional transposes.
+        for minv in self.inv_1d_matrices[::-1]:
+            tmp_result = np.tensordot(minv, tmp_result, (1, self.d - 1))
 
-
-    def saveDecomposition(self, dirname):
-        """Saves all the decomposition data in a new directory."""
-
-        if self.lu is None:
-            raise Exception("No point in saving an undecomposed spline")
-        if os.path.exists(dirname):
-            raise Exception("dirname already exists!")
-        os.mkdir(dirname)
-        for idstr, sm in zip(["L", "U"], [self.lu.L, self.lu.U]):
-            np.save(dirname + "/" + idstr + "_data.npy", sm.data)
-            np.save(dirname + "/" + idstr + "_indices.npy", sm.indices)
-            np.save(dirname + "/" + idstr + "_indptr.npy", sm.indptr)
-        np.save(dirname + "/perm_c.npy", self.lu.perm_c)
-        np.save(dirname + "/perm_r.npy", self.lu.perm_r)
+        return tmp_result
 
 def append_end_zeros(data):
     if len(np.shape(data)) > 1:
