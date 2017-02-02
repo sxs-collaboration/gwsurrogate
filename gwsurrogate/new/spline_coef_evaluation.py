@@ -178,7 +178,7 @@ coefficients that can be used to interpolate the function.
         if not np.shape(griddata) == self.dims:
             raise ValueError("griddata should have shape {}".format(self.dims))
 
-        tmp_result = append_end_zeros(griddata)
+        tmp_result = np.pad(griddata, 1, 'constant')
 
         # We will apply the 1d inverse matrices from last to first.
         # With each application, the shape of tmp_result goes from
@@ -190,10 +190,3 @@ coefficients that can be used to interpolate the function.
             tmp_result = np.tensordot(minv, tmp_result, (1, self.d - 1))
 
         return tmp_result
-
-def append_end_zeros(data):
-    if len(np.shape(data)) > 1:
-        tmp = np.array([append_end_zeros(d) for d in data])
-        zero = np.array([0.*tmp[0]])
-        return np.append(zero, np.append(tmp, zero, 0), 0)
-    return np.append(0., np.append(data, 0.))
