@@ -1,6 +1,6 @@
 """ Gravitational Wave Surrogate classes for text and hdf5 files"""
 
-from __future__ import division
+from __future__ import division  # for py2
 
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@astro.cornell.edu, crgalley@tapir.caltech.edu"
@@ -31,13 +31,18 @@ THE SOFTWARE.
 # so they won't show up in gws' tab completion
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as _iuspline
-from gwtools.harmonics import sYlm as _sYlm
+from gwsurrogate.gwtools.harmonics import sYlm as _sYlm
 
-from saveH5Object import SimpleH5Object
-from saveH5Object import H5ObjectList
-from saveH5Object import H5ObjectDict
-from nodeFunction import NodeFunction
-from spline_evaluation import TensorSplineGrid, fast_complex_tensor_spline_eval
+if __package__ is "" or "None": # py2 and py3 compatible 
+  print("setting __package__ to gwsurrogate.new so relative imports work")
+  __package__="gwsurrogate.new"
+
+# assumes unique global names
+from .saveH5Object import SimpleH5Object
+from .saveH5Object import H5ObjectList
+from .saveH5Object import H5ObjectDict
+from .nodeFunction import NodeFunction
+from .spline_evaluation import TensorSplineGrid, fast_complex_tensor_spline_eval
 
 PARAM_NUDGE_TOL = 1.e-12 # Default relative tolerance for nudging edge cases
 
@@ -58,7 +63,7 @@ RECOMBINATION_FUNCS = {
 
 def _mode_sum(modes, theta, phi):
     h = 0.
-    for (ell, m), h_mode in modes.iteritems():
+    for (ell, m), h_mode in modes.items(): # inefficient in py2
         h += _sYlm(-2, ell, m, theta, phi) * h_mode
     return h
 
@@ -334,19 +339,19 @@ class _ManyFunctionSurrogate_NoChecks(SimpleH5Object):
 
         self.name = name
         self.combine_func = combine_func
-        self.func_keys = single_function_components.keys()
-        self.sur_keys = many_function_components.keys()
+        self.func_keys = list(single_function_components.keys())
+        self.sur_keys = list(many_function_components.keys())
         if len(set(self.func_keys).intersection(self.sur_keys)) > 0:
             raise Exception("Component keys must be unique! Got %s, %s"%(
                             self.func_keys, self.sur_keys))
 
         func_sub_dict = {}
-        for k, (ei, nf) in single_function_components.iteritems():
+        for k, (ei, nf) in single_function_components.items(): # inefficient in py2
             func_sub_dict[k] = _SingleFunctionSurrogate_NoChecks(k, ei, nf)
         self.func_subs = H5ObjectDict(func_sub_dict)
 
         sur_sub_dict = {}
-        for k, (cf, sfc, mfc) in many_function_components.iteritems():
+        for k, (cf, sfc, mfc) in many_function_components.items(): # inefficient in py2
             sur_sub_dict[k] = _ManyFunctionSurrogate_NoChecks(k, sfc, mfc, cf)
         self.sur_subs = H5ObjectDict(sur_sub_dict)
 
@@ -364,8 +369,8 @@ class _ManyFunctionSurrogate_NoChecks(SimpleH5Object):
         return self.name
 
     def __call__(self, x):
-        func_evals = {k: sur(x) for k, sur in self.func_subs.iteritems()}
-        sur_evals = {k: sur(x) for k, sur in self.sur_subs.iteritems()}
+        func_evals = {k: sur(x) for k, sur in self.func_subs.items()} # inefficient in py2
+        sur_evals = {k: sur(x) for k, sur in self.sur_subs.items()} # inefficient in py2
         return RECOMBINATION_FUNCS[self.combine_func](func_evals, sur_evals)
 
     def _eval_func(self, x, key):
@@ -447,7 +452,7 @@ class FastTensorSplineSurrogate(SimpleH5Object):
         if param_space is None:
             self.param_space = ParamSpace()
         if modes is None:
-            modes = mode_data.keys()
+            modes = list(mode_data.keys())
         self.mode_list = modes
         self.mode_indices = {str(k): i for i, k in enumerate(modes)}
         self.ei = [mode_data[k][0] for k in modes]
@@ -522,7 +527,7 @@ class MultiModalSurrogate(ManyFunctionSurrogate):
                                                       mode_data, {}, 'identity')
         elif mode_type in ['amp_phase', 're_im']:
             mode_data = {k: (mode_type, v, {})
-                         for k, v in mode_data.iteritems()}
+                         for k, v in mode_data.items()} # inefficient in py2
             super(MultiModalSurrogate, self).__init__(name, domain, param_space,
                                                       {}, mode_data, mode_type)
         else:
@@ -530,7 +535,7 @@ class MultiModalSurrogate(ManyFunctionSurrogate):
 
         self.mode_type = mode_type
         if modes is None:
-            self.modes = mode_data.keys()
+            self.modes = list(mode_data.keys())
         else:
             self.modes = modes
 
@@ -597,17 +602,19 @@ class SpEC_nonspinning_q10_surrogate(MultiModalSurrogate):
             modes = self.modes
 
         if self.skip_2_0_mode:
-            modes = filter(lambda mode: mode != (2, 0), modes)
+            # removed by 2to3 tool
+            #modes = filter(lambda mode: mode != (2, 0), modes)
+            modes = [mode for mode in modes if mode != (2, 0)]
 
         h_modes = super(SpEC_nonspinning_q10_surrogate, self).__call__(
                 x, modes=modes)
 
         if fake_neg_modes:
             new_modes = {}
-            for (ell, m), h in h_modes.iteritems():
+            for (ell, m), h in h_modes.items(): # inefficient in py2
                 if m > 0:
                     new_modes[(ell, -m)] = np.power(-1, ell) * h.conjugate()
-            for k, v in new_modes.iteritems():
+            for k, v in new_modes.items(): # inefficient in py2
                 h_modes[k] = v
 
         if theta is not None:

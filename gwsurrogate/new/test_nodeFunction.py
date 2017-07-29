@@ -4,7 +4,10 @@ import numpy as np
 import os
 import unittest
 
-import nodeFunction as nf
+if __package__ is "" or "None": # py2 and py3 compatible 
+  print("setting __package__ to gwsurrogate.new so relative imports work")
+  __package__="gwsurrogate.new"
+from .nodeFunction import DummyNodeFunction, Polyfit1D
 from gwsurrogate import parametric_funcs as pf
 
 TEST_FILE = 'test.h5' # Gets created and deleted
@@ -41,11 +44,11 @@ class DummyNodeTester(BaseTest):
                 self.assertEqual(y, return_val)
 
     def _test(self, inputs, return_val=None):
-        dnf = nf.DummyNodeFunction(return_value=return_val)
+        dnf = DummyNodeFunction(return_value=return_val)
         self._verify_output(dnf, inputs, return_val)
         dnf.save(TEST_FILE)
 
-        dnf2 = nf.DummyNodeFunction()
+        dnf2 = DummyNodeFunction()
         dnf2.load(TEST_FILE)
         self._verify_output(dnf, inputs, return_val)
         _tear_down()
@@ -65,13 +68,13 @@ class Polyfit1DTester(BaseTest):
 
     def _test(self, inputs, n_coefs, function_name):
         coefs = np.random.random(n_coefs)
-        pf1d = nf.Polyfit1D(function_name, coefs)
+        pf1d = Polyfit1D(function_name, coefs)
         func = pf.function_dict[function_name]
         outputs = [func(coefs, x) for x in inputs]
         self._verify_output(pf1d, inputs, outputs)
 
         pf1d.save(TEST_FILE)
-        pf1d2 = nf.Polyfit1D()
+        pf1d2 = Polyfit1D()
         pf1d2.load(TEST_FILE)
         self._verify_output(pf1d2, inputs, outputs)
         _tear_down()

@@ -70,7 +70,7 @@ def _write_attr(f, k, v):
         f.create_dataset(k, data=NONE_STR)
     elif type(v) == dict:
         g = f.create_group(DICT_PREFIX + k)
-        for kk, vv in v.iteritems():
+        for kk, vv in v.items():  # inefficient in py2
             _write_attr(g, kk, vv)
     elif type(v) == list:
         g = f.create_group(LIST_PREFIX + k)
@@ -91,7 +91,7 @@ def _read_attrs(f):
         f: An h5py file or group
     """
     d = {}
-    for k, item in f.iteritems():
+    for k, item in f.items():  # inefficient in py2
         if k[:len(DICT_PREFIX)] == DICT_PREFIX:
             d[k[len(DICT_PREFIX):]] = _read_attrs(item)
         elif k[:len(LIST_PREFIX)] == LIST_PREFIX:
@@ -143,8 +143,11 @@ class SimpleH5Object(object):
             self._read_h5(f)
 
     def _default_data_keys(self):
-        keys = filter(lambda s: s not in self._h5_subordinate_keys,
-                      self.__dict__.keys())
+
+        # removed by 2to3 tool
+        #keys = filter(lambda s: s not in self._h5_subordinate_keys,
+        #              self.__dict__.keys())
+        keys = [s for s in list(self.__dict__.keys()) if s not in self._h5_subordinate_keys]
         return keys
 
     def _write_h5(self, f):
@@ -254,7 +257,7 @@ class H5ObjectDict(SimpleH5Object):
     def _write_h5(self, f):
         """Writes each k, v pair as a group"""
         keys = []
-        for i, (k, v) in enumerate(self.object_dict.iteritems()):
+        for i, (k, v) in enumerate(self.object_dict.items()):   # inefficient in py2
             keys.append(k)
             g = f.create_group(_list_item_string(i))
             v._write_h5(g)
@@ -264,7 +267,7 @@ class H5ObjectDict(SimpleH5Object):
         """Loads each object in the object_dict from the h5 groups"""
         d = _read_attrs(f)
         keys = d[OBJ_DICT_KEY_STR]
-        for k, v in self.object_dict.iteritems():
+        for k, v in self.object_dict.items():   # inefficient in py2
             idx = keys.index(k)
             v._read_h5(f[_list_item_string(idx)])
 
@@ -275,5 +278,5 @@ class H5ObjectDict(SimpleH5Object):
         return len(self.object_dict)
 
     def iteritems(self):
-        for k, v in self.object_dict.items():
+        for k, v in list(self.object_dict.items()):   # inefficient in py2
             yield k, v

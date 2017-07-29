@@ -1,9 +1,12 @@
-from __future__ import division
+
+from __future__ import division # for python 2
+
+
 from scipy import interpolate
 import numpy, h5py
 import numpy.linalg as la
 from pylab import *
-from surrogate import SurrogateGW
+from .surrogate import SurrogateGW
 
 class Rescaling(SurrogateGW):
     """Class for rescaling a surrogate waveform by the desired total mass. 

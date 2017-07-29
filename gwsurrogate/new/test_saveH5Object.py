@@ -4,13 +4,12 @@ import numpy as np
 import os
 import unittest
 
-from saveH5Object import SimpleH5Object
-from saveH5Object import H5ObjectList
-from saveH5Object import H5ObjectDict
-import saveH5Object
+if __package__ is "" or "None": # py2 and py3 compatible 
+  print("setting __package__ to gwsurrogate.new so relative imports work")
+  __package__="gwsurrogate.new"
+from .saveH5Object import SimpleH5Object, H5ObjectList, H5ObjectDict, RESERVED_VALUE_STRINGS, RESERVED_KEY_STRINGS
 
 TEST_FILE = 'test.h5' # Gets created and deleted
-
 
 def _tear_down():
     if os.path.isfile(TEST_FILE):
@@ -36,7 +35,7 @@ class DummyHolder(SimpleH5Object):
     def __init__(self, **kwargs):
         super(DummyHolder, self).__init__()
 
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items(): # inefficient in py2
             setattr(self, k, v)
 
 class DummyHolderHolder(SimpleH5Object):
@@ -49,7 +48,7 @@ class DummyHolderHolder(SimpleH5Object):
         for i, dh in enumerate(dummy_holders):
             setattr(self, 'dh_%s'%(i), dh)
 
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():  # inefficient in py2
             setattr(self, k, v)
 
     def h5_prepare_subs(self):
@@ -132,14 +131,14 @@ class SubordinateTester(BaseTest):
 class ExceptionTester(BaseTest):
 
     def test_value_strings(self):
-        for vstr in saveH5Object.RESERVED_VALUE_STRINGS:
+        for vstr in RESERVED_VALUE_STRINGS:
             with self.assertRaises(Exception):
                 c = DummyHolder(asdf=vstr)
                 c.save(TEST_FILE)
             _tear_down()
 
     def test_key_strings(self):
-        for kstr in saveH5Object.RESERVED_KEY_STRINGS:
+        for kstr in RESERVED_KEY_STRINGS:
             with self.assertRaises(Exception):
                 kwargs = {kstr + 'asdf': 0.3}
                 c = DummyHolder(**kwargs)

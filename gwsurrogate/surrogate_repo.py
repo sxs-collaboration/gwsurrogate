@@ -1,6 +1,7 @@
 """ Surrogate download tool """
 
-from __future__ import division
+from __future__ import division # for python 2
+
 
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@astro.cornell.edu, crgalley@tapir.caltech.edu"
@@ -65,9 +66,9 @@ def list():
   '''show all known surrogates available for download'''
 
   for surr_key in _surrogate_world.keys():
-    print surr_key+'...'
-    print '  url: '+_surrogate_world[surr_key].url
-    print "  Description: "+_surrogate_world[surr_key].desc+'\n\n'
+    print(surr_key+'...')
+    print('  url: '+_surrogate_world[surr_key].url)
+    print("  Description: "+_surrogate_world[surr_key].desc+'\n\n')
 
 def _unzip(surr_name,sdir=download_path()):
   '''unzip a tar.gz surrogate and remove the tar.gz file'''
@@ -83,7 +84,7 @@ def get(surr_name,sdir=download_path()):
      The default path is used if no location supplied. tar.gz surrogates
      are automatically unziped. The new surrogate path is returned.'''
 
-  if _surrogate_world.has_key(surr_name):
+  if surr_name in _surrogate_world:
     surr_url = _surrogate_world[surr_name].url
     os.system('wget --directory-prefix='+sdir+' '+surr_url)
   else:

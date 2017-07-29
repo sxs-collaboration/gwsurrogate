@@ -1,6 +1,6 @@
 """ Gravitational Wave Surrogate classes for text and hdf5 files"""
 
-from __future__ import division
+from __future__ import division # for python 2
 
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@astro.cornell.edu, crgalley@tapir.caltech.edu"
@@ -32,13 +32,13 @@ THE SOFTWARE.
 import numpy as np
 from scipy.interpolate import splrep as _splrep
 from scipy.interpolate import splev as _splev
-from gwtools.harmonics import sYlm as _sYlm
-import gwtools as _gwtools
-from gwtools import plot_pretty as _plot_pretty
-from parametric_funcs import function_dict as my_funcs
-from surrogateIO import H5Surrogate as _H5Surrogate
-from surrogateIO import TextSurrogateRead as _TextSurrogateRead
-from surrogateIO import TextSurrogateWrite as _TextSurrogateWrite
+from .gwtools.harmonics import sYlm as _sYlm
+from .gwtools import plot_pretty as _plot_pretty
+from .gwtools import gwtools as _gwtools # from the package gwtools, import the module gwtools (gwtools.py)....
+from .parametric_funcs import function_dict as my_funcs
+from .surrogateIO import H5Surrogate as _H5Surrogate
+from .surrogateIO import TextSurrogateRead as _TextSurrogateRead
+from .surrogateIO import TextSurrogateWrite as _TextSurrogateWrite
 
 try:
   import matplotlib.pyplot as plt
@@ -158,7 +158,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
     ### if (M,distance) provided, a physical mode in mks units is returned ###
     if( M is not None and dist is not None):
-      amp0    = ((M * _gwtools.Msun ) / (dist * _gwtools.Mpcinm )) * ( _gwtools.G / np.power(_gwtools.c,2.0) )
+      amp0    = ((M * _gwtools.MSUN_SI ) / (dist * _gwtools.PC_SI )) * ( _gwtools.G / np.power(_gwtools.c,2.0) )
       t_scale = _gwtools.Msuninsec * M
     else:
       amp0    = 1.0
@@ -219,7 +219,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       return f_instant
     else:
       if f_instant > f_low:
-        raise Warning, "starting frequency is "+str(f_instant)
+        raise Warning("starting frequency is "+str(f_instant))
       else:
         pass
 
@@ -267,9 +267,9 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
         t, hp, hc = self.__call__(i,M_eval,dist_eval,phi_ref,f_low,samples)
 
     toc = time.time()
-    print 'Timing results (results quoted in seconds)...'
-    print 'Total time to generate 1000 waveforms = ',toc-tic
-    print 'Average time to generate a single waveform = ', (toc-tic)/1000.0
+    print('Timing results (results quoted in seconds)...')
+    print('Total time to generate 1000 waveforms = ',toc-tic)
+    print('Average time to generate a single waveform = ', (toc-tic)/1000.0)
     pass
 
 	
@@ -514,7 +514,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       if strong_checking:
         raise ValueError('Surrogate not trained at requested parameter value')
       else:
-        print "Warning: Surrogate not trained at requested parameter value"
+        print("Warning: Surrogate not trained at requested parameter value")
         Warning("Surrogate not trained at requested parameter value")
 
 
@@ -756,7 +756,7 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, enforce_o
         exc_modes = []
       else:
         raise ValueError('Invalid excluded option: %s'%excluded)
-      for kk, vv in fp.iteritems():
+      for kk, vv in fp.items():  # inefficient on Py2
         if 'EXCLUDED' in vv:
           splitkk = kk.split('_')
           if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
@@ -765,11 +765,11 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, enforce_o
             if excluded == 'DEFAULT':
               exc_modes.append((ell,emm))
             elif not (ell, emm) in exc_modes:
-              print "Warning: Including mode (%d,%d) which is excluded by default"%(ell, emm)
+              print("Warning: Including mode (%d,%d) which is excluded by default"%(ell, emm))
        ### compile list of available modes ###
       if ell_m is None:
         mode_keys = []
-        for kk in fp.keys():
+        for kk in fp.keys(): # Py2 list, Py3 iterator
           splitkk = kk.split('_')
           if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
             ell = int(splitkk[0][1])
@@ -780,7 +780,7 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, enforce_o
         mode_keys = []
         for i, mode in enumerate(ell_m):
           if mode in exc_modes:
-            print "WARNING: Mode (%d,%d) is both included and excluded! Excluding it."%mode 
+            print("WARNING: Mode (%d,%d) is both included and excluded! Excluding it."%mode) 
           else:
             mode_keys.append(mode)
 
@@ -794,7 +794,7 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, enforce_o
       for mode_key in mode_keys:
         assert(mode_keys.count(mode_key)==1)
         mode_key_str = 'l'+str(mode_key[0])+'_m'+str(mode_key[1])
-        print "loading surrogate mode... " + mode_key_str
+        print("loading surrogate mode... " + mode_key_str)
         single_mode_dict[mode_key] = \
           EvaluateSingleModeSurrogate(fp,subdir=mode_key_str+'/',closeQ=False)
       fp.close()
@@ -812,13 +812,13 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, enforce_o
         if ((type(excluded) == list and not mode_key in excluded) or
             (excluded == 'DEFAULT' and not
              os.path.isfile(path+single_mode+'/EXCLUDED.txt'))):
-          assert(not single_mode_dict.has_key(mode_key))
+          assert(mode_key not in single_mode_dict)
           if os.path.isfile(path+single_mode+'/EXCLUDED.txt'):
-            print "Warning: Including mode (%d,%d) which is excluded by default"%(ell, emm)
+            print("Warning: Including mode (%d,%d) which is excluded by default"%(ell, emm))
           if enforce_orbital_plane_symmetry and emm < 0:
             raise Exception("When using enforce_orbital_plane_symmetry, do not load negative m modes!")
 
-          print "loading surrogate mode... "+single_mode[0:5]
+          print("loading surrogate mode... "+single_mode[0:5])
           single_mode_dict[mode_key] = \
             EvaluateSingleModeSurrogate(path+single_mode+'/')
     ### check all requested modes have been loaded ###
@@ -827,7 +827,7 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, enforce_o
         try:
           single_mode_dict[tmp]
         except KeyError:
-          print 'Could not find mode '+str(tmp)
+          print('Could not find mode '+str(tmp))
  
   return single_mode_dict
 
@@ -865,13 +865,13 @@ class EvaluateSurrogate():
       raise IOError('Modes not found. Mode subdirectories begins with l#_m#_')
 
     ### Check single mode temporal grids are collocated ###
-    grid_shape = self.single_mode_dict[self.single_mode_dict.keys()[0]].time().shape
-    for key in self.single_mode_dict.keys():
-      tmp_shape = self.single_mode_dict[self.single_mode_dict.keys()[0]].time().shape
+    grid_shape = self.single_mode_dict[list(self.single_mode_dict.keys())[0]].time().shape
+    for key in list(self.single_mode_dict.keys()):
+      tmp_shape = self.single_mode_dict[list(self.single_mode_dict.keys())[0]].time().shape
       if(grid_shape != tmp_shape):
         raise ValueError('inconsistent single mode temporal grids')
       
-    self.time_all_modes = self.single_mode_dict[self.single_mode_dict.keys()[0]].time
+    self.time_all_modes = self.single_mode_dict[list(self.single_mode_dict.keys())[0]].time
 
       # TODO: other common data to merge: surrogate parameter intervals
       # Bad idea? if modes use different parameterization -- better to let modes handle this?
@@ -1071,7 +1071,7 @@ class EvaluateSurrogate():
     """ from single mode keys deduce all available model modes.
         If minus_m=True, include (ell,-m) whenever (ell,m) is available ."""
 
-    model_modes = [(ell,m) for ell,m in self.single_mode_dict.keys()]
+    model_modes = [(ell,m) for ell,m in self.single_mode_dict.keys()] # Py2 list, Py3 iterator
 
     if minus_m:
       model_modes = self._extend_mode_list_minus_m(model_modes)
@@ -1234,7 +1234,7 @@ def CompareSingleModeSurrogate(sur1,sur2):
   different = []
   no_check = []
 
-  for key in sur1.__dict__.keys():
+  for key in sur1.__dict__.keys(): # Py2 list, Py3 iterator
 
     result = "Checking attribute %s... "%str(key)
 
@@ -1264,11 +1264,11 @@ def CompareSingleModeSurrogate(sur1,sur2):
       no_check.append(key)
 
   print("Agrees:")
-  print agrees
+  print(agrees)
   print("Different:")
-  print different
+  print(different)
   print("Did not check:")
-  print no_check
+  print(no_check)
 
 
 

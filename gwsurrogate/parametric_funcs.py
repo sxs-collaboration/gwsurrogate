@@ -1,6 +1,6 @@
 """ catalog of parametric fitting functions """
 
-from __future__ import division
+from __future__ import division # for python 2
 
 __copyright__    = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__        = "sfield@astro.cornell.edu, crgalley@tapir.caltech.edu"
@@ -29,7 +29,8 @@ THE SOFTWARE.
 """
 
 import numpy as np
-import gwtools
+from .gwtools import gwtools as gwtools # from the package gwtools, import the module gwtools (gwtools.py)....
+
 
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

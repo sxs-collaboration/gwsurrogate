@@ -97,5 +97,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-from surrogate import *
-import surrogate_repo
+from .surrogate import *
+from . import surrogate_repo

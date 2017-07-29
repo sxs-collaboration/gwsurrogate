@@ -7,7 +7,7 @@ minimal when evaluating all splines simultaneously at the same parameter
 value.
 """
 
-from __future__ import division
+from __future__ import division  # for py2
 
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@astro.cornell.edu, crgalley@tapir.caltech.edu"
@@ -34,10 +34,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+#print("__name__ = %s"%__name__)
+#print("__package__= %s"%__package__)
+
+if __package__ is "" or "None": # py2 and py3 compatible 
+  print("setting __package__ to gwsurrogate.new so relative imports work")
+  __package__="gwsurrogate.new"
+
+print("__name__ = %s"%__name__)
+print("__package__= %s"%__package__)
+
 import numpy as np
 import h5py
-from saveH5Object import SimpleH5Object
+from .saveH5Object import SimpleH5Object
 import itertools
+from functools import reduce
 
 def _cubic_spline_breaks(knot_vec):
     """

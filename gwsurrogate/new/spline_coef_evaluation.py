@@ -151,8 +151,8 @@ BC:
 
         t_seconds = self.nTotal * 4.e-7 # ~ order of magnitude
         if t_seconds > .01:
-            print '%s coefficients: solves should take O(%0.1e seconds) each.'%(
-                self.nTotal, t_seconds)
+            print('%s coefficients: solves should take O(%0.1e seconds) each.'%(
+                self.nTotal, t_seconds))
 
         self.setup_1d_matrices()
 

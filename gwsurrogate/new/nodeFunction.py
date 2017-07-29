@@ -1,6 +1,7 @@
 """Classes for parameter space fits or interpolants"""
 
-from __future__ import division
+from __future__ import division # for python 2
+
 
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@astro.cornell.edu, crgalley@tapir.caltech.edu"
@@ -27,11 +28,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-from saveH5Object import SimpleH5Object
+if __package__ is "" or "None": # py2 and py3 compatible 
+  print("setting __package__ to gwsurrogate.new so relative imports work")
+  __package__="gwsurrogate.new"
+from .saveH5Object import SimpleH5Object  # assumes unique global name
 
 from gwsurrogate import parametric_funcs
 import numpy as np
-import gwtools
+from gwsurrogate import gwtools
 
 class DummyNodeFunction(SimpleH5Object):
     """Used for testing, returns the input or a constant."""
@@ -99,7 +103,7 @@ class NodeFunction(SimpleH5Object):
         self.node_function = node_function
         self.node_class = None
         if node_function is not None:
-            for k, v in NODE_CLASSES.iteritems():
+            for k, v in NODE_CLASSES.items(): # inefficient on Py2
                 if node_function.__class__.__name__ == v.__name__:
                     self.node_class = k
             if self.node_class is None:

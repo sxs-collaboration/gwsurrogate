@@ -1,6 +1,6 @@
 """ Basic IO functionality for surrogates """
 
-from __future__ import division
+from __future__ import division  # for python 2
 
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@astro.cornell.edu, crgalley@tapir.caltech.edu"
@@ -30,8 +30,9 @@ THE SOFTWARE.
 import numpy as np
 import os as os
 import h5py
-from parametric_funcs import function_dict as my_funcs
-from new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
+from .parametric_funcs import function_dict as my_funcs
+from .new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
+import collections
 
 surrogate_description = """* Description of tags:
      
@@ -206,10 +207,10 @@ class SurrogateBaseIO:
   def print_required(self):
     """ Print variable names required for importing and exporting surrogate data"""
     
-    print "\nGWSurrogate requires data for the following:"
+    print("\nGWSurrogate requires data for the following:")
     
     for kk in self.required:
-      print "\t"+kk
+      print("\t"+kk)
     
     pass
 
@@ -220,10 +221,10 @@ class SurrogateBaseIO:
     
     for kk in self.required:
       #if kk not in keys:
-      if not dict.has_key(kk):
-        raise Exception, "\nGWSurrogate requires data for "+kk
+      if kk not in dict:
+        raise Exception("\nGWSurrogate requires data for "+kk)
     
-    return dict.keys()
+    return list(dict.keys())
 
 
 
@@ -253,7 +254,7 @@ class H5Surrogate(SurrogateBaseIO):
       if mode in ['r', 'w', 'r+', 'a']:
         self._mode = mode
       else:
-        raise Exception, "File mode not recognized. Must be 'r', 'w', 'r+', 'a'."
+        raise Exception("File mode not recognized. Must be 'r', 'w', 'r+', 'a'.")
     
     ### Check if file is a pointer or path name (string) and open if in 'r' mode ###
     if file is not None:
@@ -287,7 +288,7 @@ class H5Surrogate(SurrogateBaseIO):
     for kk in data_mode_class.keys:
       dict[kk] = data_mode_class.__dict__[kk]
     
-    if data_mode_class.__dict__.has_key('mode'):
+    if 'mode' in data_mode_class.__dict__:
       dict['mode'] = data_mode_class.__dict__['mode']
     
     return dict
@@ -314,23 +315,23 @@ class H5Surrogate(SurrogateBaseIO):
       try:
         self.file = h5py.File(file, 'r')
       except:
-        raise Exception, "Cannot open file."
+        raise Exception("Cannot open file.")
     elif self.type == h5py._hl.files.File:
       self.file = file
     
     ### Get data keys listing all available surrogate data ###
     if subdir == '':
-      self.keys = self.file.keys()
+      self.keys = list(self.file.keys())
     else:
       # Get keys in the given subdirectory
-      self.keys = self.file[subdir[:-1]].keys()
+      self.keys = list(self.file[subdir[:-1]].keys())
       
     ### Get SurrogateID ####
     name = self.file.filename.split('/')[-1].split('.')[0]
     if self._surrogate_ID_h5 in self.keys:
       self.surrogate_ID = self.chars_to_string(self.file[subdir+self._surrogate_ID_h5][()])
       if self.surrogate_ID != name:
-        print "\n>>> Warning: SurrogateID does not have expected name."
+        print("\n>>> Warning: SurrogateID does not have expected name.")
     else:
       "\n>>> Warning: No surrogate ID found."
     
@@ -587,7 +588,7 @@ class H5Surrogate(SurrogateBaseIO):
             group.create_dataset(kk, data=chars, dtype='int')
           elif dtype is np.ndarray:
             group.create_dataset(kk, data=data_to_write[kk], dtype=data_to_write[kk].dtype, compression='gzip')
-          elif callable(data_to_write[kk]):
+          elif isinstance(data_to_write[kk], collections.Callable):
             print("key %s is a function. Not writing to h5 file"%kk)
           elif data_to_write[kk] is None:
             print("key %s has a value of none. Not writing to h5 file"%kk)
@@ -669,8 +670,8 @@ class TextSurrogateRead(SurrogateBaseIO):
     ### Consistency check that self.time_samples = B_X.shape[0] ###
     if(self.time_samples != B_1.shape[0] or
        self.time_samples != B_2.shape[0]):
-      print self.time_samples
-      print B_2.shape[0]
+      print(self.time_samples)
+      print(B_2.shape[0])
       raise ValueError('temporal and basis dimension mismatch')
 
 
@@ -775,12 +776,12 @@ class TextSurrogateWrite(SurrogateBaseIO):
     """open single-mode surrogate, to be located in directory sdir, for writing"""
 
     if( not(sdir[-1:] is '/') ):
-      raise Exception, "path name should end in /"
+      raise Exception("path name should end in /")
     try:
       os.mkdir(sdir)
-      print "Successfully created a surrogate directory...use write_text to export your surrogate!"
+      print("Successfully created a surrogate directory...use write_text to export your surrogate!")
     except OSError:
-      print "Could not create a surrogate directory. Not ready to export, please try again."
+      print("Could not create a surrogate directory. Not ready to export, please try again.")
 
     ### sdir is defined to be the surrogate's ID ###
     self.SurrogateID = sdir
@@ -838,7 +839,7 @@ class TextSurrogateWrite(SurrogateBaseIO):
     """ numpys savetext without overwrites """
 
     if os.path.isfile(fname):
-      raise Exception, "file already exists"
+      raise Exception("file already exists")
     else: 
       np.savetxt(fname,X,fmt=fmt)
 
