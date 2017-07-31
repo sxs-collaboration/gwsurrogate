@@ -3,9 +3,10 @@ import sys
 try:
   from setuptools import setup
   setup
-except ImportError:
-  from distutils.core import setup
-  setup
+except ImportError: # currently not supported
+  raise ImportError("GWSurrogate requires setuptools to correctly install the gwools submodule")
+  #from distutils.core import setup # currently not supported
+  #setup
 
 # To render markdown. See https://github.com/pypa/pypi-legacy/issues/148
 try:
@@ -16,11 +17,12 @@ except ImportError:
 
 
 setup(name='gwsurrogate',
-      version='0.6.1',
+      version='0.6.3',
       author='Jonathan Blackman, Scott Field, Chad Galley',
       author_email='sfield@astro.cornell.edu',
       packages=['gwsurrogate'],
       license='MIT',
+      include_package_data=True,
       contributors=[
       # Alphabetical by last name.
       ""],

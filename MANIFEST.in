@@ -1,5 +1,6 @@
 # in addition to standard files included by distutils setup.py, include these files 
 include LICENSE
+include README.md
 include tutorial/notebooks/*.ipynb
 include test/*.py
 include gwsurrogate/new/*.py
