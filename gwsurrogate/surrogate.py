@@ -553,7 +553,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     return self._norm_eval(x_0)
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def eim_coeffs(x, surrogate_mode_type):
+  def eim_coeffs(self, x, surrogate_mode_type):
     """Evaluate EIM coefficients at parameter value x.
 
        Wrapper for safe calls from outside of the class"""
