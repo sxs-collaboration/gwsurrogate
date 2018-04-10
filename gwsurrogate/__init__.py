@@ -12,7 +12,7 @@ Example usage
 
 To plot the EOBNRv2 surrogate included with this package (others available for download)
 
-  ipmort gwsurrogate as gw
+  import gwsurrogate as gw
   EOB = gws.EvaluateSurrogate('gwsurrogate/tutorial/EOBNRv2_example/EOBNRv2_q1_2_NoSpin_SingleModes/l2_m2_len12239M_SurID19poly/')
   EOB.plot_sur(q_eval = 1.3)
 
@@ -22,7 +22,7 @@ Additional examples can be found in the accompanying ipython notebooks.
 Surrogate data format
 ---------------------
 
-Both HDF5 and text based surruogates assume 
+Both HDF5 and text based surrogates assume
 
 1) Gravitational waves are written as: 
 
@@ -30,28 +30,28 @@ Both HDF5 and text based surruogates assume
 
 2) The following surrogate data is available:
 
-        SurrogateID (string, repeat parent directory name)
-	B (complex matrix, basis-by-times)
-	eim_indices (array of integers, labeled from 0)
-	greedy_points (ordered by their selection)
-	tmin, tmax, dt. (Text surrogates store these in time_info.txt)
-	qmin_fit, qmax_fit (range used for fitting).
-	affine_map (Boolean; whether affine map to reference interval was 
-                    used; use as flag for evaluating fits)
-	fit_coeff_amp 
-	fit_coeff_phase (coefficients of fitting functions; eim_indices-by-coefficients)
-	V (not its inverse; to reconstruct the the orthonormal reduced basis E = B V)
-	R (matrix of coefficients relating basis and waveforms, H = E R)
+    SurrogateID (string, repeat parent directory name)
+    B (complex matrix, basis-by-times)
+    eim_indices (array of integers, labeled from 0)
+    greedy_points (ordered by their selection)
+    tmin, tmax, dt. (Text surrogates store these in time_info.txt)
+    qmin_fit, qmax_fit (range used for fitting).
+    affine_map (Boolean; whether affine map to reference interval was
+                used; use as flag for evaluating fits)
+    fit_coeff_amp
+    fit_coeff_phase (coefficients of fitting functions; eim_indices-by-coefficients)
+    V (not its inverse; to reconstruct the the orthonormal reduced basis E = B V)
+    R (matrix of coefficients relating basis and waveforms, H = E R)
 
-3) Each surrogate model is defined by a folder name (text) 
+3) Each surrogate model is defined by a folder name (text-based surrogates)
 
         MODELNAME_q[QMIN]_[QMAX]_NoSpin_[Multi(Single)]Mode/l[ELL]_m[M]_len[TIME]M_SurID[RBDIM]poly
 
-or file name (hdf5)  
+   where, for example, MODELNAME = "EOBNRv2" and []-quantities are determined by the surrogate's setting
 
-        ADD ME HERE!!!!
+or file name (hdf5-based surrogates)
 
-where, for example, MODELNAME = "EOBNRv2" and []-quantities are determined by the surrogate's setting
+        MODELNAME.h5
 
 4) metadata.txt or info.data contains a detailed description of the surrogate model
 
@@ -71,12 +71,9 @@ of interest.
 """
 
 __copyright__ = "Copyright (C) 2014 Scott Field, Chad Galley"
-__email__ = "sfield@umd.edu"
+__email__ = "sfield@umassd.edu"
 __status__ = "testing"
-__author__ = "Scott Field, Chad Galley"
-__contributors__ = [
-    # Alphabetical by first name.
-    "Jonathan Blackman"]
+__author__ = "Jonathan Blackman, Scott Field, Chad Galley"
 __license__ = """
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

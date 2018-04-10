@@ -196,10 +196,10 @@ class SurrogateBaseIO:
   def __init__(self):
 
     ### Make list of required data for reading/writing surrogate data ###
-    # this is the minimum data. Surrogate evalutions may require more than 
+    # this is the minimum data. Surrogate evaluations may require more than
     # the minimum
-    self.required = ['times', 'B', 'fitparams_amp', 'fitparams_phase', \
-                     'fit_min', 'fit_max', 'fit_type_amp', 'fit_type_phase', \
+    self.required = ['times', 'B', 'fitparams_amp', 'fitparams_phase',
+                     'fit_min', 'fit_max', 'fit_type_amp', 'fit_type_phase',
                      'surrogate_mode_type', 'parameterization']
 
 
