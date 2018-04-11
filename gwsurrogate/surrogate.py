@@ -191,7 +191,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       hp = h.real
       hc = h.imag
 
-    ### Restore amplitude scalings ###
+    ### Restore amplitude scaling ###
     hp     = amp0 * hp
     hc     = amp0 * hc
 
@@ -531,13 +531,13 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
                    symmetric mass ratio x_internal = q / (1+q)^2 might parameterize the surrogate
 
         After the parameter change of coordinates is done, check its within the surrogate's
-        training region. Training regions is assumed to be an n-dim rectangle.
+        training region. A training region is assumed to be an n-dim rectangle.
 
         x is assumed to NOT have total mass M as a parameter. ``Bare" surrogates are always dimensionless."""
 
     x_internal = self.get_surr_params(x)
 
-    # TODO: this will (redundently) check for each mode. Multimode surrogate should directly check it
+    # TODO: this will (redundantly) check for each mode. Multimode surrogate should directly check it
     self.check_training_interval(x_internal)
 
     return x_internal
@@ -877,9 +877,9 @@ class EvaluateSurrogate():
       # Bad idea? if modes use different parameterization -- better to let modes handle this?
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def __call__(self, q, M=None, dist=None, theta=None,phi=None,\
-                     z_rot=None, f_low=None, samples=None,\
-                     samples_units='dimensionless',\
+  def __call__(self, q, M=None, dist=None, theta=None,phi=None,
+                     z_rot=None, f_low=None, samples=None,
+                     samples_units='dimensionless',
                      ell=None, m=None, mode_sum=True,fake_neg_modes=True):
     """Return surrogate evaluation for...
 
