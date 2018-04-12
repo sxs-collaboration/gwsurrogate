@@ -4,9 +4,9 @@ from __future__ import division # for python 2
 
 
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
-__email__     = "sfield@astro.cornell.edu, crgalley@tapir.caltech.edu"
+__email__     = "sfield@umassd.edu, crgalley@tapir.caltech.edu"
 __status__    = "testing"
-__author__    = "Scott Field, Chad Galley"
+__author__    = "Jonathan Blackman, Scott Field, Chad Galley"
 
 __license__ = """
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -84,7 +84,7 @@ _surrogate_world['NRSur4d2s_FDROM_grid12'] = \
 
 
 def download_path():
-  '''return the default path for downloaded surrogates'''
+  """return the default path for downloaded surrogates"""
 
   import gwsurrogate
   import os
@@ -109,7 +109,7 @@ def _unzip(surr_name,sdir=download_path()):
 
   return sdir+surr_name.split('.')[0]
 
-def get(surr_name,sdir=download_path()):
+def pull(surr_name,sdir=download_path()):
   """pass a valid surr_name from the repo list and download location sdir.
      The default path is used if no location supplied. tar.gz surrogates
      are automatically unziped. The new surrogate path is returned."""
@@ -120,8 +120,8 @@ def get(surr_name,sdir=download_path()):
   else:
     raise ValueError("No surrogate package exits")
 
-  # deduce the surrogte file name and extension type
-  # one can directly load a surrogate frmo surr_path
+  # deduce the surrogate file name and extension type
+  # one can directly load a surrogate from surr_path
   file_name = surr_url.split('/')[-1]
   if file_name.split('.')[1] == 'tar': # assumed to be *.h5 or *.tar.gz
     surr_path = _unzip(file_name,sdir)

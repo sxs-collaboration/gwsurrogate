@@ -95,4 +95,4 @@ THE SOFTWARE.
 """
 
 from .surrogate import *
-from . import surrogate_repo
+from . import catalog
