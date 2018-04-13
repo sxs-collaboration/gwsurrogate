@@ -53,13 +53,13 @@ _surrogate_world['SpEC_q1_10_NoSpin'] = \
                  '''http://arxiv.org/abs/1502.07758''')
 
 _surrogate_world['SpEC_q1_10_NoSpin_linear'] = \
-  surrogate_info('XXX.h5',
+  surrogate_info('http://www.math.umassd.edu/~sfield/external/surrogates/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0_FastSplined_WithVandermonde.h5',
                  '''Linear surrogate (using fast splines) version of the SpEC_q1_10_NoSpin.
                  This surrogate is designed to be loaded with the original gws interface.''',
                  '''http://iopscience.iop.org/article/10.1088/1361-6382/aa7649/meta''')
 
 _surrogate_world['SpEC_q1_10_NoSpin_linear_alt'] = \
-  surrogate_info('XXX.h5',
+  surrogate_info('http://www.math.umassd.edu/~sfield/external/surrogates/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0_FastSplined_WithVandermonde_NewInterface.h5',
                  '''Linear surrogate (using fast splines) version of the SpEC_q1_10_NoSpin.
                This surrogate is designed to be loaded with an alternative (experimental) 
                gws interface.''',
