@@ -3,7 +3,7 @@
 from __future__ import division # for python 2
 
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
-__email__     = "sfield@astro.cornell.edu, crgalley@tapir.caltech.edu"
+__email__     = "sfield@umassd.edu, crgalley@tapir.caltech.edu"
 __status__    = "testing"
 __author__    = "Scott Field, Chad Galley"
 
@@ -39,6 +39,7 @@ from .parametric_funcs import function_dict as my_funcs
 from .surrogateIO import H5Surrogate as _H5Surrogate
 from .surrogateIO import TextSurrogateRead as _TextSurrogateRead
 from .surrogateIO import TextSurrogateWrite as _TextSurrogateWrite
+
 
 try:
   import matplotlib.pyplot as plt
