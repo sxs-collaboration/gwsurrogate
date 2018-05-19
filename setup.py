@@ -17,9 +17,9 @@ except ImportError:
 
 
 setup(name='gwsurrogate',
-      version='0.6.3',
+      version='0.7.1',
       author='Jonathan Blackman, Scott Field, Chad Galley',
-      author_email='sfield@astro.cornell.edu',
+      author_email='sfield@umassd.edu',
       packages=['gwsurrogate'],
       license='MIT',
       include_package_data=True,
