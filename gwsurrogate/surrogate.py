@@ -39,6 +39,7 @@ from .parametric_funcs import function_dict as my_funcs
 from .surrogateIO import H5Surrogate as _H5Surrogate
 from .surrogateIO import TextSurrogateRead as _TextSurrogateRead
 from .surrogateIO import TextSurrogateWrite as _TextSurrogateWrite
+from gwsurrogate.new.surrogate import ParamDim, ParamSpace
 
 import warnings
 
@@ -869,17 +870,41 @@ class EvaluateSurrogate():
     if len(self.single_mode_dict) == 0:
       raise IOError('Modes not found. Mode subdirectories begins with l#_m#_')
 
-    ### Check single mode temporal grids are collocated ###
-    grid_shape = self.single_mode_dict[list(self.single_mode_dict.keys())[0]].time().shape
+    
+    first_mode_surr = self.single_mode_dict[list(self.single_mode_dict.keys())[0]]
+                                            
+    ### Check single mode temporal grids are collocated -- define common grid ###
+    grid_shape = first_mode_surr.time().shape
     for key in list(self.single_mode_dict.keys()):
-      tmp_shape = self.single_mode_dict[list(self.single_mode_dict.keys())[0]].time().shape
+      tmp_shape = self.single_mode_dict[key].time().shape
       if(grid_shape != tmp_shape):
-        raise ValueError('inconsistent single mode temporal grids')
-      
-    self.time_all_modes = self.single_mode_dict[list(self.single_mode_dict.keys())[0]].time
+        raise ValueError('inconsistent single mode temporal grids')  
+        
+    # common time grid for all modes
+    self.time_grid = first_mode_surr.time
 
-      # TODO: other common data to merge: surrogate parameter intervals
-      # Bad idea? if modes use different parameterization -- better to let modes handle this?
+    ### Check single mode surrogates have the same parameterization ###
+    # TODO: if modes use different parameterization -- better to let modes handle this?
+    training_parameter_range = first_mode_surr.fit_interval
+    parameterization = first_mode_surr.get_surr_params
+    for key in list(self.single_mode_dict.keys()):
+      tmp_range = self.single_mode_dict[key].fit_interval
+      tmp_parameterization = self.single_mode_dict[key].get_surr_params
+      if(np.max(np.abs(tmp_range - training_parameter_range)) != 0):
+        raise ValueError('inconsistent single mode parameter grids')  
+      if(tmp_parameterization != parameterization):
+        raise ValueError('inconsistent single mode parameterizations') 
+    # common parameter interval and parameterization for all modes 
+    # use newer parameter space class for common interface
+    pd = ParamDim(name='unknown parmater', 
+                  min_val=training_parameter_range[0],
+                  max_val=training_parameter_range[1])
+    self.param_space = ParamSpace(name='unknown', params=[pd])
+    self.parameterization = parameterization
+    
+    print("Surrogate interval",training_parameter_range)
+    print("Surrogate time grid",self.time_grid())
+    print("Surrogate parameterization"+self.parameterization.__doc__)
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, theta=None,phi=None,
@@ -1187,7 +1212,7 @@ class EvaluateSurrogate():
     if (samples is not None):
       sample_size = samples.shape[0]
     else:
-      sample_size = self.time_all_modes().shape[0]
+      sample_size = self.time_grid().shape[0]
 
     # TODO: should the dtype be complex?
     if(num_modes==1): # return as vector instead of array

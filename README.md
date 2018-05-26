@@ -14,7 +14,6 @@ models". Phys. Rev. X 4, 031006 (2014). arXiv: gr-qc:1308.3565
 If you find this package useful in your work, please cite reference [1] and, 
 if available, the relevant paper describing the specific surrogate used.
 
-
 gwsurrogate is available at https://pypi.python.org
 
 
@@ -70,20 +69,22 @@ or from ipython with
 >>> gws?
 ```
 
-Additional examples can be found in the accompanying ipython notebooks
+Additional examples can be found in the accompanying Jupyter notebooks
 located in the 'tutorial' folder. To open a notebook, for example
 basics.ipynb, do
 
 ```
-  >>> ipython notebook basics.ipynb
+  >>> jupyter notebook basics.ipynb
 ```
 from the directory 'notebooks'
 
 
 # Where to find surrogates? #
 
+Surrogates can be downloaded directly from gwsurrogate. 
 
-Surrogates can be downloaded directly from gwsurrogate. For download instructions see the basics.ipynb ipython notebook. Also visit the NR surrogate [database](https://www.black-holes.org/surrogates/).
+For download instructions see the basics.ipynb Jupyter notebook. Also visit
+the NR surrogate [database](https://www.black-holes.org/surrogates/).
 
 
 # Tests #
