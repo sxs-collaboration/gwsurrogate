@@ -420,7 +420,7 @@ class H5Surrogate(SurrogateBaseIO):
     self.fitparams_phase = self.file[subdir+self._fitparams_phase_h5][:]
     self.fit_min = self.file[subdir+self._fit_min_h5][()]
     self.fit_max = self.file[subdir+self._fit_max_h5][()]
-    self.fit_interval = [self.fit_min, self.fit_max]
+    self.fit_interval = np.array( [self.fit_min, self.fit_max] )
     
     self.fit_type_amp = self.chars_to_string(self.file[subdir+self._fit_type_amp_h5][()])
     self.fit_type_phase = self.chars_to_string(self.file[subdir+self._fit_type_phase_h5][()])
