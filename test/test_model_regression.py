@@ -22,8 +22,7 @@ from __future__ import division
 import numpy as np
 import gwsurrogate as gws
 from gwsurrogate.new import surrogate 
-import h5py
-import subprocess
+import h5py, os, subprocess, time
 
 # set global tolerances for floating point comparisons (see np.testing.assert_allclose)
 #atol = 0.0
@@ -44,19 +43,18 @@ def test_model_regression(generate_regression_data=False):
     h5_file = "test/comparison_data.h5" # assumes py.test runs from project-level folder
 
   # remove models if you don't have them
-  dont_test = ["NRSur4d2s_TDROM_grid12",
-               "NRSur4d2s_FDROM_grid12",
+  dont_test = [#"NRSur4d2s_TDROM_grid12",
+               #"NRSur4d2s_FDROM_grid12",
                #"SpEC_q1_10_NoSpin_linear_alt",
                #"SpEC_q1_10_NoSpin_linear",
-               "EOBNRv2", #TODO: this is two surrogates in one. Break up?
+               #"EOBNRv2", #TODO: this is two surrogates in one. Break up?
                #"SpEC_q1_10_NoSpin",
                #"EOBNRv2_tutorial"
                ]
 
   # Common directory where all surrogates are assumed to be located
   surrogate_path = gws.catalog.download_path()
-  print("data assumed to be in the path %s. If your surrogate are somewehre else, change the path"%surrogate_path)
-
+               
   # repeatability needed for regression tests to make sense 
   np.random.seed(0)
 
@@ -65,7 +63,16 @@ def test_model_regression(generate_regression_data=False):
   models_to_test = {}
   for model in models:
     surrogate_data = surrogate_path+gws.catalog._surrogate_world[model][0].split("/")[-1]
-    models_to_test[model] = surrogate_data
+    if os.path.isfile(surrogate_data): # surrogate data file exists
+      models_to_test[model] = surrogate_data
+    else: # file missing 
+      msg = "WARNING: Surrogate missing!!!\n"
+      msg += "Surrogate data assumed to be in the path %s.\n"%surrogate_data
+      msg += "If the data is somewhere else, change the path or move the file.\n\n"
+      msg +="To download this surrogate, from ipython do\n\n >>> gws.catalog.pull(%s)\n"%model
+      print(msg)
+      time.sleep(1)
+      
  
   # also test the tutorial surrogate
   models_to_test["EOBNRv2_tutorial"] = gws.__path__[0] + "/../tutorial/TutorialSurrogate/EOB_q1_2_NoSpin_Mode22/"
