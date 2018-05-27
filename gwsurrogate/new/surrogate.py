@@ -680,20 +680,20 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         phi_22 = h_22[0]['phase']
         domain = np.copy(self.domain)
 
-        # get omega22, the angular frequency of the 22 mode, but set the
-        # late time ( > 50 from peak) data to zero. This way we avoid the
-        # noisy part at late times, which can randomly be at
-        # frequency = fM_low.
+        # get omega22, the angular frequency of the 22 mode, but truncate the
+        # late time ( > 50 from peak). This way we avoid the noisy part at
+        # late times, which can randomly be at frequency = fM_low.
         omega22 = np.gradient(phi_22)/np.gradient(domain)
         peak22Idx = np.argmax(Amp_22)
-        omega22[domain > domain[peak22Idx]+50] *= 0
+        omega22 = omega22[domain <= domain[peak22Idx]+50]
 
         # Truncate waveform such that the initial (2, 2) mode frequency = fM_low
         if fM_low is not None:
-            if fM_low < omega22[0]:
+            omega_low = 2*np.pi*fM_low
+            if omega_low < omega22[0]:
                 raise ValueError('f_low is lower than the minimum allowed'
                     ' frequency')
-            startIdx = np.argmin(np.abs(omega22 - 2*np.pi*fM_low))
+            startIdx = np.argmin(np.abs(omega22 - omega_low))
             if domain[startIdx] > domain[peak22Idx] + 10:
                 raise Exception('The time that matches f_low is after the peak,'
                     ' something must be wrong.')
