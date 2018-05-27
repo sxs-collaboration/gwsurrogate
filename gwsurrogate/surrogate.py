@@ -1422,8 +1422,7 @@ class SurrogateEvaluator(object):
     x :         Array of binary parameter values EXCLUDING total mass M.
                 This depends on the particular surrogate model.
                 Examples:
-                    In 1D: x=[q], where q is the mass ratio.
-                    In 3D, x=[q,chi1z,chi2z].
+                    For NRHybSur3dq8, x=[q,chi1z,chi2z].
 
     M/dist_mpc: Either specify both or neither.
     M :         Total mass (solar masses). Default: None.
@@ -1449,7 +1448,7 @@ class SurrogateEvaluator(object):
                 returned, which can be nonuniformly sampled. Default None.
 
     modes :     A list of (ell, m) modes to be evaluated. If None, evaluates
-                all avilable modes. Default: None.
+                all available modes. Default: None.
 
     inclination/phi_ref :
                 Either specify both or neither.
