@@ -61,7 +61,7 @@ _surrogate_world['SpEC_q1_10_NoSpin_linear'] = \
 _surrogate_world['SpEC_q1_10_NoSpin_linear_alt'] = \
   surrogate_info('http://www.math.umassd.edu/~sfield/external/surrogates/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0_FastSplined_WithVandermonde_NewInterface.h5',
                  '''Linear surrogate (using fast splines) version of the SpEC_q1_10_NoSpin.
-               This surrogate is designed to be loaded with an alternative (experimental) 
+               This surrogate is designed to be loaded with an alternative (experimental)
                gws interface.''',
                  '''http://iopscience.iop.org/article/10.1088/1361-6382/aa7649/meta''')
 
@@ -81,6 +81,18 @@ _surrogate_world['NRSur4d2s_FDROM_grid12'] = \
                the black holes may be spinning, but the spins are restricted to a parameter
                subspace which includes some but not all precessing configurations.''',
                  '''https://journals.aps.org/prd/abstract/10.1103/PhysRevD.95.104023''')
+
+
+_surrogate_world['NRHybSur3dq8'] = \
+  surrogate_info(\
+  'https://www.dropbox.com/s/v10upxsdcdq5nim/NRHybSur3dq8.h5',
+  '''Surrogate model for aligned-spin binary black holes with mass ratios q<=8
+  and spin magnitudes <=0.8. The model is trained on NR waveforms that have been
+  hybridized using EOB/PN and spans the entire LIGO frequency band. This model
+  is  presented in Varma et al. 2018, in prep. Available modes are
+  [(2,2), (2,1), (2,0), (3,3), (3,2), (3,1), (3,0), (4,4), (4,3), (4,2) and
+  (5,5)]. The m<0 modes are deduced from the m>0 modes.''',
+  ''' ''')
 
 
 def download_path():
