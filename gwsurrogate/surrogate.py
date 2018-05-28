@@ -42,9 +42,10 @@ from .surrogateIO import TextSurrogateWrite as _TextSurrogateWrite
 from gwsurrogate.new.surrogate import ParamDim, ParamSpace
 
 import warnings
+import os
 
 from new import surrogate as new_surrogate
-
+import catalog
 
 try:
   import matplotlib.pyplot as plt
@@ -1590,14 +1591,16 @@ See the __call__ method on how to evaluate waveforms.
 In the __call__ method, x must have format x = [q, chi1z, chi2z].
     """
 
-    def __init__(self, name):
+    def __init__(self, h5filename):
+        self.h5filename = h5filename
         domain_type = 'Time'
         keywords = {
             'Precessing': False,
             'Eccentric': False,
             'Hybridized': True,
             }
-        super(NRHybSur3dq8, self).__init__(name, domain_type, keywords)
+        super(NRHybSur3dq8, self).__init__(self.__class__.__name__, \
+            domain_type, keywords)
 
     def _load_dimless_surrogate(self):
         """
@@ -1610,7 +1613,7 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         self._call_dimless_modes.
         """
         sur = new_surrogate.AlignedSpinCoOrbitalFrameSurrogate()
-        sur.load('NRHybSur3dq8.h5')     #FIXME save this in gwsurrogate
+        sur.load(self.h5filename)
         return sur
 
 
@@ -1627,8 +1630,23 @@ class LoadSurrogate(object):
 
     #NOTE: __init__ is never called for LoadSurrogate
     def __new__(self, surrogate_name):
+        if surrogate_name.endswith('.h5'):
+            # If h5 file is given, use that directly. But get the
+            # surrogate_name used to pick from SURROGATE_CLASSES from the
+            # filename
+            surrogate_h5file = surrogate_name
+            surrogate_name = os.path.basename(surrogate_h5file)
+            surrogate_name = surrogate_name.split('.h5')[0]
+        else:
+            # If not, look for surrogate data in surrogate download_path and
+            # download file if needed.
+            surrogate_h5file = '%s/%s.h5'%(catalog.download_path(), \
+                surrogate_name)
+            if not os.path.isfile(surrogate_h5file):
+                catalog.pull(surrogate_name)
+
         if surrogate_name not in SURROGATE_CLASSES.keys():
             raise Exception('Invalid surrogate : %s'%surrogate_name)
         else:
-            return SURROGATE_CLASSES[surrogate_name](surrogate_name)
+            return SURROGATE_CLASSES[surrogate_name](surrogate_h5file)
 
