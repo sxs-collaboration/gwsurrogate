@@ -1320,10 +1320,13 @@ class SurrogateEvaluator(object):
             keywords.
         3. define _load_dimless_surrogate(), this should return dimensionless
             domain and modes.
+        4. define soft_param_lims and hard_param_lims, the limits for
+            parameters beyond which warnings/errors are raised.
     See NRHybSur3dq8 for an example.
     """
 
-    def __init__(self, name, domain_type, keywords):
+    def __init__(self, name, domain_type, keywords, soft_param_lims, \
+        hard_param_lims):
         """
         name:           Name of the surrogate
         domain_type:    'Time' or 'Frequency'
@@ -1331,6 +1334,12 @@ class SurrogateEvaluator(object):
                         self._check_keywords_and_set_defaults.default_keywords.
                         If keywords['Precessing'] = False, will automatically
                         determine the m<0 modes from the m>0 modes.
+        soft_param_lims: Parameter bounds beyond which a warning is raised.
+        hard_param_lims: Parameter bounds beyond which an error is raised.
+                         Same order and len as x in the __call__ function.
+                         Each element is a [minVal, maxVal] pair.
+                         Setting soft_param_lims/hard_param_lims to None will
+                         skip that particular check.
         """
         self.name = name
 
@@ -1344,6 +1353,9 @@ class SurrogateEvaluator(object):
         # Get some useful keywords, set missing keywords to default values
         self.keywords = keywords
         self._check_keywords_and_set_defaults()
+
+        self.soft_param_lims = soft_param_lims
+        self.hard_param_lims = hard_param_lims
 
         print 'Loaded %s model'%self.name
 
@@ -1388,6 +1400,37 @@ class SurrogateEvaluator(object):
                 self.keywords[key] = default_keywords[key]
 
 
+    def _check_param_limits(self, x):
+        """ Checks that x is within allowed range of paramters.
+            Raises a warning if outside self.soft_param_lims and
+            raises an error if outside self.hard_param_lims.
+            If these are None, skips the checks.
+        """
+        if len(x) != len(self.soft_param_lims):
+            raise Exception("Expected x to be of len=%d"\
+                %len(self.soft_param_lims))
+
+        if self.hard_param_lims is not None:
+            raise_hard_error = False
+            for i in range(len(x)):
+                if x[i] < self.hard_param_lims[i][0] \
+                    or x[i] > self.hard_param_lims[i][1]:
+                    raise_hard_error = True
+
+            if raise_hard_error:
+                raise Exception('Parameters x are outside allowed range.')
+
+        if self.soft_param_lims is not None:
+            raise_soft_warning = False
+            for i in range(len(x)):
+                if x[i] < self.soft_param_lims[i][0] \
+                    or x[i] > self.soft_param_lims[i][1]:
+                    raise_soft_warning = True
+
+            if raise_soft_warning:
+                warnings.warn('Parameters x are outside training range.')
+
+
     def _call_dimless_modes(self, x, fM_low=None, fM_ref=None,
         dtM=None, dfM=None, modes=None, par_dict=None):
         """ Evaluates the surrogate modes in dimensionless units.
@@ -1395,6 +1438,7 @@ class SurrogateEvaluator(object):
 
         return self._sur_dimless(x, fM_low=fM_low, fM_ref=fM_ref, dtM=dtM,
             dfM=dfM, modes=modes, par_dict=par_dict)
+
 
     def _mode_sum(self, h_modes, theta, phi, fake_neg_modes=False):
         """ Sums over h_modes at a given theta, phi.
@@ -1516,6 +1560,9 @@ class SurrogateEvaluator(object):
         if (f_ref is not None) and (f_low is not None) and (f_ref < f_low):
             raise ValueError("f_ref cannot be lower than f_low.")
 
+        # Warn/Exit if extrapolating
+        self._check_param_limits(x)
+
 
         # Get scalings from dimensionless units to mks units
         if units == 'dimensionless':
@@ -1539,7 +1586,7 @@ class SurrogateEvaluator(object):
         fM_ref = None if f_ref is None else f_ref*t_scale
 
         # Get waveform modes and domain in dimensionless units
-        fM_low = f_low*t_scale
+        fM_low = None if f_low is None else f_low*t_scale
         domain, h = self._call_dimless_modes(x, fM_low=fM_low,
             fM_ref=fM_ref, dtM=dtM, dfM=dfM, modes=modes, par_dict=par_dict)
 
@@ -1575,17 +1622,25 @@ class SurrogateEvaluator(object):
 class NRHybSur3dq8(SurrogateEvaluator):
     """
 A class for the NRHybSur3dq8 surrogate model presented in Varma et al. 2018,
-in prep., hence known as THE PAPER:
+in prep.
 
-This surrogate model evaluates gravitational waveforms from mergers of
-aligned-spin binary black hole systems.
+Evaluates gravitational waveforms from mergers of aligned-spin binary black
+hole systems. This model was trained against numerical relativity (NR)
+waveforms that have been hybridized using post-Newtonian (PN) and effective
+one body (EOB) waveforms. This model includes the following spin-weighted
+spherical harmonic modes:
+(2,2), (2,1), (2,0), (3,3), (3,2), (3,1), (3,0), (4,4) (4,3), (4,2) and (5,5).
+The m<0 modes are deduced from the m>0 modes.
 
-The parametr space of validity is mass ratios q <=8 and spins chi1z/chi2z in
-range [-0.8, 0.8], where chi1z/chi2z are the spins on the larger/smaller BH
-in the direction of orbital angular momentum.
+The parametr space of validity is:
+q \in [1, 10] and chi1z/chi2z \in [-1, 1],
+where q is the mass ratio and chi1z/chi2z are the spins on the larger/smaller
+BH, respectively, in the direction of orbital angular momentum.
 
-Available modes are [(2,2), (2,1), (2,0), (3,3), (3,2), (3,1), (3,0), (4,4),
-(4,3), (4,2) and (5,5)]. The m<0 modes are deduced from the m>0 modes.
+The surrogate has been trained in the range
+q \in [1, 8] and chi1z/chi2z \in [-0.8, 0.8], but produces reasonable waveforms
+in the above range and has been tested against existing NR waveforms in that
+range.
 
 See the __call__ method on how to evaluate waveforms.
 In the __call__ method, x must have format x = [q, chi1z, chi2z].
@@ -1599,8 +1654,14 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
             'Eccentric': False,
             'Hybridized': True,
             }
+        # soft_lims -> raise warning when outside lims
+        # hard_lim -> raise error when outside lims
+        # Same order as x in the call function. Each element is
+        # a [minVal, maxVal] pair.
+        soft_param_lims = [[0.99, 8.01], [-0.801, 0.801], [-0.801, 0.801]]
+        hard_param_lims = [[0.99, 10.01], [-1, 1], [-1, 1]]
         super(NRHybSur3dq8, self).__init__(self.__class__.__name__, \
-            domain_type, keywords)
+            domain_type, keywords, soft_param_lims, hard_param_lims)
 
     def _load_dimless_surrogate(self):
         """
