@@ -624,27 +624,27 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         # get list of modes, but move (2,2) mode to start of the list.
         # This is important because we need the phase of the 22 mode to
         # transform the other modes from coorbital frame to inertial frame.
-        self.modes = list(coorb_mode_data.keys())
-        mode22_idx = [i for i in range(len(self.modes)) \
-            if self.modes[i] == tuple([2, 2])]
+        self.mode_list = list(coorb_mode_data.keys())
+        mode22_idx = [i for i in range(len(self.mode_list)) \
+            if self.mode_list[i] == tuple([2, 2])]
         if len(mode22_idx) != 1:
             raise Exception('Seems to have found multiple or no 22 mode!')
         mode22_idx = mode22_idx[0]
 
         # shift 22 mode to the first index
-        self.modes.insert(0, self.modes.pop(mode22_idx))
+        self.mode_list.insert(0, self.mode_list.pop(mode22_idx))
 
-        if self.modes[0] != tuple([2, 2]):
+        if self.mode_list[0] != tuple([2, 2]):
             raise Exception('Expected the first mode at this point to be the'\
                 ' 22 mode.')
         # make sure shifting the 22 mode index did not delete or add a
         # mode by mistake
-        if len(self.modes) != len(coorb_mode_data.keys()):
+        if len(self.mode_list) != len(coorb_mode_data.keys()):
             raise Exception('Number of modes do not agree')
 
         self.mode_type = 'identity'
         many_function_components = {}
-        for mode in self.modes:
+        for mode in self.mode_list:
             many_function_components[mode] = ('identity', \
                 coorb_mode_data[mode], {})
 
@@ -810,7 +810,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             raise ValueError('Expected dfM to be None for a Time domain model')
 
         if modes is None:
-            modes = self.modes
+            modes = self.mode_list
 
         # always evaluate the (2,2) mode, the other modes neeed this
         # for transformation from coorbital to inertial frame
