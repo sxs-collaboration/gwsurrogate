@@ -809,7 +809,6 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         if dfM is not None:
             raise ValueError('Expected dfM to be None for a Time domain model')
 
-        x = self.param_space.nudge_params(x)
         if modes is None:
             modes = self.modes
 
