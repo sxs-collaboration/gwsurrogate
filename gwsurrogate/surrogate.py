@@ -1346,6 +1346,10 @@ class SurrogateEvaluator(object):
         # load the dimensionless surrogate
         self._sur_dimless = self._load_dimless_surrogate()
 
+        self.param_space = self._sur_dimless.param_space
+        self.domain      = self._sur_dimless.domain
+        self.mode_list   = self._sur_dimless.mode_list
+
         self._domain_type = domain_type
         if self._domain_type not in ['Time', 'Frequency']:
             raise Exception('Invalid domain_type.')
@@ -1678,10 +1682,16 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         return sur
 
 
+
+#### for each model in the catalog (name or h5 file), associate class to load 
+#### NOTE: other classes maybe usable too, these just constitute
+####       the default cases suitable for most people
 SURROGATE_CLASSES = {
     "NRHybSur3dq8": NRHybSur3dq8,
+#    "SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5":EvaluateSurrogate # model SpEC_q1_10_NoSpin
         }
 
+# TODO: would this be better off as a function as opposed to a class?
 class LoadSurrogate(object):
     """
     A holder class for any SurrogateEvaluator class.
