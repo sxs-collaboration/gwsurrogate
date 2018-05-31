@@ -1436,12 +1436,12 @@ class SurrogateEvaluator(object):
 
 
     def _call_dimless_modes(self, x, fM_low=None, fM_ref=None,
-        dtM=None, dfM=None, modes=None, par_dict=None):
+        dtM=None, dfM=None, mode_list=None, par_dict=None):
         """ Evaluates the surrogate modes in dimensionless units.
         """
 
         return self._sur_dimless(x, fM_low=fM_low, fM_ref=fM_ref, dtM=dtM,
-            dfM=dfM, modes=modes, par_dict=par_dict)
+            dfM=dfM, mode_list=mode_list, par_dict=par_dict)
 
 
     def _mode_sum(self, h_modes, theta, phi, fake_neg_modes=False):
@@ -1463,7 +1463,7 @@ class SurrogateEvaluator(object):
 
 
     def __call__(self, x, M=None, dist_mpc=None, f_low=None, t_ref=None,
-        f_ref=None, dt=None, df=None, modes=None,
+        f_ref=None, dt=None, df=None, mode_list=None,
         inclination=None, phi_ref=None, par_dict=None, units='dimensionless'):
         """
     INPUT
@@ -1496,15 +1496,16 @@ class SurrogateEvaluator(object):
                 surrogate. If None, the internal domain of the surrogate is
                 returned, which can be nonuniformly sampled. Default None.
 
-    modes :     A list of (ell, m) modes to be evaluated. If None, evaluates
+    mode_list : A list of (ell, m) modes to be evaluated. If None, evaluates
                 all available modes. Default: None.
 
     inclination/phi_ref :
                 Either specify both or neither.
                 Evaluate the waveform at this location on the sphere by summing
-                over the modes given in the 'modes' argument. For nonprecessing
-                systems the m<0 modes are automatically deduced from the m>0
-                modes. To see if a model is precessing check self.keywords.
+                over the modes given in the 'mode_list' argument. For
+                nonprecessing systems the m<0 modes are automatically deduced
+                from the m>0 modes. To see if a model is precessing check
+                self.keywords.
                 If both inclination and phi_ref are None, the mode data is
                 returned as a dictionary. If specified the complex strain
                 h = hplus -i hcross, evaluated at (inclination, phi_ref) on
@@ -1592,7 +1593,8 @@ class SurrogateEvaluator(object):
         # Get waveform modes and domain in dimensionless units
         fM_low = None if f_low is None else f_low*t_scale
         domain, h = self._call_dimless_modes(x, fM_low=fM_low,
-            fM_ref=fM_ref, dtM=dtM, dfM=dfM, modes=modes, par_dict=par_dict)
+            fM_ref=fM_ref, dtM=dtM, dfM=dfM, mode_list=mode_list,
+            par_dict=par_dict)
 
         # sum over modes to get complex strain if inclination/phi_ref are given
         if inclination is not None:
