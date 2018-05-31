@@ -652,12 +652,12 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                 domain, param_space, {}, many_function_components,
                 self.mode_type)
 
-        self._h5_data_keys.append('modes')
+        self._h5_data_keys.append('mode_list')
         self._h5_data_keys.append('mode_type')
 
 
-    def _coorbital_to_inertial_frame(self, h_coorb, h_22, modes, dtM, fM_low,
-        fM_ref, do_not_align):
+    def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
+        fM_low, fM_ref, do_not_align):
         """ Transforms a dict from Coorbital frame to inertial frame.
 
             The surrogate data is sparsely sampled, so upsamples to time
@@ -731,7 +731,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             phi_22 -= phi_22[refIdx]
 
         h_dict = {}
-        for mode in modes:
+        for mode in mode_list:
             if mode == tuple([2, 2]):
                 h_dict[mode] = Amp_22 * np.exp(-1j*phi_22)
             else:
@@ -753,7 +753,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
 
     def __call__(self, x, fM_low=None, fM_ref=None, dtM=None, dfM=None,
-        modes=None, par_dict=None, do_not_align=False):
+        mode_list=None, par_dict=None, do_not_align=False):
         """
     Return dimensionless surrogate modes.
     Arguments:
@@ -787,7 +787,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
     dfM :           This should always be None as for now we are assuming
                     a time domain model.
 
-    modes :         A list of (ell, m) modes to be evaluated.
+    mode_list :     A list of (ell, m) modes to be evaluated.
                     Default None, which evaluates all avilable modes.
                     Will deduce the m<0 modes from m>0 modes.
 
@@ -809,18 +809,18 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         if dfM is not None:
             raise ValueError('Expected dfM to be None for a Time domain model')
 
-        if modes is None:
-            modes = self.mode_list
+        if mode_list is None:
+            mode_list = self.mode_list
 
         # always evaluate the (2,2) mode, the other modes neeed this
         # for transformation from coorbital to inertial frame
         h_22 = self._eval_sur(x, tuple([2, 2]))
 
-        h_coorb = {k: self._eval_sur(x, k) for k in modes \
+        h_coorb = {k: self._eval_sur(x, k) for k in mode_list \
                         if k != tuple([2,2])}
 
-        t, h_modes = self._coorbital_to_inertial_frame(h_coorb, h_22, modes, \
-            dtM, fM_low, fM_ref, do_not_align)
+        t, h_modes = self._coorbital_to_inertial_frame(h_coorb, h_22, \
+            mode_list, dtM, fM_low, fM_ref, do_not_align)
 
         return t, h_modes
 
