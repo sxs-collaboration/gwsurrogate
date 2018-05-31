@@ -49,12 +49,12 @@ def test_model_regression(generate_regression_data=False):
 
   # remove models if you don't have them
   dont_test = ["NRSur4d2s_TDROM_grid12",
-               "NRSur4d2s_FDROM_grid12",
-               "SpEC_q1_10_NoSpin_linear_alt",
-               "SpEC_q1_10_NoSpin_linear",
+               #"NRSur4d2s_FDROM_grid12",
+               #"SpEC_q1_10_NoSpin_linear_alt",
+               #"SpEC_q1_10_NoSpin_linear",
                "EOBNRv2", #TODO: this is two surrogates in one. Break up?
-               "SpEC_q1_10_NoSpin",
-               "EOBNRv2_tutorial",
+               #"SpEC_q1_10_NoSpin",
+               #"EOBNRv2_tutorial",
                #"NRHybSur3dq8"
                ]
 
@@ -115,15 +115,28 @@ def test_model_regression(generate_regression_data=False):
     p_maxs = sur.param_space.max_vals()
     print("parameter minimum values",p_mins)
     print("parameter maximum values",p_maxs)
-    param_samples = np.random.uniform(p_mins[0], p_maxs[0],size=3)
+
+    param_samples = []
+    for i in range(3):  # sample parameter space 3 times 
+      param_sample = []
+      for j in range(len(p_mins)):
+        xj_min = p_mins[j]
+        xj_max = p_maxs[j]
+        tmp = float(np.random.uniform(xj_min, xj_max,size=1))
+        param_sample.append(tmp)
+      param_samples.append(param_sample)
+
     model_grp = fp.create_group(model)
     for i, ps in enumerate(param_samples):
       if model in surrogate_old_interface:
-        modes, t, hp, hc = sur(q=ps,mode_sum=False,fake_neg_modes=True)
-      elif model in surrogate_loader_interface:
-        print("CODE ME")
+        ps_float = ps[0] # TODO: generalize interface 
+        modes, t, hp, hc = sur(q=ps_float,mode_sum=False,fake_neg_modes=True)
       else:
-        h= sur([ps])
+        if model in surrogate_loader_interface:
+          print ps
+          t, h = sur(ps)
+        else:
+          h= sur(ps)
         h_np = [h[mode] for mode in sur.mode_list]
         h_np = np.vstack(h_np)
         hp = np.real(h_np)
