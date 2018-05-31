@@ -1711,12 +1711,12 @@ class LoadSurrogate(object):
             surrogate_name = os.path.basename(surrogate_h5file)
             surrogate_name = surrogate_name.split('.h5')[0]
         else:
-            # If not, look for surrogate data in surrogate download_path and
-            # download file if needed.
+            # If not, look for surrogate data in surrogate download_path
             surrogate_h5file = '%s/%s.h5'%(catalog.download_path(), \
                 surrogate_name)
             if not os.path.isfile(surrogate_h5file):
-                catalog.pull(surrogate_name)
+                raise Exception("Surrogate data not found. Do"
+                    " gwsurrogate.catalog.pull('%s')"%surrogate_name)
 
         if surrogate_name not in SURROGATE_CLASSES.keys():
             raise Exception('Invalid surrogate : %s'%surrogate_name)
