@@ -41,6 +41,11 @@ from .surrogateIO import TextSurrogateRead as _TextSurrogateRead
 from .surrogateIO import TextSurrogateWrite as _TextSurrogateWrite
 from gwsurrogate.new.surrogate import ParamDim, ParamSpace
 
+import warnings
+import os
+
+from new import surrogate as new_surrogate
+import catalog
 
 try:
   import matplotlib.pyplot as plt
@@ -1297,4 +1302,424 @@ def CompareSingleModeSurrogate(sur1,sur2):
   print(no_check)
 
 
+
+
+
+
+
+
+
+
+class SurrogateEvaluator(object):
+    """
+    Class to load and evaluate generic surrogate models.
+    Each derived class should do the following:
+        1. Choose domain_type as 'Time' or 'Frequency'.
+        2. Set keywords for model, see
+            self._check_keywords_and_set_defaults.default_keywords for allowed
+            keywords.
+        3. define _load_dimless_surrogate(), this should return dimensionless
+            domain and modes.
+        4. define soft_param_lims and hard_param_lims, the limits for
+            parameters beyond which warnings/errors are raised.
+    See NRHybSur3dq8 for an example.
+    """
+
+    def __init__(self, name, domain_type, keywords, soft_param_lims, \
+        hard_param_lims):
+        """
+        name:           Name of the surrogate
+        domain_type:    'Time' or 'Frequency'
+        keywords:       keywords for this model. For allowed keys see
+                        self._check_keywords_and_set_defaults.default_keywords.
+                        If keywords['Precessing'] = False, will automatically
+                        determine the m<0 modes from the m>0 modes.
+        soft_param_lims: Parameter bounds beyond which a warning is raised.
+        hard_param_lims: Parameter bounds beyond which an error is raised.
+                         Same order and len as x in the __call__ function.
+                         Each element is a [minVal, maxVal] pair.
+                         Setting soft_param_lims/hard_param_lims to None will
+                         skip that particular check.
+        """
+        self.name = name
+
+        # load the dimensionless surrogate
+        self._sur_dimless = self._load_dimless_surrogate()
+
+        self.param_space = self._sur_dimless.param_space
+        self.domain      = self._sur_dimless.domain
+        self.mode_list   = self._sur_dimless.mode_list
+
+        self._domain_type = domain_type
+        if self._domain_type not in ['Time', 'Frequency']:
+            raise Exception('Invalid domain_type.')
+
+        # Get some useful keywords, set missing keywords to default values
+        self.keywords = keywords
+        self._check_keywords_and_set_defaults()
+
+        self.soft_param_lims = soft_param_lims
+        self.hard_param_lims = hard_param_lims
+
+        print 'Loaded %s model'%self.name
+
+
+    def _load_dimless_surrogate(self):
+        """
+        This function, which must be overriden for each derived class of
+        SurrogateEvaluator, handles the loading of the dimensionless surrogate.
+        This should return the loaded surrogate.
+        The loaded surrogate should have a __call__ function that returns the
+        dimensionless time/frequency array and dimensionless waveform modes.
+        This __call__ function should take the same inputs as
+        self._call_dimless_modes
+        """
+        raise NotImplementedError("Please override me.")
+
+
+    def _check_keywords_and_set_defaults(self):
+        """ Does some sanity checks on self.keywords.
+            If any of the default_keywords are not specified, updates
+            self.keywords to have these default values.
+        """
+        default_keywords = {
+            'Precessing': False,
+            'Eccentric': False,
+            'Hybridized': False,
+            'nonGR': False,     # We will get there
+            }
+
+        # Sanity checks
+        if type(self.keywords) != dict:
+            raise Exception("Invalid type for self.keywords")
+        for key in self.keywords.keys():
+            if type(self.keywords[key]) != bool:
+                raise Exception("Invalid type for key=%s in self.keywords"%key)
+            if key not in default_keywords.keys():
+                raise Exception('Invalid key %s in self.keywords'%(key))
+
+        # set to default if keword not specified
+        for key in default_keywords:
+            if key not in self.keywords.keys():
+                self.keywords[key] = default_keywords[key]
+
+
+    def _check_param_limits(self, x):
+        """ Checks that x is within allowed range of paramters.
+            Raises a warning if outside self.soft_param_lims and
+            raises an error if outside self.hard_param_lims.
+            If these are None, skips the checks.
+        """
+        if len(x) != len(self.soft_param_lims):
+            raise Exception("Expected x to be of len=%d"\
+                %len(self.soft_param_lims))
+
+        if self.hard_param_lims is not None:
+            raise_hard_error = False
+            for i in range(len(x)):
+                if x[i] < self.hard_param_lims[i][0] \
+                    or x[i] > self.hard_param_lims[i][1]:
+                    raise_hard_error = True
+
+            if raise_hard_error:
+                raise Exception('Parameters x are outside allowed range.')
+
+        if self.soft_param_lims is not None:
+            raise_soft_warning = False
+            for i in range(len(x)):
+                if x[i] < self.soft_param_lims[i][0] \
+                    or x[i] > self.soft_param_lims[i][1]:
+                    raise_soft_warning = True
+
+            if raise_soft_warning:
+                warnings.warn('Parameters x are outside training range.')
+
+
+    def _call_dimless_modes(self, x, fM_low=None, fM_ref=None,
+        dtM=None, dfM=None, mode_list=None, par_dict=None):
+        """ Evaluates the surrogate modes in dimensionless units.
+        """
+
+        return self._sur_dimless(x, fM_low=fM_low, fM_ref=fM_ref, dtM=dtM,
+            dfM=dfM, mode_list=mode_list, par_dict=par_dict)
+
+
+    def _mode_sum(self, h_modes, theta, phi, fake_neg_modes=False):
+        """ Sums over h_modes at a given theta, phi.
+            If fake_neg_modes = True, deduces m<0 modes from m>0 modes.
+            If fake_neg_modes = True, m<0 modes should not be in h_modes.
+        """
+        h = 0.
+        for (ell, m), h_mode in h_modes.items(): # inefficient in py2
+            h += _sYlm(-2, ell, m, theta, phi) * h_mode
+            if fake_neg_modes:
+                if m > 0:
+                    h += _sYlm(-2, ell, -m, theta, phi) \
+                        * (-1)**ell * h_mode.conjugate()
+                elif m < 0:
+                    # Looks like this m<0 mode exits, we should be using that.
+                    raise Exception('Expected only m>0 modes.')
+        return h
+
+
+    def __call__(self, x, M=None, dist_mpc=None, f_low=None, t_ref=None,
+        f_ref=None, dt=None, df=None, mode_list=None,
+        inclination=None, phi_ref=None, par_dict=None, units='dimensionless'):
+        """
+    INPUT
+    =====
+    x :         Array of binary parameter values EXCLUDING total mass M.
+                This depends on the particular surrogate model.
+                Examples:
+                    For NRHybSur3dq8, x=[q,chi1z,chi2z].
+
+    M/dist_mpc: Either specify both or neither.
+    M :         Total mass (solar masses). Default: None.
+    dist_mpc :  Distance to binary system (MegaParsecs). Default: None.
+
+    f_low :     Instantaneous initial frequency of the (2, 2) mode. If None,
+                the entire wavform is returned. Default: None.
+
+    f_ref:      Reference frequency used to set the reference epoch at which
+                the frame is aligned and the spins are specified. The frame is
+                aligned at the reference epoch as follows:
+                    The orbital angular momentum points towards the +ve z-axis.
+                    The separation vector from the smaller BH to the larger
+                    BH points towards the +ve x-axis.
+                For time domain models, this is used to detemine a t_ref, such
+                that the frequency of the (2, 2) mode equals f_ref at t=t_ref.
+                Default: If f_low is given, f_ref = f_low. If f_low is None,
+                f_ref is set to the initial frequency (the first index).
+
+    dt/df :     Time/Frequency step size, specify at most one of dt/df,
+                depending on whether the surrogate is a time/frequency domain
+                surrogate. If None, the internal domain of the surrogate is
+                returned, which can be nonuniformly sampled. Default None.
+
+    mode_list : A list of (ell, m) modes to be evaluated. If None, evaluates
+                all available modes. Default: None.
+
+    inclination/phi_ref :
+                Either specify both or neither.
+                Evaluate the waveform at this location on the sphere by summing
+                over the modes given in the 'mode_list' argument. For
+                nonprecessing systems the m<0 modes are automatically deduced
+                from the m>0 modes. To see if a model is precessing check
+                self.keywords.
+                If both inclination and phi_ref are None, the mode data is
+                returned as a dictionary. If specified the complex strain
+                h = hplus -i hcross, evaluated at (inclination, phi_ref) on
+                the sky is returned. Defaults: None.
+
+    par_dict:   A dictionary containing any additional parameters needed for a
+                particular surrogate model. Default: None.
+
+    units:      'dimensionless' or 'mks'. Default: 'dimensionless'.
+                If 'dimensionless': f_low, f_ref, dt and df, if
+                    specified, must be in dimensionless units. That is, dt
+                    should be in units of M, while f_ref, f_low and df should
+                    be in units of 1/M. M and dist_mpc must be None.
+                    The waveform and domain are returned as dimensionless
+                    quanitites as well.
+                If 'mks': f_low, f_ref, dt and df, if specified, must
+                    be in MKS units. That is, dt should be in seconds, while
+                    f_ref, f_low and df should be in Hz.
+                    M and dist_mpc must be specified. The waveform and domain
+                    are returned in MKS units as well.
+
+    RETURNS
+    =====
+    domain, h
+
+    domain :    Array of time/frequency samples, depending on whether the
+                surrogate is a time/frequency domain model. For time domain
+                models the initial time is set to 0.
+
+    h :         Waveform. If inclination/phi_ref are specified, returns
+                complex strain h = hplus -i hcross, evaluated at
+                (inclination, phi_ref) on the sky.
+                Else, h is a dictionary of available modes with (l, m) tuples
+                as keys.
+        """
+
+        # Sanity checks
+        if (inclination is None) ^ (phi_ref is None):
+            raise ValueError("Either specify both inclination and phi_ref,"
+                " or neither")
+
+        if (M is None) ^ (dist_mpc is None):
+            raise ValueError("Either specify both M and dist_mpc, or neither")
+
+        if (M is not None) ^ (units == 'mks'):
+            raise ValueError("M/dist_mpc must be specified if and only if"
+                " units='mks'")
+
+        if (dt is not None) and (self._domain_type != 'Time'):
+            raise ValueError("%s is not a Time domain model, cannot specify"
+                " dt"%self.name)
+
+        if (df is not None) and (self._domain_type != 'Frequency'):
+            raise ValueError("%s is not a Frequency domain model, cannot"
+                " specify df"%self.name)
+
+        if (f_ref is not None) and (f_low is not None) and (f_ref < f_low):
+            raise ValueError("f_ref cannot be lower than f_low.")
+
+        # Warn/Exit if extrapolating
+        self._check_param_limits(x)
+
+
+        # Get scalings from dimensionless units to mks units
+        if units == 'dimensionless':
+            amp_scale = 1.0
+            t_scale = 1.0
+        elif units == 'mks':
+            amp_scale = \
+                M*_gwtools.Msuninsec*_gwtools.c/(1e6*dist_mpc*_gwtools.PC_SI)
+            t_scale = _gwtools.Msuninsec * M
+        else:
+            raise Exception('Invalid units')
+
+        # If f_ref is not given, we set it to f_low. If f_low is also None,
+        # f_ref will correspond to the initial frequency.
+        if f_ref is None:
+            f_ref = f_low
+
+        # Get dimensionless step size and reference time/freq
+        dtM = None if dt is None else dt/t_scale
+        dfM = None if df is None else df*t_scale
+        fM_ref = None if f_ref is None else f_ref*t_scale
+
+        # Get waveform modes and domain in dimensionless units
+        fM_low = None if f_low is None else f_low*t_scale
+        domain, h = self._call_dimless_modes(x, fM_low=fM_low,
+            fM_ref=fM_ref, dtM=dtM, dfM=dfM, mode_list=mode_list,
+            par_dict=par_dict)
+
+        # sum over modes to get complex strain if inclination/phi_ref are given
+        if inclination is not None:
+            # For nonprecessing systems get the m<0 modes from the m>0 modes.
+            fake_neg_modes = not self.keywords['Precessing']
+            theta = inclination
+            #FIXME document this better once a consensus is reached.
+            phi = -phi_ref + np.pi/2        # LAL convention
+            h = self._mode_sum(h, theta, phi, fake_neg_modes=fake_neg_modes)
+
+        # Rescale domain to physical units
+        if self._domain_type == 'Time':
+            domain = domain*t_scale
+            domain -= domain[0]       # set initial time to zero
+        elif self._domain_type == 'Frequency':
+            domain = domain/t_scale
+        else:
+            raise Exception('Invalid _domain_type.')
+
+        # Rescale waveform to physical units
+        if type(h) == dict:
+            h.update((x, y*amp_scale) for x, y in h.items())
+        else:
+            h = h*amp_scale
+
+        return domain, h
+
+
+
+
+class NRHybSur3dq8(SurrogateEvaluator):
+    """
+A class for the NRHybSur3dq8 surrogate model presented in Varma et al. 2018,
+in prep.
+
+Evaluates gravitational waveforms from mergers of aligned-spin binary black
+hole systems. This model was trained against numerical relativity (NR)
+waveforms that have been hybridized using post-Newtonian (PN) and effective
+one body (EOB) waveforms. This model includes the following spin-weighted
+spherical harmonic modes:
+(2,2), (2,1), (2,0), (3,3), (3,2), (3,1), (3,0), (4,4) (4,3), (4,2) and (5,5).
+The m<0 modes are deduced from the m>0 modes.
+
+The parametr space of validity is:
+q \in [1, 10] and chi1z/chi2z \in [-1, 1],
+where q is the mass ratio and chi1z/chi2z are the spins on the larger/smaller
+BH, respectively, in the direction of orbital angular momentum.
+
+The surrogate has been trained in the range
+q \in [1, 8] and chi1z/chi2z \in [-0.8, 0.8], but produces reasonable waveforms
+in the above range and has been tested against existing NR waveforms in that
+range.
+
+See the __call__ method on how to evaluate waveforms.
+In the __call__ method, x must have format x = [q, chi1z, chi2z].
+    """
+
+    def __init__(self, h5filename):
+        self.h5filename = h5filename
+        domain_type = 'Time'
+        keywords = {
+            'Precessing': False,
+            'Eccentric': False,
+            'Hybridized': True,
+            }
+        # soft_lims -> raise warning when outside lims
+        # hard_lim -> raise error when outside lims
+        # Same order as x in the call function. Each element is
+        # a [minVal, maxVal] pair.
+        soft_param_lims = [[0.99, 8.01], [-0.801, 0.801], [-0.801, 0.801]]
+        hard_param_lims = [[0.99, 10.01], [-1, 1], [-1, 1]]
+        super(NRHybSur3dq8, self).__init__(self.__class__.__name__, \
+            domain_type, keywords, soft_param_lims, hard_param_lims)
+
+    def _load_dimless_surrogate(self):
+        """
+        This function, which must be overriden for each derived class of
+        SurrogateEvaluator, handles the loading of the dimensionless surrogate.
+        This should return the loaded surrogate.
+        The loaded surrogate should have a __call__ function that returns the
+        dimensionless time/frequency array and dimensionless waveform modes.
+        This __call__ function should take the same inputs as
+        self._call_dimless_modes.
+        """
+        sur = new_surrogate.AlignedSpinCoOrbitalFrameSurrogate()
+        sur.load(self.h5filename)
+        return sur
+
+
+
+#### for each model in the catalog (name or h5 file), associate class to load 
+#### NOTE: other classes maybe usable too, these just constitute
+####       the default cases suitable for most people
+SURROGATE_CLASSES = {
+    "NRHybSur3dq8": NRHybSur3dq8,
+#    "SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5":EvaluateSurrogate # model SpEC_q1_10_NoSpin
+        }
+
+# TODO: would this be better off as a function as opposed to a class?
+class LoadSurrogate(object):
+    """
+    A holder class for any SurrogateEvaluator class.
+    This is essentially only to let us know what class to
+    initialize when loading from an h5 file.
+    """
+
+    #NOTE: __init__ is never called for LoadSurrogate
+    def __new__(self, surrogate_name):
+        if surrogate_name.endswith('.h5'):
+            # If h5 file is given, use that directly. But get the
+            # surrogate_name used to pick from SURROGATE_CLASSES from the
+            # filename
+            surrogate_h5file = surrogate_name
+            surrogate_name = os.path.basename(surrogate_h5file)
+            surrogate_name = surrogate_name.split('.h5')[0]
+        else:
+            # If not, look for surrogate data in surrogate download_path
+            surrogate_h5file = '%s/%s.h5'%(catalog.download_path(), \
+                surrogate_name)
+            if not os.path.isfile(surrogate_h5file):
+                raise Exception("Surrogate data not found. Do"
+                    " gwsurrogate.catalog.pull('%s')"%surrogate_name)
+
+        if surrogate_name not in SURROGATE_CLASSES.keys():
+            raise Exception('Invalid surrogate : %s'%surrogate_name)
+        else:
+            return SURROGATE_CLASSES[surrogate_name](surrogate_h5file)
 

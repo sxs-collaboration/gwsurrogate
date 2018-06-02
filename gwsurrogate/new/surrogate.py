@@ -33,7 +33,7 @@ import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as _iuspline
 from gwsurrogate.gwtools.harmonics import sYlm as _sYlm
 
-if __package__ is "" or "None": # py2 and py3 compatible 
+if __package__ is "" or "None": # py2 and py3 compatible
   print("setting __package__ to gwsurrogate.new so relative imports work")
   __package__="gwsurrogate.new"
 
@@ -369,8 +369,8 @@ class _ManyFunctionSurrogate_NoChecks(SimpleH5Object):
         return self.name
 
     def __call__(self, x):
-        func_evals = {k: sur(x) for k, sur in self.func_subs.items()} # inefficient in py2
-        sur_evals = {k: sur(x) for k, sur in self.sur_subs.items()} # inefficient in py2
+        func_evals = {k: sur(x) for k, sur in self.func_subs.iteritems()} # inefficient in py2
+        sur_evals = {k: sur(x) for k, sur in self.sur_subs.iteritems()} # inefficient in py2
         return RECOMBINATION_FUNCS[self.combine_func](func_evals, sur_evals)
 
     def _eval_func(self, x, key):
@@ -522,6 +522,7 @@ class MultiModalSurrogate(ManyFunctionSurrogate):
         modes: A list of (ell, m) modes giving an ordering to mode_data.keys().
                If None, uses mode_data.keys().
         """
+
         if mode_type == 'complex':
             super(MultiModalSurrogate, self).__init__(name, domain, param_space,
                                                       mode_data, {}, 'identity')
@@ -575,6 +576,254 @@ class MultiModalSurrogate(ManyFunctionSurrogate):
             return _mode_sum(h_modes, theta, phi)
 
         return h_modes
+
+
+class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
+    """
+    A surrogate for coorbital frame multimodal waveforms, where each waveform
+    data piece has its own surrogate.
+
+    The waveform data pieces are:
+    Amplitude and phase of the (2,2) mode.
+    Real and imaginary parts of coorbital frame waveform for other modes.
+    """
+
+    def __init__(self, name=None, domain=None, param_space=None,
+            coorb_mode_data={(2, 2): {}}
+            ):
+        """
+        name:               A descriptive name for this surrogate.
+
+        domain:             A 1d array of the monotonically increasing time
+                            values.
+
+        param_space:        A ParamSpace for this surrogate.
+
+        coorb_mode_data: A dictionary of modes with (l, m) integer keys, where
+            the values are themselves dictionaries containing the coorbital
+            frame waveform for that mode. The coorbital frame is defined as:
+            H_lm = h_lm*exp(i*m*phi_22/2), where h_lm is the inertial frame
+            waveform and h_22 = A_22 * exp(-i phi_22). NOTE the minus sign.
+
+            coorb_mode_data should be a dict with mode_key: mode_value pairs,
+                where mode_value = AmpPhase_22 for mode_key = (2, 2)
+                and mode_value = CoorbReIm_lm for other modes.
+
+            Above, AmpPhase_22 and CoorbReIm_lm are themselved dictionaries:
+                AmpPhase_22 = {'amp': Amp_22, 'phase': phi_22}
+                CoorbReIm_lm = {'re': re_H_lm, 'im': im_H_lm}, where
+                re_H_lm = Real(H_lm) and im_H_lm = Imag(H_lmc).
+            Finally, all of Amp_22, phi_22, re_H_lm and im_H_lm should be
+            (ei_basis, node_functions) tuples of that data piece.
+
+            IMPORTANT NOTE: The phase of (2, 2) mode should be defined with
+            a minus sign as shown above, this is opposite to what is done for
+            MultiModalSurrogate.
+        """
+
+        # get list of modes, but move (2,2) mode to start of the list.
+        # This is important because we need the phase of the 22 mode to
+        # transform the other modes from coorbital frame to inertial frame.
+        self.mode_list = list(coorb_mode_data.keys())
+        mode22_idx = [i for i in range(len(self.mode_list)) \
+            if self.mode_list[i] == tuple([2, 2])]
+        if len(mode22_idx) != 1:
+            raise Exception('Seems to have found multiple or no 22 mode!')
+        mode22_idx = mode22_idx[0]
+
+        # shift 22 mode to the first index
+        self.mode_list.insert(0, self.mode_list.pop(mode22_idx))
+
+        if self.mode_list[0] != tuple([2, 2]):
+            raise Exception('Expected the first mode at this point to be the'\
+                ' 22 mode.')
+        # make sure shifting the 22 mode index did not delete or add a
+        # mode by mistake
+        if len(self.mode_list) != len(coorb_mode_data.keys()):
+            raise Exception('Number of modes do not agree')
+
+        self.mode_type = 'identity'
+        many_function_components = {}
+        for mode in self.mode_list:
+            many_function_components[mode] = ('identity', \
+                coorb_mode_data[mode], {})
+
+        super(AlignedSpinCoOrbitalFrameSurrogate, self).__init__(name,
+                domain, param_space, {}, many_function_components,
+                self.mode_type)
+
+        self._h5_data_keys.append('mode_list')
+        self._h5_data_keys.append('mode_type')
+
+
+    def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
+        fM_low, fM_ref, do_not_align):
+        """ Transforms a dict from Coorbital frame to inertial frame.
+
+            The surrogate data is sparsely sampled, so upsamples to time
+            step dtM if given. This is done in the coorbital frame since
+            the waveform is slowly varying in that frame.
+
+            If fM_low is given, only part of the waveform where frequency of
+            the (2, 2) mode is greater than fM_low is retained.
+
+            if do_not_align = False:
+                Aligns the 22 mode phase to be zero at fM_ref. This means that
+                at this reference frequency, the larger BH is roughly on the
+                +ve x axis and the smaller BH is on the -ve x axis.
+            do_not_align should be True only when converting from pySurrogate
+            format to gwsurrogate format as we may want to do some checks that
+            the waveform has not been modified
+        """
+
+        Amp_22 = h_22[0]['amp']
+        phi_22 = h_22[0]['phase']
+        domain = np.copy(self.domain)
+
+        # get omega22, the angular frequency of the 22 mode, but truncate the
+        # late time ( > 50 from peak). This way we avoid the noisy part at
+        # late times, which can randomly be at frequency = fM_low.
+        omega22 = np.gradient(phi_22)/np.gradient(domain)
+        peak22Idx = np.argmax(Amp_22)
+        omega22 = omega22[domain <= domain[peak22Idx]+50]
+
+        # Truncate waveform such that the initial (2, 2) mode frequency = fM_low
+        if fM_low is not None:
+            omega_low = 2*np.pi*fM_low
+            if omega_low < omega22[0]:
+                raise ValueError('f_low is lower than the minimum allowed'
+                    ' frequency')
+            startIdx = np.argmin(np.abs(omega22 - omega_low))
+            if domain[startIdx] > domain[peak22Idx] + 10:
+                raise Exception('The time that matches f_low is after the peak,'
+                    ' something must be wrong.')
+
+            Amp_22 = Amp_22[startIdx:]
+            phi_22 = phi_22[startIdx:]
+            domain = domain[startIdx:]
+            omega22 = omega22[startIdx:]
+
+
+        # Interpolate onto uniform domain if needed
+        if dtM is not None:
+            times = np.arange(domain[0], domain[-1], dtM)
+            Amp_22 = _splinterp(times, domain, Amp_22, ext='raise')
+            phi_22 = _splinterp(times, domain, phi_22, ext='raise')
+        else:
+            times = domain
+
+        # Get reference index where waveform needs to be aligned. If fM_ref
+        # is not given, we pick the first index
+        if fM_ref is not None:
+            refIdx = np.argmin(np.abs(omega22 - 2*np.pi*fM_ref))
+            if times[refIdx] > times[np.argmax(Amp_22)] + 10:
+                raise Exception('The time that matches f_ref is after the peak,'
+                    ' something must be wrong.')
+        else:
+            refIdx = 0
+
+        # do_not_align should be True only when converting from pySurrogate
+        # format to gwsurrogate format as we may want to do some checks that the
+        # waveform has not been modified
+        if not do_not_align:
+            # Align phase at refIdx. Note that the Coorbital frame data is not
+            # affected by this constant phase shift.
+            phi_22 -= phi_22[refIdx]
+
+        h_dict = {}
+        for mode in mode_list:
+            if mode == tuple([2, 2]):
+                h_dict[mode] = Amp_22 * np.exp(-1j*phi_22)
+            else:
+                l,m = mode
+                h_coorb_lm = 0
+                if 're' in h_coorb[mode][0].keys():
+                    h_coorb_lm += h_coorb[mode][0]['re'] + 1j * 0
+                if 'im' in h_coorb[mode][0].keys():
+                    h_coorb_lm += 1j*h_coorb[mode][0]['im']
+
+                if fM_low is not None:
+                    h_coorb_lm = h_coorb_lm[startIdx:]
+                if dtM is not None:
+                    h_coorb_lm = _splinterp(times, domain, h_coorb_lm, \
+                                            ext='raise')
+                h_dict[mode] = h_coorb_lm * np.exp(-1j*m*phi_22/2.)
+
+        return times, h_dict
+
+
+    def __call__(self, x, fM_low=None, fM_ref=None, dtM=None, dfM=None,
+        mode_list=None, par_dict=None, do_not_align=False):
+        """
+    Return dimensionless surrogate modes.
+    Arguments:
+    x :             The intrinsic parameters EXCLUDING total Mass (see
+                    self.param_space)
+
+    fM_low :        Initial frequency of (2,2) mode in units of cycles/M.
+                    If None, will use the entire data of the surrogate.
+                    Default None.
+
+    fM_ref:         Reference frequency used to set the reference epoch at which
+                    the frame is aligned and the spins are specified. The frame
+                    is aligned at the reference epoch as follows:
+                        The orbital angular momentum points towards the
+                            +ve z-axis.
+                        The separation vector from the smaller BH to the larger
+                            BH points towards the +ve x-axis.
+                    For time domain models, this is used to detemine a t_ref,
+                    such that the frequency of the (2, 2) mode equals fM_ref
+                    at t=t_ref.
+                    Default: If fM_low is given, fM_ref = fM_low. If fM_low is
+                    None, fM_ref is set to the initial frequency (the first
+                    index).
+
+    dtM :           Uniform time step to use, in units of M. If None, the
+                    returned time array will be the array used in the
+                    construction of the surrogate, which can be nonuniformly
+                    sampled.
+                    Default None.
+
+    dfM :           This should always be None as for now we are assuming
+                    a time domain model.
+
+    mode_list :     A list of (ell, m) modes to be evaluated.
+                    Default None, which evaluates all avilable modes.
+                    Will deduce the m<0 modes from m>0 modes.
+
+    par_dict:       This should always be None for this model.
+
+    do_not_align:   Ignore fM_ref and do not align the waveform. This should be
+                    True only when converting from pySurrogate format to
+                    gwsurrogate format as we may want to do some checks that
+                    the waveform has not been modified.
+
+    Returns t, h:
+        t : time array in units of M.
+        h : A dictionary of waveform modes sampled at times=t with
+            (ell, m) keys.
+        """
+
+        if par_dict is not None:
+            raise ValueError('Expected par_dict to be None.')
+        if dfM is not None:
+            raise ValueError('Expected dfM to be None for a Time domain model')
+
+        if mode_list is None:
+            mode_list = self.mode_list
+
+        # always evaluate the (2,2) mode, the other modes neeed this
+        # for transformation from coorbital to inertial frame
+        h_22 = self._eval_sur(x, tuple([2, 2]))
+
+        h_coorb = {k: self._eval_sur(x, k) for k in mode_list \
+                        if k != tuple([2,2])}
+
+        t, h_modes = self._coorbital_to_inertial_frame(h_coorb, h_22, \
+            mode_list, dtM, fM_low, fM_ref, do_not_align)
+
+        return t, h_modes
+
 
 class SpEC_nonspinning_q10_surrogate(MultiModalSurrogate):
     """A special class for the SpEC nonspinning surrogate"""
