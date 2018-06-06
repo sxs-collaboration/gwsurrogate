@@ -104,9 +104,27 @@ def ampfitfn6_1d(coeffs,x):
 
 ### these are for switching from (q,M) to surrogate's parameterization ###
 def q_to_q(q):
+  """ identity map from q to q
+  
+  Surrogates with this parameterization expect its user intput 
+  to be the mass ratio q, and "map" to the internal surrogate's 
+  parameterization which is also q
+  
+  The surrogates training interval is in mass ratio
+  """
   return q
 
 def q_to_nu(q):
+  """ map from q to symmetric mass ratio nu
+  
+  Surrogates with this parameterization expect its user intput 
+  to be the mass ratio q. 
+  
+  The surrogate will map q to the internal surrogate's 
+  parameterization which is nu
+  
+  The surrogates training interval is quoted in symmetric mass ratio.
+  """
   return gwtools.q_to_nu(q)
 
 ### dictionary of fitting functions ###
