@@ -3,3 +3,7 @@
 *.h5
 *.gz
 *~
+
+.ipynb_checkpoints
+.pytest_cache
+surrogate_downloads
