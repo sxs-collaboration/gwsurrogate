@@ -49,7 +49,7 @@ def test_model_regression(generate_regression_data=False):
 
   # remove models if you don't have them
   dont_test = ["NRSur4d2s_TDROM_grid12",
-               #"NRSur4d2s_FDROM_grid12",
+               "NRSur4d2s_FDROM_grid12",
                #"SpEC_q1_10_NoSpin_linear_alt",
                #"SpEC_q1_10_NoSpin_linear",
                "EOBNRv2", #TODO: this is two surrogates in one. Break up?
