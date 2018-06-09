@@ -17,7 +17,7 @@ except ImportError:
 
 
 setup(name='gwsurrogate',
-      version='0.8',
+      version='0.8.1',
       author='Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma',
       author_email='sfield@umassd.edu',
       packages=['gwsurrogate'],
