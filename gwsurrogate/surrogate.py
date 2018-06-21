@@ -1436,12 +1436,14 @@ class SurrogateEvaluator(object):
 
 
     def _call_dimless_modes(self, x, fM_low=None, fM_ref=None,
-        dtM=None, dfM=None, mode_list=None, par_dict=None):
+        dtM=None, timesM=None, dfM=None, freqsM=None, mode_list=None,
+        par_dict=None):
         """ Evaluates the surrogate modes in dimensionless units.
         """
 
         return self._sur_dimless(x, fM_low=fM_low, fM_ref=fM_ref, dtM=dtM,
-            dfM=dfM, mode_list=mode_list, par_dict=par_dict)
+            timesM=timesM, dfM=dfM, freqsM=freqsM, mode_list=mode_list,
+            par_dict=par_dict)
 
 
     def _mode_sum(self, h_modes, theta, phi, fake_neg_modes=False):
@@ -1463,7 +1465,7 @@ class SurrogateEvaluator(object):
 
 
     def __call__(self, x, M=None, dist_mpc=None, f_low=None, t_ref=None,
-        f_ref=None, dt=None, df=None, mode_list=None,
+        f_ref=None, dt=None, df=None, times=None, freqs=None, mode_list=None,
         inclination=None, phi_ref=None, par_dict=None, units='dimensionless'):
         """
     INPUT
@@ -1494,7 +1496,14 @@ class SurrogateEvaluator(object):
     dt, df :    Time/Frequency step size, specify at most one of dt/df,
                 depending on whether the surrogate is a time/frequency domain
                 surrogate. If None, the internal domain of the surrogate is
-                returned, which can be nonuniformly sampled. Default None.
+                used, which can be nonuniformly sampled. Default None.
+                Do not specify times/freqs if using dt/df.
+
+    times, freqs:     
+                Array of time/frequency samples at which to evaluate the
+                waveform, depending on whether the surrogate is a 
+                time/frequency domain surrogate. Default None.
+                Do not specify dt/df if using times/freqs.
 
     mode_list : A list of (l, m) modes to be evaluated. If None, evaluates all
                 available modes. Default: None.
@@ -1514,25 +1523,28 @@ class SurrogateEvaluator(object):
                 particular surrogate model. Default: None.
 
     units:      'dimensionless' or 'mks'. Default: 'dimensionless'.
-                If 'dimensionless': f_low, f_ref, dt and df, if
-                    specified, must be in dimensionless units. That is, dt
-                    should be in units of M, while f_ref, f_low and df should
-                    be in units of cycles/M. M and dist_mpc must be None.
-                    The waveform and domain are returned as dimensionless
-                    quantities as well.
-                If 'mks': f_low, f_ref, dt and df, if specified, must
-                    be in MKS units. That is, dt should be in seconds, while
-                    f_ref, f_low and df should be in Hz.
-                    M and dist_mpc must be specified. The waveform and domain
-                    are returned in MKS units as well.
+                If 'dimensionless': Any of f_low, f_ref, dt, df, times and
+                    freqs, if specified, must be in dimensionless units. That
+                    is, dt/times should be in units of M, while f_ref, f_low
+                    and df/freqs should be in units of cycles/M. 
+                    M and dist_mpc must be None. The waveform and domain are
+                    returned as dimensionless quantities as well.
+                If 'mks': Any of f_low, f_ref, dt, df, times and freqs, if
+                    specified, must be in MKS units. That is, dt/times should
+                    be in seconds, while f_ref, f_low and df/freqs should be
+                    in Hz. M and dist_mpc must be specified. The waveform and
+                    domain are returned in MKS units as well.
 
     RETURNS
     =====
-    domain, h
+    if times/freqs is given:
+        h
+    else:
+        domain, h
 
     domain :    Array of time/frequency samples, depending on whether the
                 surrogate is a time/frequency domain model. For time domain
-                models the initial time is set to 0.
+                models the time is set to 0 at the peak of the waveform.
 
     h :         Waveform. If inclination/phi_ref are specified, returns
                 complex strain h = hplus -i hcross, evaluated at
@@ -1557,9 +1569,23 @@ class SurrogateEvaluator(object):
             raise ValueError("%s is not a Time domain model, cannot specify"
                 " dt"%self.name)
 
+        if (times is not None) and (self._domain_type != 'Time'):
+            raise ValueError("%s is not a Time domain model, cannot specify"
+                " times"%self.name)
+
         if (df is not None) and (self._domain_type != 'Frequency'):
             raise ValueError("%s is not a Frequency domain model, cannot"
                 " specify df"%self.name)
+
+        if (freqs is not None) and (self._domain_type != 'Frequency'):
+            raise ValueError("%s is not a Frequency domain model, cannot"
+                " specify freqs"%self.name)
+
+        if (dt is not None) and (times is not None):
+            raise ValueError("Cannot specify both dt and times.")
+
+        if (df is not None) and (freqs is not None):
+            raise ValueError("Cannot specify both df and freqs.")
 
         if (f_ref is not None) and (f_low is not None) and (f_ref < f_low):
             raise ValueError("f_ref cannot be lower than f_low.")
@@ -1584,16 +1610,23 @@ class SurrogateEvaluator(object):
         if f_ref is None:
             f_ref = f_low
 
-        # Get dimensionless step size and reference time/freq
+        # Get dimensionless step size or times/freqs and reference time/freq
         dtM = None if dt is None else dt/t_scale
+        timesM = None if times is None else times/t_scale
         dfM = None if df is None else df*t_scale
+        freqsM = None if freqs is None else freqs*t_scale
         fM_ref = None if f_ref is None else f_ref*t_scale
 
         # Get waveform modes and domain in dimensionless units
         fM_low = None if f_low is None else f_low*t_scale
-        domain, h = self._call_dimless_modes(x, fM_low=fM_low,
-            fM_ref=fM_ref, dtM=dtM, dfM=dfM, mode_list=mode_list,
-            par_dict=par_dict)
+        data = self._call_dimless_modes(x, fM_low=fM_low,
+            fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM, freqsM=freqsM,
+            mode_list=mode_list, par_dict=par_dict)
+        if len(data) == 2:
+            domain, h = data
+        else:
+            h = data
+            domain = None       # Assuming times/freqs were specified.
 
         # sum over modes to get complex strain if inclination/phi_ref are given
         if inclination is not None:
@@ -1604,14 +1637,14 @@ class SurrogateEvaluator(object):
             phi = -phi_ref + np.pi/2        # LAL convention
             h = self._mode_sum(h, theta, phi, fake_neg_modes=fake_neg_modes)
 
-        # Rescale domain to physical units
-        if self._domain_type == 'Time':
-            domain = domain*t_scale
-            domain -= domain[0]       # set initial time to zero
-        elif self._domain_type == 'Frequency':
-            domain = domain/t_scale
-        else:
-            raise Exception('Invalid _domain_type.')
+        if domain is not None:
+            # Rescale domain to physical units
+            if self._domain_type == 'Time':
+                domain = domain*t_scale
+            elif self._domain_type == 'Frequency':
+                domain = domain/t_scale
+            else:
+                raise Exception('Invalid _domain_type.')
 
         # Rescale waveform to physical units
         if type(h) == dict:
@@ -1619,7 +1652,10 @@ class SurrogateEvaluator(object):
         else:
             h = h*amp_scale
 
-        return domain, h
+        if domain is None:
+            return h
+        else:
+            return domain, h
 
 
 

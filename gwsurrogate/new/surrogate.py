@@ -657,7 +657,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
 
     def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
-        fM_low, fM_ref, do_not_align):
+        timesM, fM_low, fM_ref, do_not_align):
         """ Transforms a dict from Coorbital frame to inertial frame.
 
             The surrogate data is sparsely sampled, so upsamples to time
@@ -703,20 +703,37 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             domain = domain[startIdx:]
             omega22 = omega22[startIdx:]
 
+            if timesM is not None:
+                if timesM[0] < domain[0]:
+                    raise Exception("'times' starts before start of domain. Try"
+                        " increasing initial value of times or reducing f_low.")
+                if timesM[-1] > domain[-1]:
+                    raise Exception("'times' includes times larger than the"
+                        " maximum time value in domain.")
 
-        # Interpolate onto uniform domain if needed
-        if dtM is not None:
-            times = np.arange(domain[0], domain[-1], dtM)
-            Amp_22 = _splinterp(times, domain, Amp_22, ext='raise')
-            phi_22 = _splinterp(times, domain, phi_22, ext='raise')
+        return_times = True
+        if dtM is None and timesM is None:
+            timesM = domain
+            do_interp = False
         else:
-            times = domain
+            do_interp = True
+            if dtM is not None:
+                # Interpolate onto uniform domain if needed
+                timesM = np.arange(domain[0], domain[-1], dtM)
+            else:
+                return_times = False
+                if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
+                    raise Exception('Trying to evaluate at times outside the'
+                        ' domain.')
+            Amp_22 = _splinterp(timesM, domain, Amp_22, ext='raise')
+            phi_22 = _splinterp(timesM, domain, phi_22, ext='raise')
+
 
         # Get reference index where waveform needs to be aligned. If fM_ref
         # is not given, we pick the first index
         if fM_ref is not None:
             refIdx = np.argmin(np.abs(omega22 - 2*np.pi*fM_ref))
-            if times[refIdx] > times[np.argmax(Amp_22)] + 10:
+            if timesM[refIdx] > timesM[np.argmax(Amp_22)] + 10:
                 raise Exception('The time that matches f_ref is after the peak,'
                     ' something must be wrong.')
         else:
@@ -744,16 +761,20 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
                 if fM_low is not None:
                     h_coorb_lm = h_coorb_lm[startIdx:]
-                if dtM is not None:
-                    h_coorb_lm = _splinterp(times, domain, h_coorb_lm, \
-                                            ext='raise')
+                if do_interp:
+                    h_coorb_lm = _splinterp(timesM, domain, h_coorb_lm, \
+                        ext='raise')
                 h_dict[mode] = h_coorb_lm * np.exp(-1j*m*phi_22/2.)
 
-        return times, h_dict
+        if return_times:
+            return timesM, h_dict
+        else:
+            return h_dict
 
 
-    def __call__(self, x, fM_low=None, fM_ref=None, dtM=None, dfM=None,
-        mode_list=None, par_dict=None, do_not_align=False):
+    def __call__(self, x, fM_low=None, fM_ref=None, dtM=None, timesM=None,
+        dfM=None, freqsM=None, mode_list=None, par_dict=None,
+        do_not_align=False):
         """
     Return dimensionless surrogate modes.
     Arguments:
@@ -784,8 +805,14 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                     sampled.
                     Default None.
 
+    timesM:         Time samples to evaluate the waveform at. Use either dtM or
+                    timesM, not both.
+
     dfM :           This should always be None as for now we are assuming
                     a time domain model.
+
+    freqsM:         Frequency samples to evaluate the waveform at. Use either
+                    dfM or freqsM, not both.
 
     mode_list :     A list of (ell, m) modes to be evaluated.
                     Default None, which evaluates all avilable modes.
@@ -798,8 +825,10 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                     gwsurrogate format as we may want to do some checks that
                     the waveform has not been modified.
 
-    Returns t, h:
-        t : time array in units of M.
+    Returns 
+    h: If timesM is given.
+    timesM, h: If timesM is None.
+        timesM : time array in units of M.
         h : A dictionary of waveform modes sampled at times=t with
             (ell, m) keys.
         """
@@ -808,6 +837,9 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             raise ValueError('Expected par_dict to be None.')
         if dfM is not None:
             raise ValueError('Expected dfM to be None for a Time domain model')
+        if freqsM is not None:
+            raise ValueError('Expected freqsM to be None for a Time domain'
+                ' model')
 
         if mode_list is None:
             mode_list = self.mode_list
@@ -819,10 +851,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         h_coorb = {k: self._eval_sur(x, k) for k in mode_list \
                         if k != tuple([2,2])}
 
-        t, h_modes = self._coorbital_to_inertial_frame(h_coorb, h_22, \
-            mode_list, dtM, fM_low, fM_ref, do_not_align)
-
-        return t, h_modes
+        return self._coorbital_to_inertial_frame(h_coorb, h_22, \
+            mode_list, dtM, timesM, fM_low, fM_ref, do_not_align)
 
 
 class SpEC_nonspinning_q10_surrogate(MultiModalSurrogate):
