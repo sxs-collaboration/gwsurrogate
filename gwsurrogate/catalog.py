@@ -30,6 +30,8 @@ THE SOFTWARE.
 
 import os
 from collections import namedtuple
+from time import gmtime, strftime
+from glob import glob
 
 ### Naming convention: dictionary KEY should match file name KEY.tar.gz ###
 surrogate_info = namedtuple('surrogate_info', ['url', 'desc', 'refs'])
@@ -126,9 +128,26 @@ def pull(surr_name,sdir=download_path()):
      The default path is used if no location supplied. tar.gz surrogates
      are automatically unziped. The new surrogate path is returned."""
 
+  sdir = os.path.abspath(sdir)
   if surr_name in _surrogate_world:
     surr_url = _surrogate_world[surr_name].url
-    os.system('wget --directory-prefix='+sdir+' '+surr_url)
+    fname = os.path.basename(surr_url)
+
+    # If file already exists, move it to backup dir with time stamp
+    if os.path.isfile('%s/%s'%(sdir, fname)):
+        timestamp=strftime("%Y%b%d_%Hh:%Mm:%Ss", gmtime())
+        backup_fname = '%s_%s'%(timestamp, fname)
+        backup_dir = '%s/backup'%(sdir)
+        os.system('mkdir -p %s'%backup_dir)
+        print('\n%s file exits, moving to %s/%s.'%(fname, backup_dir, \
+            backup_fname))
+        os.system('mv %s/%s %s/%s'%(sdir, fname, backup_dir, backup_fname))
+        number_of_backup_files = glob('%s/*_%s'%(backup_dir, fname))
+        if len(number_of_backup_files) > 5:
+            print('There are a lot of backup files in %s, consider removing'
+                ' some.'%backup_dir)
+
+    os.system('wget -q --show-progress --directory-prefix='+sdir+' '+surr_url)
   else:
     raise ValueError("No surrogate package exits")
 
