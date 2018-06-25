@@ -126,7 +126,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, phi_ref=None,\
-                     f_low=None, samples=None,samples_units='dimensionless',\
+                     f_low=None, times=None, units='dimensionless',\
                      singlemode_call=True):
     """Return single mode surrogate evaluation for...
 
@@ -139,8 +139,8 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
        dist            --- distance to binary system (megaparsecs)
        phi_ref         --- mode's phase phi(t), as h=A*exp(i*phi) at peak amplitude
        f_low           --- instantaneous initial frequency, will check if flow_surrogate < f_low
-       samples         --- array of times at which surrogate is to be evaluated
-       samples_units   --- units (mks or dimensionless) of input array samples
+       times           --- array of times at which surrogate is to be evaluated
+       units           --- units (mks or dimensionless) of input array of time samples
        singlemode_call --- Never set this by hand, will be False if this routine is called by the multimode evaluator
 
 
@@ -160,8 +160,8 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if self.surrogate_units != 'dimensionless':
       raise ValueError('surrogate units is not supported')
 
-    if (samples_units != 'dimensionless') and (samples_units != 'mks'):
-      raise ValueError('samples_units is not supported')
+    if (units != 'dimensionless') and (units != 'mks'):
+      raise ValueError('units is not supported')
 
     ### if (M,distance) provided, a physical mode in mks units is returned ###
     if( M is not None and dist is not None):
@@ -172,24 +172,24 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       t_scale = 1.0
 
     ### evaluation times t: input times or times at which surrogate was built ###
-    if (samples is not None):
-      t = samples
+    if (times is not None):
+      t = times
     else:
       t = self.time()
 
     ### if input times are dimensionless, convert to MKS if a physical surrogate is requested ###
-    if samples_units == 'dimensionless':
+    if units == 'dimensionless':
       t = t_scale * t
 
-    # because samples is passed to _h_sur, it must be dimensionless form t/M
-    if samples is not None and samples_units == 'mks':
-      samples = samples / t_scale
+    # because times is passed to _h_sur, it must be dimensionless form t/M
+    if times is not None and units == 'mks':
+      times = times / t_scale
 
     # convert from input to internal surrogate parameter values, and check within training region #
     x = self.get_surr_params_safe(q)
 
     ### Evaluate dimensionless single mode surrogates ###
-    hp, hc = self._h_sur(x, samples=samples)
+    hp, hc = self._h_sur(x, times=times)
 
 
     ### adjust mode's phase by an overall constant ###
@@ -258,7 +258,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def timer(self,M_eval=None,dist_eval=None,phi_ref=None,f_low=None,samples=None):
+  def timer(self,M_eval=None,dist_eval=None,phi_ref=None,f_low=None,times=None):
     """average time to evaluate surrogate waveforms. """
 
     qmin, qmax = self.fit_interval
@@ -271,7 +271,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
         hp, hc = self._h_sur(i)
     else:
       for i in ran:
-        t, hp, hc = self.__call__(i,M_eval,dist_eval,phi_ref,f_low,samples)
+        t, hp, hc = self.__call__(i,M_eval,dist_eval,phi_ref,f_low,times)
 
     toc = time.time()
     print('Timing results (results quoted in seconds)...')
@@ -339,43 +339,43 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   # TODO: basis resampling should be unified.
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   # TODO: ext should be passed from __call__
-  def resample_B(self, samples, ext=1):
-    """resample the empirical interpolant operator, B, at the input samples"""
+  def resample_B(self, times, ext=1):
+    """resample the empirical interpolant operator, B, at the input time samples"""
 
-    evaluations = np.array([_splev(samples, self.reB_spline_params[jj],ext=ext)  \
-             + 1j*_splev(samples, self.imB_spline_params[jj],ext=ext) for jj in range(self.B.shape[1])]).T
+    evaluations = np.array([_splev(times, self.reB_spline_params[jj],ext=ext)  \
+             + 1j*_splev(times, self.imB_spline_params[jj],ext=ext) for jj in range(self.B.shape[1])]).T
 
     # allow for extrapolation if very close to surrogate's temporal interval
     t0 = self.times[0]
-    if (np.abs(samples[0] - t0) < t0 * 1.e-12) or (t0==0 and np.abs(samples[0] - t0) <1.e-12):
-      evaluations[0] = np.array([_splev(samples[0], self.reB_spline_params[jj],)  \
-             + 1j*_splev(samples[0], self.imB_spline_params[jj]) for jj in range(self.B.shape[1])]).T
+    if (np.abs(times[0] - t0) < t0 * 1.e-12) or (t0==0 and np.abs(times[0] - t0) <1.e-12):
+      evaluations[0] = np.array([_splev(times[0], self.reB_spline_params[jj],)  \
+             + 1j*_splev(times[0], self.imB_spline_params[jj]) for jj in range(self.B.shape[1])]).T
     
     return evaluations
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   # TODO: ext should be passed from __call__
-  def resample_B_1(self, samples, ext=1):
-    """resample the B_1 basis at the input samples"""
+  def resample_B_1(self, times, ext=1):
+    """resample the B_1 basis at the input time samples"""
 
-    evaluations = np.array([_splev(samples, self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T
+    evaluations = np.array([_splev(times, self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T
 
     # allow for extrapolation if very close to surrogate's temporal interval
-    if np.abs(samples[0] - self.times[0])/self.times[0] < 1.e-12:
-      evaluations[0] = np.array([_splev(samples[0], self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T
+    if np.abs(times[0] - self.times[0])/self.times[0] < 1.e-12:
+      evaluations[0] = np.array([_splev(times[0], self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T
     
     return evaluations
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   # TODO: ext should be passed from __call__
-  def resample_B_2(self, samples, ext=1):
+  def resample_B_2(self, times, ext=1):
     """resample the B_2 basis at the input samples"""
 
-    evaluations = np.array([_splev(samples, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T
+    evaluations = np.array([_splev(times, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T
 
     # allow for extrapolation if very close to surrogate's temporal interval
-    if np.abs(samples[0] - self.times[0])/self.times[0] < 1.e-12:
-      evaluations[0] = np.array([_splev(samples[0], self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T
+    if np.abs(times[0] - self.times[0])/self.times[0] < 1.e-12:
+      evaluations[0] = np.array([_splev(times[0], self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T
     
     return evaluations
 
@@ -665,7 +665,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       raise ValueError('invalid surrogate type')
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def _h_sur(self, x, samples=None):
+  def _h_sur(self, x, times=None):
     """Evaluate surrogate at parameter value x. x could be mass ratio, symmetric
        mass ratio or something else -- it depends on the surrogate's parameterization. 
 
@@ -679,10 +679,10 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
       h_EIM = self._eim_coeffs(x, 'waveform_basis')
 
-      if samples is None:
+      if times is None:
         surrogate = np.dot(self.B, h_EIM)
       else:
-        surrogate = np.dot(self.resample_B(samples), h_EIM)
+        surrogate = np.dot(self.resample_B(times), h_EIM)
 
       #surrogate = nrm_eval * surrogate
 
@@ -690,14 +690,14 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
       amp_eval, phase_eval, nrm_eval = self._eim_coeffs(x, 'amp_phase_basis')
 
-      if samples is None:
+      if times is None:
         sur_A = np.dot(self.B_1, amp_eval)
         sur_P = np.dot(self.B_2, phase_eval)
       else:
-        #sur_A = np.dot(np.array([_splev(samples, self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T, amp_eval)
-        #sur_P = np.dot(np.array([_splev(samples, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T, phase_eval)
-        sur_A = np.dot(self.resample_B_1(samples), amp_eval)
-        sur_P = np.dot(self.resample_B_2(samples), phase_eval)
+        #sur_A = np.dot(np.array([_splev(times, self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T, amp_eval)
+        #sur_P = np.dot(np.array([_splev(times, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T, phase_eval)
+        sur_A = np.dot(self.resample_B_1(times), amp_eval)
+        sur_P = np.dot(self.resample_B_2(times), phase_eval)
 
       surrogate = nrm_eval * sur_A * np.exp(1j*sur_P)
 
@@ -909,8 +909,8 @@ class EvaluateSurrogate():
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, theta=None,phi=None,
-                     z_rot=None, f_low=None, samples=None,
-                     samples_units='dimensionless',
+                     z_rot=None, f_low=None, times=None,
+                     units='dimensionless',
                      ell=None, m=None, mode_sum=True,fake_neg_modes=True):
     """Return surrogate evaluation for...
 
@@ -924,8 +924,8 @@ class EvaluateSurrogate():
       theta/phi      --- evaluate hp and hc modes at this location on sphere
       z_rot          --- physical rotation about angular momentum (z-)axis (radians)
       flow           --- instantaneous initial frequency, will check if flow_surrogate < flow mode-by-mode
-      samples        --- array of times at which surrogate is to be evaluated
-      samples_units  --- units ('mks' or 'dimensionless') of input array samples
+      times          --- array of times at which surrogate is to be evaluated
+      units          --- units ('mks' or 'dimensionless') of input array of time samples
       ell            --- list or array of N ell modes to evaluate for (if none, all modes are returned)
       m              --- for each ell, supply a matching m value 
       mode_sum       --- if true, all modes are summed, if false all modes are returned in an array
@@ -959,9 +959,9 @@ class EvaluateSurrogate():
 
     ### allocate arrays for multimode polarizations ###
     if mode_sum:
-      hp_full, hc_full = self._allocate_output_array(samples,1,mode_sum)
+      hp_full, hc_full = self._allocate_output_array(times,1,mode_sum)
     else:
-      hp_full, hc_full = self._allocate_output_array(samples,len(modes_to_evaluate),mode_sum)
+      hp_full, hc_full = self._allocate_output_array(times,len(modes_to_evaluate),mode_sum)
 
     ### loop over all evaluation modes ###
     # TODO: internal workings are simplified if h used instead of (hc,hp)
@@ -974,9 +974,9 @@ class EvaluateSurrogate():
       if is_modeled or (neg_modeled and fake_neg_modes):
 
         if is_modeled:
-          t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,samples,samples_units,ell,m)
+          t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,times,units,ell,m)
         else: # then we must have neg_modeled=True and fake_neg_modes=True
-          t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,samples,samples_units,ell,m)
+          t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,times,units,ell,m)
 
         if z_rot is not None:
           h_tmp   = _gwtools.modify_phase(hp_mode+1.0j*hc_mode,z_rot*m)
@@ -1031,21 +1031,21 @@ class EvaluateSurrogate():
     return hp_mode, hc_mode
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def evaluate_single_mode(self,q, M, dist, f_low, samples, samples_units,ell,m):
+  def evaluate_single_mode(self,q, M, dist, f_low, times, units,ell,m):
     """ light wrapper around single mode evaluator"""
 
-    t_mode, hp_mode, hc_mode = self.single_mode_dict[(ell,m)](q, M, dist, None, f_low, samples,
-                                                              samples_units,singlemode_call=False)
+    t_mode, hp_mode, hc_mode = self.single_mode_dict[(ell,m)](q, M, dist, None, f_low, times,
+                                                              units,singlemode_call=False)
 
     return t_mode, hp_mode, hc_mode
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def evaluate_single_mode_by_symmetry(self,q, M, dist, f_low, samples,samples_units,ell,m):
+  def evaluate_single_mode_by_symmetry(self,q, M, dist, f_low, times, units,ell,m):
     """ evaluate m<0 mode from m>0 mode and relationship between these"""
 
     if m<0:
-      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q, M, dist, f_low, samples,samples_units,ell,-m)
+      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q, M, dist, f_low, times, units,ell,-m)
       hp_mode, hc_mode         = self._generate_minus_m_mode(hp_mode,hc_mode,ell,-m)
     else:
       raise ValueError('m must be negative.')
@@ -1136,7 +1136,7 @@ class EvaluateSurrogate():
 
       ### setup minimization problem -- deduce common time grid and approximate minimization solution from discrete waveform ###
       time_sur,hp,hc = self.__call__(q=q,M=M,dist=dist,theta=theta,phi=0.0,\
-                                  samples=self.time_all_modes(),samples_units='dimensionless',ell=ell,m=m,fake_neg_modes=fake_neg_modes)
+                                  times=self.time_all_modes(), units='dimensionless',ell=ell,m=m,fake_neg_modes=fake_neg_modes)
       h_sur =  hp + 1.0j*hc
 
       # TODO: this deltaPhi is overall phase shift -- NOT a good guess for minimizations
@@ -1149,7 +1149,7 @@ class EvaluateSurrogate():
         phic = x[1]
         times = _gwtools.coordinate_time_shift(common_times,tc)        
         times,hp,hc = self.__call__(q=q,M=M,dist=dist,theta=theta,phi=phic,\
-                                  samples=times,samples_units=t_ref_units,ell=ell,m=m,fake_neg_modes=fake_neg_modes)
+                                  times=times, units=t_ref_units,ell=ell,m=m,fake_neg_modes=fake_neg_modes)
         return hp + 1.0j*hc
 
     elif speed == 'fast': # build spline interpolant of modes, evaluate the interpolant
@@ -1199,19 +1199,19 @@ class EvaluateSurrogate():
   # class (such as memory allocation)
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def _allocate_output_array(self,samples,num_modes,mode_sum):
+  def _allocate_output_array(self, times, num_modes, mode_sum):
     """ allocate memory for result of hp, hc.
 
     Input
     =====
-    samples   --- array of time samples. None if using default
+    times     --- array of time samples. None if using default
     num_modes --- number of harmonic modes (cols). set to 1 if summation over modes
     mode_sum  --- whether or not modes will be summed over (see code for why necessary)"""
 
 
     # Determine the number of time samples #
-    if (samples is not None):
-      sample_size = samples.shape[0]
+    if (times is not None):
+      sample_size = times.shape[0]
     else:
       sample_size = self.time_grid().shape[0]
 
@@ -1436,12 +1436,14 @@ class SurrogateEvaluator(object):
 
 
     def _call_dimless_modes(self, x, fM_low=None, fM_ref=None,
-        dtM=None, dfM=None, mode_list=None, par_dict=None):
+        dtM=None, timesM=None, dfM=None, freqsM=None, mode_list=None,
+        par_dict=None):
         """ Evaluates the surrogate modes in dimensionless units.
         """
 
         return self._sur_dimless(x, fM_low=fM_low, fM_ref=fM_ref, dtM=dtM,
-            dfM=dfM, mode_list=mode_list, par_dict=par_dict)
+            timesM=timesM, dfM=dfM, freqsM=freqsM, mode_list=mode_list,
+            par_dict=par_dict)
 
 
     def _mode_sum(self, h_modes, theta, phi, fake_neg_modes=False):
@@ -1463,7 +1465,7 @@ class SurrogateEvaluator(object):
 
 
     def __call__(self, x, M=None, dist_mpc=None, f_low=None, t_ref=None,
-        f_ref=None, dt=None, df=None, mode_list=None,
+        f_ref=None, dt=None, df=None, times=None, freqs=None, mode_list=None,
         inclination=None, phi_ref=None, par_dict=None, units='dimensionless'):
         """
     INPUT
@@ -1494,7 +1496,14 @@ class SurrogateEvaluator(object):
     dt, df :    Time/Frequency step size, specify at most one of dt/df,
                 depending on whether the surrogate is a time/frequency domain
                 surrogate. If None, the internal domain of the surrogate is
-                returned, which can be nonuniformly sampled. Default None.
+                used, which can be nonuniformly sampled. Default None.
+                Do not specify times/freqs if using dt/df.
+
+    times, freqs:     
+                Array of time/frequency samples at which to evaluate the
+                waveform, depending on whether the surrogate is a 
+                time/frequency domain surrogate. Default None.
+                Do not specify dt/df if using times/freqs.
 
     mode_list : A list of (l, m) modes to be evaluated. If None, evaluates all
                 available modes. Default: None.
@@ -1514,25 +1523,28 @@ class SurrogateEvaluator(object):
                 particular surrogate model. Default: None.
 
     units:      'dimensionless' or 'mks'. Default: 'dimensionless'.
-                If 'dimensionless': f_low, f_ref, dt and df, if
-                    specified, must be in dimensionless units. That is, dt
-                    should be in units of M, while f_ref, f_low and df should
-                    be in units of cycles/M. M and dist_mpc must be None.
-                    The waveform and domain are returned as dimensionless
-                    quantities as well.
-                If 'mks': f_low, f_ref, dt and df, if specified, must
-                    be in MKS units. That is, dt should be in seconds, while
-                    f_ref, f_low and df should be in Hz.
-                    M and dist_mpc must be specified. The waveform and domain
-                    are returned in MKS units as well.
+                If 'dimensionless': Any of f_low, f_ref, dt, df, times and
+                    freqs, if specified, must be in dimensionless units. That
+                    is, dt/times should be in units of M, while f_ref, f_low
+                    and df/freqs should be in units of cycles/M. 
+                    M and dist_mpc must be None. The waveform and domain are
+                    returned as dimensionless quantities as well.
+                If 'mks': Any of f_low, f_ref, dt, df, times and freqs, if
+                    specified, must be in MKS units. That is, dt/times should
+                    be in seconds, while f_ref, f_low and df/freqs should be
+                    in Hz. M and dist_mpc must be specified. The waveform and
+                    domain are returned in MKS units as well.
 
     RETURNS
     =====
-    domain, h
+    if times/freqs is given:
+        h
+    else:
+        domain, h
 
     domain :    Array of time/frequency samples, depending on whether the
                 surrogate is a time/frequency domain model. For time domain
-                models the initial time is set to 0.
+                models the time is set to 0 at the peak of the waveform.
 
     h :         Waveform. If inclination/phi_ref are specified, returns
                 complex strain h = hplus -i hcross, evaluated at
@@ -1557,9 +1569,23 @@ class SurrogateEvaluator(object):
             raise ValueError("%s is not a Time domain model, cannot specify"
                 " dt"%self.name)
 
+        if (times is not None) and (self._domain_type != 'Time'):
+            raise ValueError("%s is not a Time domain model, cannot specify"
+                " times"%self.name)
+
         if (df is not None) and (self._domain_type != 'Frequency'):
             raise ValueError("%s is not a Frequency domain model, cannot"
                 " specify df"%self.name)
+
+        if (freqs is not None) and (self._domain_type != 'Frequency'):
+            raise ValueError("%s is not a Frequency domain model, cannot"
+                " specify freqs"%self.name)
+
+        if (dt is not None) and (times is not None):
+            raise ValueError("Cannot specify both dt and times.")
+
+        if (df is not None) and (freqs is not None):
+            raise ValueError("Cannot specify both df and freqs.")
 
         if (f_ref is not None) and (f_low is not None) and (f_ref < f_low):
             raise ValueError("f_ref cannot be lower than f_low.")
@@ -1584,16 +1610,23 @@ class SurrogateEvaluator(object):
         if f_ref is None:
             f_ref = f_low
 
-        # Get dimensionless step size and reference time/freq
+        # Get dimensionless step size or times/freqs and reference time/freq
         dtM = None if dt is None else dt/t_scale
+        timesM = None if times is None else times/t_scale
         dfM = None if df is None else df*t_scale
+        freqsM = None if freqs is None else freqs*t_scale
         fM_ref = None if f_ref is None else f_ref*t_scale
 
         # Get waveform modes and domain in dimensionless units
         fM_low = None if f_low is None else f_low*t_scale
-        domain, h = self._call_dimless_modes(x, fM_low=fM_low,
-            fM_ref=fM_ref, dtM=dtM, dfM=dfM, mode_list=mode_list,
-            par_dict=par_dict)
+        data = self._call_dimless_modes(x, fM_low=fM_low,
+            fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM, freqsM=freqsM,
+            mode_list=mode_list, par_dict=par_dict)
+        if len(data) == 2:
+            domain, h = data
+        else:
+            h = data
+            domain = None       # Assuming times/freqs were specified.
 
         # sum over modes to get complex strain if inclination/phi_ref are given
         if inclination is not None:
@@ -1604,14 +1637,14 @@ class SurrogateEvaluator(object):
             phi = -phi_ref + np.pi/2        # LAL convention
             h = self._mode_sum(h, theta, phi, fake_neg_modes=fake_neg_modes)
 
-        # Rescale domain to physical units
-        if self._domain_type == 'Time':
-            domain = domain*t_scale
-            domain -= domain[0]       # set initial time to zero
-        elif self._domain_type == 'Frequency':
-            domain = domain/t_scale
-        else:
-            raise Exception('Invalid _domain_type.')
+        if domain is not None:
+            # Rescale domain to physical units
+            if self._domain_type == 'Time':
+                domain = domain*t_scale
+            elif self._domain_type == 'Frequency':
+                domain = domain/t_scale
+            else:
+                raise Exception('Invalid _domain_type.')
 
         # Rescale waveform to physical units
         if type(h) == dict:
@@ -1619,7 +1652,10 @@ class SurrogateEvaluator(object):
         else:
             h = h*amp_scale
 
-        return domain, h
+        if domain is None:
+            return h
+        else:
+            return domain, h
 
 
 

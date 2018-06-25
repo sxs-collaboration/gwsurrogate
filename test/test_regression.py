@@ -61,7 +61,7 @@ np.savez('data_notebook_basics_lesson2.npz',t_resamp=t_resamp,
 
   #t, hp, hc = EOBNRv2_sur(q=1.2)
   t_resamp, hp_resamp, hc_resamp = \
-    EOBNRv2_sur(1.2,samples=np.linspace(EOBNRv2_sur.tmin-1000,EOBNRv2_sur.tmax+1000,num=3000))
+    EOBNRv2_sur(1.2,times=np.linspace(EOBNRv2_sur.tmin-1000,EOBNRv2_sur.tmax+1000,num=3000))
 
   # load regression data
   reg_data = np.load('test/data_notebook_basics_lesson2.npz')
