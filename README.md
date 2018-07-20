@@ -21,6 +21,12 @@ gwsurrogate is available at https://pypi.python.org
 
 gwsurrogate is a pure-Python module, thus installation is very easy. 
 
+## Dependency ##
+
+gwsurrogate requires gwtools. If you are installing gwsurrogate with pip you
+will automatically get gwtools. If you are installing gwsurrogate from 
+source, please see https://bitbucket.org/chadgalley/gwtools/
+
 ## From pip ##
 
 The python package pip supports installing from PyPI (the Python Package 
@@ -37,8 +43,8 @@ Download and unpack gwsurrogate-X.X.tar.gz to any folder gws_folder of your
 choosing. The gwsurrogate module can be used immediately by adding
 
 ```
-  import sys
-  sys.path.append('absolute_path_to_gws_folder')
+import sys
+sys.path.append('absolute_path_to_gws_folder')
 ```
 
 at the beginning of any script/notebook which uses gwsurrogate. 
@@ -47,16 +53,18 @@ Alternatively, if you are a bash or sh user, edit your .profile
 (or .bash_profile) file and add the line
 
 ```
-  export PYTHONPATH=~absolute_path_to_gws_folder:$PYTHONPATH
+export PYTHONPATH=~absolute_path_to_gws_folder:$PYTHONPATH
 ```
 
-For a "proper" installation into gws_folder run
+For a "proper" installation
 
 ```
->>> python setup.py install --prefix=absolute_path_to_gws_folder
+>>> python setup.py install    # option 1
+>>> pip install -e gwsurrogate # option 2
 ```
 
-and edit the PYTHONPATH environment variable as described above.
+where the "-e" installs an editable (development) project with pip. This allows
+your local code edits to be automatically seen by the system-wide installation.
 
 
 # Getting Started #
@@ -81,10 +89,8 @@ from the directory 'notebooks'
 
 # Where to find surrogates? #
 
-Surrogates can be downloaded directly from gwsurrogate. 
-
-For download instructions see the basics.ipynb Jupyter notebook. Also visit
-the NR surrogate [database](https://www.black-holes.org/surrogates/).
+Surrogates can be downloaded directly from gwsurrogate. For download 
+instructions, see the basics.ipynb Jupyter notebook.
 
 
 # Tests #

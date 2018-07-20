@@ -4,7 +4,7 @@ try:
   from setuptools import setup
   setup
 except ImportError: # currently not supported
-  raise ImportError("GWSurrogate requires setuptools to correctly install the gwools submodule")
+  raise ImportError("GWSurrogate requires setuptools")
   #from distutils.core import setup # currently not supported
   #setup
 
@@ -17,7 +17,7 @@ except ImportError:
 
 
 setup(name='gwsurrogate',
-      version='0.8.3',
+      version='0.8.4',
       author='Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma',
       author_email='sfield@umassd.edu',
       packages=['gwsurrogate'],
@@ -29,7 +29,7 @@ setup(name='gwsurrogate',
       description='An easy to use interface to gravitational wave surrogate models',
       long_description=long_description,
       # will start new downloads if these are installed in a non-standard location
-      # install_requires=["numpy","matplotlib","scipy"],
+      install_requires=["gwtools"],
       classifiers=[
                 'Intended Audience :: Other Audience',
                 'Intended Audience :: Science/Research',

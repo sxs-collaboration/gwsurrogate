@@ -29,7 +29,7 @@ THE SOFTWARE.
 """
 
 import numpy as np
-from .gwtools import gwtools as gwtools # from the package gwtools, import the module gwtools (gwtools.py)....
+from gwtools import gwtools as gwtools # from the package gwtools, import the module gwtools (gwtools.py)....
 
 
 

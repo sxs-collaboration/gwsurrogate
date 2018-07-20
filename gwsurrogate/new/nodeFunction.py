@@ -35,7 +35,7 @@ from .saveH5Object import SimpleH5Object  # assumes unique global name
 
 from gwsurrogate import parametric_funcs
 import numpy as np
-from gwsurrogate import gwtools
+import gwtools
 from gwsurrogate.eval_pysur import evaluate_fit
 
 import warnings

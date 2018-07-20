@@ -31,7 +31,7 @@ THE SOFTWARE.
 # so they won't show up in gws' tab completion
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as _iuspline
-from gwsurrogate.gwtools.harmonics import sYlm as _sYlm
+from gwtools.harmonics import sYlm as _sYlm
 
 if __package__ is "" or "None": # py2 and py3 compatible
   print("setting __package__ to gwsurrogate.new so relative imports work")
