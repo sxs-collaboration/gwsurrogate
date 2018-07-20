@@ -8,7 +8,3 @@ include gwsurrogate/gwtools/*.py
 include gwsurrogate/eval_pysur/*.py
 recursive-include tutorial/TutorialSurrogate/EOB_q1_2_NoSpin_Mode22/l2_m2_len12239M_SurID19poly *.txt *.dat
 exclude gwsurrogate/LALsurrogate.py
-exclude gwsurrogate/gwtools/fitfuncs.py
-exclude gwsurrogate/gwtools/decompositions.py
-exclude gwsurrogate/gwtools/rotations.py
-exclude gwsurrogate/gwtools/mismatch.py
