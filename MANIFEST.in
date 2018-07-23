@@ -4,7 +4,6 @@ include README.md
 include tutorial/notebooks/*.ipynb
 include test/*.py
 include gwsurrogate/new/*.py
-include gwsurrogate/gwtools/*.py
 include gwsurrogate/eval_pysur/*.py
 recursive-include tutorial/TutorialSurrogate/EOB_q1_2_NoSpin_Mode22/l2_m2_len12239M_SurID19poly *.txt *.dat
 exclude gwsurrogate/LALsurrogate.py

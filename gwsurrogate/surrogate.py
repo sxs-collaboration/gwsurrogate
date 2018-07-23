@@ -44,8 +44,8 @@ from gwsurrogate.new.surrogate import ParamDim, ParamSpace
 import warnings
 import os
 
-from new import surrogate as new_surrogate
-import catalog
+from .new import surrogate as new_surrogate
+from . import catalog
 
 try:
   import matplotlib.pyplot as plt
@@ -1361,7 +1361,7 @@ class SurrogateEvaluator(object):
         self.soft_param_lims = soft_param_lims
         self.hard_param_lims = hard_param_lims
 
-        print 'Loaded %s model'%self.name
+        print('Loaded %s model'%self.name)
 
 
     def _load_dimless_surrogate(self):
