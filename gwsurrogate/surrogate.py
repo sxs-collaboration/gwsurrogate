@@ -165,7 +165,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
     ### if (M,distance) provided, a physical mode in mks units is returned ###
     if( M is not None and dist is not None):
-      amp0    = ((M * _gwtools.MSUN_SI ) / (dist * _gwtools.PC_SI )) * ( _gwtools.G / np.power(_gwtools.c,2.0) )
+      amp0    = ((M * _gwtools.MSUN_SI ) / (1.e6*dist*_gwtools.PC_SI )) * ( _gwtools.G / np.power(_gwtools.c,2.0) )
       t_scale = _gwtools.Msuninsec * M
     else:
       amp0    = 1.0

@@ -9,7 +9,6 @@ import numpy as np
 import gwsurrogate as gws
 import os
 
-
 # set global tolerances for floating point comparisons (see np.testing.assert_allclose)
 atol = 0.0
 rtol = 1.e-11
@@ -33,7 +32,15 @@ def test_notebook_basics_lesson1():
 np.savez('data_notebook_basics_lesson1.npz',t=t,hp=hp,hc=hc,
           amp=amp,phase=phase,phi_m=phi_m,h_adj=h_adj)"""
 
+  # because M and dist are provided, a physical GW is generated
   t, hp, hc  = EOBNRv2_sur(q=1.7, M=80.0, dist=1.0, phi_ref = 0.0, f_low = 10.0)
+
+  # old gwtools bug has been corrected, too lazy to regenerate regresion data
+  PC_SI_corrected = 3.085677581491367e+16 # corrected on 8/24/2018
+  PC_SI_wrong     = 3.08568025e+22
+  hp = (hp / PC_SI_wrong) * PC_SI_corrected
+  hc = (hc / PC_SI_wrong) * PC_SI_corrected
+ 
   amp, phase = EOBNRv2_sur.amp_phase(hp + 1j*hc)
 
   phi_m = EOBNRv2_sur.phi_merger(hp + 1j*hc)
@@ -135,3 +142,12 @@ def test_notebook_basics_lesson5():
 
   assert(False) #TODO: code me (download surrogates need to be rebuilt)
  
+if __name__ == '__main__':
+  print("Running test 1...")
+  test_notebook_basics_lesson1()
+  print("Running test 2...")
+  test_notebook_basics_lesson2()
+  print("Running test 3...")
+  test_notebook_basics_lesson3()
+  print("Running test 4...")
+  test_notebook_basics_lesson4()

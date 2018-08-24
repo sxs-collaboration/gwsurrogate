@@ -5,7 +5,7 @@ Each model should test the following at a small handful of parameter values:
 
 * all modes 
 * summation of all modes
-* each of the two above, for dimensionless and physics waveforms
+* each of the two above, for dimensionless and physical waveforms
 
 Before running this script (as a test), generate regression data
 
@@ -66,7 +66,7 @@ def test_model_regression(generate_regression_data=False):
 
   # for each model, associate its surrogate data file
   models = [model for model in gws.catalog._surrogate_world]
-  print models
+  print(models)
 
   models_to_test = {}
   for model in models:
@@ -133,7 +133,7 @@ def test_model_regression(generate_regression_data=False):
         modes, t, hp, hc = sur(q=ps_float,mode_sum=False,fake_neg_modes=True)
       else:
         if model in surrogate_loader_interface:
-          print ps
+          print(ps)
           t, h = sur(ps)
         else:
           h= sur(ps)

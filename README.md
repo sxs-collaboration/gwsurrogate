@@ -95,12 +95,21 @@ instructions, see the basics.ipynb Jupyter notebook.
 
 # Tests #
 
-If you have downloaded the entire project as a tar.gz file, from the 
-top folder, do
+If you have downloaded the entire project as a tar.gz file, its a good idea
+to run some regression tests. 
 
 ```
->>> py.test
+>>> py.test   # run from the top folder (not the test folder)
 ```
+
+Note that if you are running the model regression test, regression
+data must be generated locally on your machine:
+
+```
+>>> cd test
+>>> python test_model_regression.py
+```
+
 
 # NSF Support #
 
