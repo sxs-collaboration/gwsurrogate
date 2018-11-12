@@ -103,7 +103,7 @@ def download_path():
   import gwsurrogate
   import os
   gws_path = os.path.dirname(gwsurrogate.__file__)
-  return gws_path+'/../surrogate_downloads/'
+  return gws_path+'/surrogate_downloads/'
 
 def list():
   """show all known surrogates available for download"""
@@ -147,7 +147,7 @@ def pull(surr_name,sdir=download_path()):
             print('There are a lot of backup files in %s, consider removing'
                 ' some.'%backup_dir)
 
-    os.system('wget -q --show-progress --directory-prefix='+sdir+' '+surr_url)
+    os.system('wget -q --directory-prefix='+sdir+' '+surr_url)
   else:
     raise ValueError("No surrogate package exits")
 
