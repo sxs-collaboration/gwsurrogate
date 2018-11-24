@@ -588,8 +588,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
     Real and imaginary parts of coorbital frame waveform for other modes.
     """
 
-    def __init__(self, name=None, domain=None, param_space=None,
-            coorb_mode_data={(2, 2): {}}
+    def __init__(self, name=None, domain=None, param_space=None, \
+            phaseAlignIdx=None, coorb_mode_data={(2, 2): {}}
             ):
         """
         name:               A descriptive name for this surrogate.
@@ -598,6 +598,10 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                             values.
 
         param_space:        A ParamSpace for this surrogate.
+
+        phaseAlignIdx:      Index of domain at which the orbital phase is
+            aligned. This is used when putting back the TaylorT3 contribution
+            that was subtracted before modeling the phase.
 
         coorb_mode_data: A dictionary of modes with (l, m) integer keys, where
             the values are themselves dictionaries containing the coorbital
@@ -648,12 +652,17 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             many_function_components[mode] = ('identity', \
                 coorb_mode_data[mode], {})
 
+        # required for TaylorT3
+        self.phaseAlignIdx = phaseAlignIdx
+        self.TaylorT3_factor_without_eta = None
+
         super(AlignedSpinCoOrbitalFrameSurrogate, self).__init__(name,
                 domain, param_space, {}, many_function_components,
                 self.mode_type)
 
         self._h5_data_keys.append('mode_list')
         self._h5_data_keys.append('mode_type')
+        self._h5_data_keys.append('phaseAlignIdx')
 
 
     def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
@@ -771,6 +780,35 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         else:
             return h_dict
 
+    def _set_TaylorT3_factor(self):
+        """ Sets a term used in the 0 PN TaylorT3 phase. See Eq. (3.10a) of
+        https://arxiv.org/abs/0907.0700.
+        """
+        # Set only once
+        if self.TaylorT3_factor_without_eta is None:
+            # This is arbitrary. This is where the phase diverges, so let's
+            # choose it much after ringdown.
+            t_ref = 1000
+
+            theta_without_eta = ((t_ref - self.domain)/5)**(-1./8)
+            self.TaylorT3_factor_without_eta = -2./theta_without_eta**5
+
+    def _TaylorT3_phase_22(self, x):
+        """ 0 PN TaylorT3 phase. See Eq. (3.10a) of
+        https://arxiv.org/abs/0907.0700
+        """
+
+        q, chi1z, chi2z = x
+        eta = q/(1.+q)**2
+
+        # 0PN TaylorT3 phase
+        phi22_T3 = 1./eta**(3./8) * self.TaylorT3_factor_without_eta
+
+        # Align at phaseAlignIdx
+        phi22_T3 -= phi22_T3[self.phaseAlignIdx]
+
+        return phi22_T3
+
 
     def __call__(self, x, fM_low=None, fM_ref=None, dtM=None, timesM=None,
         dfM=None, freqsM=None, mode_list=None, par_dict=None,
@@ -825,7 +863,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                     gwsurrogate format as we may want to do some checks that
                     the waveform has not been modified.
 
-    Returns 
+    Returns
     h: If timesM is given.
     timesM, h: If timesM is None.
         timesM : time array in units of M.
@@ -846,7 +884,15 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
         # always evaluate the (2,2) mode, the other modes neeed this
         # for transformation from coorbital to inertial frame
+
+        #FIXME fill in arxiv
+        # At this stage the phase of the (2,2) mode is the residual after
+        # removing the TaylorT3 part (see. Eq.xx of arxiv.xxxx.xxxx)
         h_22 = self._eval_sur(x, tuple([2, 2]))
+
+        # Get the TaylorT3 part and add to get the actual phase
+        self._set_TaylorT3_factor()
+        h_22[0]['phase'] += self._TaylorT3_phase_22(x)
 
         h_coorb = {k: self._eval_sur(x, k) for k in mode_list \
                         if k != tuple([2,2])}
