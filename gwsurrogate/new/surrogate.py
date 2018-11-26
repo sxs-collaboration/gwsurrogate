@@ -652,7 +652,9 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             many_function_components[mode] = ('identity', \
                 coorb_mode_data[mode], {})
 
+        # required for TaylorT3
         self.phaseAlignIdx = phaseAlignIdx
+        self.TaylorT3_factor_without_eta = None
 
         super(AlignedSpinCoOrbitalFrameSurrogate, self).__init__(name,
                 domain, param_space, {}, many_function_components,
@@ -661,6 +663,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         self._h5_data_keys.append('mode_list')
         self._h5_data_keys.append('mode_type')
         self._h5_data_keys.append('phaseAlignIdx')
+        self._h5_data_keys.append('domain')
 
 
     def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
@@ -778,24 +781,29 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         else:
             return h_dict
 
-    def TaylorT3_phase_22(self, x):
-        """ 0 PN TaylorT3 phase including spin terms. See Eq. (3.10a) of
+    def _set_TaylorT3_factor(self):
+        """ Sets a term used in the 0 PN TaylorT3 phase. See Eq. (3.10a) of
+        https://arxiv.org/abs/0907.0700.
+        """
+        # Set only once
+        if self.TaylorT3_factor_without_eta is None:
+            # This is arbitrary. This is where the phase diverges, so let's
+            # choose it much after ringdown.
+            t_ref = 1000
+
+            theta_without_eta = ((t_ref - self.domain)/5)**(-1./8)
+            self.TaylorT3_factor_without_eta = -2./theta_without_eta**5
+
+    def _TaylorT3_phase_22(self, x):
+        """ 0 PN TaylorT3 phase. See Eq. (3.10a) of
         https://arxiv.org/abs/0907.0700
         """
 
         q, chi1z, chi2z = x
-        t = self.domain
-
-        # This is arbitrary. This is where the phase diverges, so let's choose
-        # it much after ringdown.
-        t_ref = 1000
-
         eta = q/(1.+q)**2
-        tau = eta * (t_ref - t)/5
-        theta = (tau)**(-1./8)
 
         # 0PN TaylorT3 phase
-        phi22_T3 = -2./eta/theta**5
+        phi22_T3 = 1./eta**(3./8) * self.TaylorT3_factor_without_eta
 
         # Align at phaseAlignIdx
         phi22_T3 -= phi22_T3[self.phaseAlignIdx]
@@ -884,7 +892,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         h_22 = self._eval_sur(x, tuple([2, 2]))
 
         # Get the TaylorT3 part and add to get the actual phase
-        h_22[0]['phase'] += self.TaylorT3_phase_22(x)
+        self._set_TaylorT3_factor()
+        h_22[0]['phase'] += self._TaylorT3_phase_22(x)
 
         h_coorb = {k: self._eval_sur(x, k) for k in mode_list \
                         if k != tuple([2,2])}
