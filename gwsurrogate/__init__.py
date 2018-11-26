@@ -96,3 +96,4 @@ THE SOFTWARE.
 
 from .surrogate import *
 from . import catalog
+from .spline_interp_Cwrapper import spline_interp_Cwrapper
