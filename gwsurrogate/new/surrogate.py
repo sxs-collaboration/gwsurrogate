@@ -43,6 +43,7 @@ from .saveH5Object import H5ObjectList
 from .saveH5Object import H5ObjectDict
 from .nodeFunction import NodeFunction
 from .spline_evaluation import TensorSplineGrid, fast_complex_tensor_spline_eval
+from gwsurrogate import spline_interp_Cwrapper
 
 PARAM_NUDGE_TOL = 1.e-12 # Default relative tolerance for nudging edge cases
 
@@ -76,6 +77,17 @@ def _splinterp(xout, xin, yin, k=3, ext='const'):
         return re + 1.j*im
     else:
         return _iuspline(xin, yin, k=k, ext=ext)(xout)
+
+def _splinterp_Cwrapper(xout, xin, yin):
+    """Uses gsl splines with a wrapper to interpolate real or complex data.
+    Uses natural boundary conditions instead of not-a-knot boundary conditions
+    like InterpolatedUnivariateSpline."""
+    if np.iscomplexobj(yin):
+        re = _splinterp_Cwrapper(xout, xin, np.real(yin))
+        im = _splinterp_Cwrapper(xout, xin, np.imag(yin))
+        return re + 1.j*im
+    else:
+        return spline_interp_Cwrapper.interpolate(xout, xin, yin)
 
 
 class ParamDim(SimpleH5Object):
@@ -734,8 +746,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                 if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
                     raise Exception('Trying to evaluate at times outside the'
                         ' domain.')
-            Amp_22 = _splinterp(timesM, domain, Amp_22, ext='raise')
-            phi_22 = _splinterp(timesM, domain, phi_22, ext='raise')
+            Amp_22 = _splinterp_Cwrapper(timesM, domain, Amp_22)
+            phi_22 = _splinterp_Cwrapper(timesM, domain, phi_22)
 
 
         # Get reference index where waveform needs to be aligned. If fM_ref
@@ -771,8 +783,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                 if fM_low is not None:
                     h_coorb_lm = h_coorb_lm[startIdx:]
                 if do_interp:
-                    h_coorb_lm = _splinterp(timesM, domain, h_coorb_lm, \
-                        ext='raise')
+                    h_coorb_lm = _splinterp_Cwrapper(timesM, domain, h_coorb_lm)
+
                 h_dict[mode] = h_coorb_lm * np.exp(-1j*m*phi_22/2.)
 
         if return_times:
