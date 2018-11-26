@@ -779,13 +779,9 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             return h_dict
 
     def TaylorT3_phase_22(self, x):
-        """ 3.5 PN TaylorT3 phase including spin terms. Described in
-        Appendix A of arxiv.xxxx.xxxx.
+        """ 0 PN TaylorT3 phase including spin terms. See Eq. (3.10a) of
+        https://arxiv.org/abs/0907.0700
         """
-        #FIXME fill in arxiv above
-
-        def Power(x, n):
-            return x**n
 
         q, chi1z, chi2z = x
         t = self.domain
@@ -795,62 +791,11 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         t_ref = 1000
 
         eta = q/(1.+q)**2
-        m1 = q/(1. + q)
-        m2 = 1./(1. + q)
-        delta = m1 - m2
-        chis = (chi1z + chi2z)/2.
-        chia = (chi1z - chi2z)/2.
-
         tau = eta * (t_ref - t)/5
         theta = (tau)**(-1./8)
 
-        # from lal
-        EulerGamma = 0.5772156649015329
-
-        # Get the series expansion without the prefactor
-        phi22_T3 = 1 + (5*(743 + 924*eta)*Power(theta,2))/8064. \
-            - ((chis*(-113 + 76*eta) + 48*np.pi \
-            - 113*chia*delta)*Power(theta,3))/64. \
-            + (5*(1855099 + 3190600*eta + 2617776*Power(eta,2) \
-            + 42336*Power(chis,2)*(-81 + 4*eta) \
-            + 42336*Power(chia,2)*(-81 + 320*eta) \
-            - 6858432*chia*chis*delta)*Power(theta,4))/1.4450688e7 \
-            - (5*np.log(tau)*(1512*Power(chis,3)*(-1 + 3*eta) \
-            + chis*(-147101 + 137368*eta + 17136*Power(eta,2) \
-            + 4536*Power(chia,2)*(-1 + 3*eta)) + (23187 - 3276*eta)*np.pi \
-            + chia*(-147101 + 1512*Power(chia,2)*(-1 + eta) - 6552*eta)*delta \
-            + 4536*chia*Power(chis,2)*(-1 \
-            + eta)*delta)*Power(theta,5))/516096. \
-            + ((756*Power(chis,3)*(1350103 - 1021458*eta \
-            + 642264*Power(eta,2)) \
-            + 3*(188516689 + 164245200*eta - 47634384*Power(eta,2) \
-            + 762048*Power(chia,2)*(-407 + 1600*eta))*np.pi \
-            + 2*chia*(-7238315531 \
-            + 2733253845*eta + 900352656*Power(eta,2) \
-            + 378*Power(chia,2)*(1350103 \
-            - 6008470*eta + 180600*Power(eta,2)))*delta \
-            + 2268*Power(chis,2)*(1008*(-407 + 28*eta)*np.pi \
-            + chia*(1350103 - 883658*eta + 180600*Power(eta,2))*delta) \
-            + 2*chis*(-7238315531 + 10653615427*eta + 1190364756*Power(eta,2) \
-            - 460770912*Power(eta,3) \
-            + 1134*Power(chia,2)*(1350103 - 6146270*eta \
-            + 2199400*Power(eta,2)) \
-            - 930460608*chia*np.pi*delta))*Power(theta,7))/5.20224768e8 \
-            + (Power(theta,6)*(831032450749357 - 110214819348480*EulerGamma \
-            + 13776852418560*np.log(tau) - 1753429845806100*eta \
-            + 4858670401200*Power(eta,2) - 38454265080000*Power(eta,3) \
-            - 4191264*Power(chis,2)*(8322937 - 113716448*eta \
-            + 35608048*Power(eta,2)) - 4191264*Power(chia,2)*(8322937 \
-            - 70586748*eta + 136953600*Power(eta,2)) \
-            - 45064470528*chis*(-6127 + 4204*eta)*np.pi \
-            - 76429342015488*Power(np.pi,2) \
-            + 63512738150400*eta*Power(np.pi,2) \
-            + 58677696*chia*(chis*(-1188991 + 10786532*eta) \
-            + 4705536*np.pi)*delta \
-            - 13776852418560*np.log(256)))/5.768252227584e13
-
-        # Get the prefactor
-        phi22_T3 *= -2./eta/theta**5
+        # 0PN TaylorT3 phase
+        phi22_T3 = -2./eta/theta**5
 
         # Align at phaseAlignIdx
         phi22_T3 -= phi22_T3[self.phaseAlignIdx]
