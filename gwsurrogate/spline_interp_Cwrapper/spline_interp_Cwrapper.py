@@ -16,6 +16,9 @@ c_interp = _load_spline_interp('%s/_spline_interp.so'%dll_dir, 'spline_interp')
 
 def interpolate(xnew, x, y):
 
+    if min(xnew) < min(x) or max(xnew) > max(x):
+        raise Exception('Extrapolation not allowed')
+
     x = x.astype('float64')
     y = y.astype('float64')
     xnew = xnew.astype('float64')

@@ -740,7 +740,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             do_interp = True
             if dtM is not None:
                 # Interpolate onto uniform domain if needed
-                timesM = np.arange(domain[0], domain[-1], dtM)
+                timesM = np.arange(domain[0]+1e-10, domain[-1]-1e-10, dtM)
             else:
                 return_times = False
                 if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
