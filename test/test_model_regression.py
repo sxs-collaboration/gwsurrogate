@@ -36,7 +36,7 @@ surrogate_loader_interface = ["NRHybSur3dq8"]
 
 def test_model_regression(generate_regression_data=False):
   """ If generate_regression_data = True, this script will generate 
-  an hdf5 file to diff against. 
+  an hdf5 file to diff against. No regression will be done.
 
   If generate_regression_data = False, this script will compare 
   model evaluations to the hdf5 file produced when True. """
@@ -44,12 +44,15 @@ def test_model_regression(generate_regression_data=False):
   if generate_regression_data:
     h5_file = "regression_data.h5"
     print("Generating regression data file... Make sure this step is done BEFORE making any code changes!\n")
+    print(os.path.exists(h5_file))
+    if os.path.exists(h5_file):
+      raise RuntimeError("Refusing to overwrite a regression file!")
   else:
     h5_file = "test/comparison_data.h5" # assumes py.test runs from project-level folder
 
   # remove models if you don't have them
-  dont_test = ["NRSur4d2s_TDROM_grid12",
-               "NRSur4d2s_FDROM_grid12",
+  dont_test = ["NRSur4d2s_TDROM_grid12", # 10 GB file
+               "NRSur4d2s_FDROM_grid12", # 10 GB file
                #"SpEC_q1_10_NoSpin_linear_alt",
                #"SpEC_q1_10_NoSpin_linear",
                "EOBNRv2", #TODO: this is two surrogates in one. Break up?
@@ -97,6 +100,7 @@ def test_model_regression(generate_regression_data=False):
 
   # for each model, select three random points to evalaute at
   models_tested = []
+  param_samples_tested = []
   for model, datafile in models_to_test.items():
 
     print("Generating regression data for model = %s"%model)
@@ -125,6 +129,8 @@ def test_model_regression(generate_regression_data=False):
         tmp = float(np.random.uniform(xj_min, xj_max,size=1))
         param_sample.append(tmp)
       param_samples.append(param_sample)
+
+    param_samples_tested.append(param_samples)
 
     model_grp = fp.create_group(model)
     for i, ps in enumerate(param_samples):
@@ -160,7 +166,9 @@ def test_model_regression(generate_regression_data=False):
         print(stdout)
         print(stderr)
         assert(False)
-  print("models tested = ",models_tested)
+  print("models tested... ")
+  for i, model_tested in enumerate(models_tested):
+    print("model %s at points..."%model_tested+str(param_samples_tested[i]))
 
 
 #------------------------------------------------------------------------------
