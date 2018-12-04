@@ -611,9 +611,10 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
         param_space:        A ParamSpace for this surrogate.
 
-        phaseAlignIdx:      Index of domain at which the orbital phase is
+        phaseAlignIdx:      This value should be loaded direclty from the
+            surrogate's h5 file. Index of domain at which the orbital phase is
             aligned. This is used when putting back the TaylorT3 contribution
-            that was subtracted before modeling the phase.
+            that was subtracted before modeling the phase. 
 
         coorb_mode_data: A dictionary of modes with (l, m) integer keys, where
             the values are themselves dictionaries containing the coorbital
@@ -740,6 +741,9 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             do_interp = True
             if dtM is not None:
                 # Interpolate onto uniform domain if needed
+                # Without e-10 buffer, the gsl function raises extrapolation
+                # errors. Going to smaller than 1e-10 also raises errors.
+                # This is fine because these will be the timesM that are returned.
                 timesM = np.arange(domain[0]+1e-10, domain[-1]-1e-10, dtM)
             else:
                 return_times = False
