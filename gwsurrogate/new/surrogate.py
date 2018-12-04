@@ -601,7 +601,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
     """
 
     def __init__(self, name=None, domain=None, param_space=None, \
-            phaseAlignIdx=None, coorb_mode_data={(2, 2): {}}
+            phaseAlignIdx=None, TaylorT3_t_ref=None, \
+            coorb_mode_data={(2, 2): {}}
             ):
         """
         name:               A descriptive name for this surrogate.
@@ -667,6 +668,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
         # required for TaylorT3
         self.phaseAlignIdx = phaseAlignIdx
+        self.TaylorT3_t_ref = TaylorT3_t_ref
         self.TaylorT3_factor_without_eta = None
 
         super(AlignedSpinCoOrbitalFrameSurrogate, self).__init__(name,
@@ -676,6 +678,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         self._h5_data_keys.append('mode_list')
         self._h5_data_keys.append('mode_type')
         self._h5_data_keys.append('phaseAlignIdx')
+        self._h5_data_keys.append('TaylorT3_t_ref')
 
 
     def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
@@ -740,10 +743,9 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         else:
             do_interp = True
             if dtM is not None:
-                # Interpolate onto uniform domain if needed
-                # Without e-10 buffer, the gsl function raises extrapolation
-                # errors. Going to smaller than 1e-10 also raises errors.
-                # This is fine because these will be the timesM that are returned.
+                # Interpolate onto uniform domain if needed, add small offsets
+                # to ensure no extrapolation (GSL throws an error).
+                # timesM are returned, so no waveform evaluation error is made
                 timesM = np.arange(domain[0]+1e-10, domain[-1]-1e-10, dtM)
             else:
                 return_times = False
@@ -802,11 +804,12 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         """
         # Set only once
         if self.TaylorT3_factor_without_eta is None:
-            # This is arbitrary. This is where the phase diverges, so let's
-            # choose it much after ringdown.
-            t_ref = 1000
-
-            theta_without_eta = ((t_ref - self.domain)/5)**(-1./8)
+            #FIXME fill in arxiv
+            # TaylorT3_t_ref is arbitrary. This is where the phase diverges,
+            # so we choose it much after ringdown. This matches what was used
+            # in the construction of the surrogate. See discussion near Eq.42
+            # of arxiv.xxxx.xxxx
+            theta_without_eta = ((self.TaylorT3_t_ref - self.domain)/5)**(-1./8)
             self.TaylorT3_factor_without_eta = -2./theta_without_eta**5
 
     def _TaylorT3_phase_22(self, x):
@@ -903,7 +906,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
         #FIXME fill in arxiv
         # At this stage the phase of the (2,2) mode is the residual after
-        # removing the TaylorT3 part (see. Eq.xx of arxiv.xxxx.xxxx)
+        # removing the TaylorT3 part (see. Eq.43 of arxiv.xxxx.xxxx)
         h_22 = self._eval_sur(x, tuple([2, 2]))
 
         # Get the TaylorT3 part and add to get the actual phase
