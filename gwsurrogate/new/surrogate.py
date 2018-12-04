@@ -675,7 +675,6 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         self._h5_data_keys.append('mode_list')
         self._h5_data_keys.append('mode_type')
         self._h5_data_keys.append('phaseAlignIdx')
-        self._h5_data_keys.append('domain')
 
 
     def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
