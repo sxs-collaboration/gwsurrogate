@@ -73,7 +73,7 @@ of interest.
 __copyright__ = "Copyright (C) 2014 Scott Field, Chad Galley"
 __email__ = "sfield@umassd.edu"
 __status__ = "testing"
-__author__ = "Jonathan Blackman, Scott Field, Chad Galley"
+__author__ = "Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma"
 __license__ = """
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -96,4 +96,5 @@ THE SOFTWARE.
 
 from .surrogate import *
 from . import catalog
-from .spline_interp_Cwrapper import spline_interp_Cwrapper
+from . import spline_interp_Cwrapper
+

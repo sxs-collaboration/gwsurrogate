@@ -1,1 +1,1 @@
-from spline_interp_Cwrapper import interpolate
+from .spline_interp_Cwrapper import interpolate

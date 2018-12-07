@@ -1,3 +1,5 @@
+# This extension should be built from the gwsurrogate-level setup.py
+# script. However, this setup.py is here for local builds
 from distutils.core import setup, Extension
 import os
 

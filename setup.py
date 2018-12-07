@@ -1,7 +1,7 @@
-import sys
+import sys, os
 
 try:
-  from setuptools import setup
+  from setuptools import setup, Extension
   setup
 except ImportError: # currently not supported
   raise ImportError("GWSurrogate requires setuptools")
@@ -14,6 +14,21 @@ try:
     long_description = pypandoc.convert('README.md', 'rst')
 except ImportError:
     long_description = open('README.md').read()
+
+# build extension: python wrapper to gsl's spline function
+if os.path.isdir('/opt/local/include'):
+    IncDirs = ['/opt/local/include']
+else:
+    IncDirs = []
+if os.path.isdir('/opt/local/lib'):
+    LibDirs = ['/opt/local/lib']
+else:
+    LibDirs = []
+extmod = Extension('gwsurrogate.spline_interp_Cwrapper._spline_interp',
+                   include_dirs = IncDirs,
+                   libraries = ['gsl'],
+                   library_dirs = LibDirs,
+                   sources = ['gwsurrogate/spline_interp_Cwrapper/_spline_interp.c'])
 
 
 setup(name='gwsurrogate',
@@ -40,4 +55,5 @@ setup(name='gwsurrogate',
                 'Topic :: Scientific/Engineering :: Mathematics',
                 'Topic :: Scientific/Engineering :: Physics',
       ],
+      ext_modules = [extmod],
 )

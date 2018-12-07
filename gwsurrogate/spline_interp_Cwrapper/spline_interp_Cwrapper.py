@@ -2,6 +2,7 @@ import ctypes
 from ctypes import c_double, c_long, POINTER
 import numpy as np
 import os
+from glob import glob
 
 def _load_spline_interp(dll_path,function_name):
     dll = ctypes.CDLL(dll_path, mode=ctypes.RTLD_GLOBAL)
@@ -12,7 +13,15 @@ def _load_spline_interp(dll_path,function_name):
     return func
 
 dll_dir = os.path.dirname(os.path.realpath(__file__))
-c_interp = _load_spline_interp('%s/_spline_interp.so'%dll_dir, 'spline_interp')
+dll_path_glob = '%s/_spline_interp*so'%dll_dir
+spline_libs = glob(dll_path_glob)
+if len(spline_libs) == 0:
+  raise Exception('_spline_interp library not found!')
+elif len(spline_libs) > 1:
+  raise Exception('there should be only one _spline_interp library!')
+else:
+  #c_interp = _load_spline_interp('%s/_spline_interp.so'%dll_dir, 'spline_interp')
+  c_interp = _load_spline_interp(spline_libs[0], 'spline_interp')
 
 def interpolate(xnew, x, y):
 
