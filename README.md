@@ -20,13 +20,17 @@ gwsurrogate is available at https://pypi.python.org
 
 # Installation #
 
-gwsurrogate is a pure-Python module, thus installation is very easy. 
-
 ## Dependency ##
 
-gwsurrogate requires gwtools. If you are installing gwsurrogate with pip you
+gwsurrogate requires:
+
+1)  gwtools. If you are installing gwsurrogate with pip you
 will automatically get gwtools. If you are installing gwsurrogate from 
 source, please see https://bitbucket.org/chadgalley/gwtools/
+
+2) gsl. For speed, the long (hybrid) surrogates use gsl's spline function. 
+To build gwsurrogate you must have gsl installed. Fortunately, this is a
+common library and can be easily installed with a package manager. 
 
 ## From pip ##
 
