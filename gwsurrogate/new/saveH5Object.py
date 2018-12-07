@@ -106,6 +106,11 @@ def _read_attrs(f):
             v = item.value
             if type(v) == np.string_:
                 v = str(v)
+            if isinstance(v,bytes): # some strings are stored as bytes object
+                try: # python 3
+                    v = str(v,"utf-8")
+                except: # if python 2, use...
+                    v = str(v)
             if type(v) == str and v == NONE_STR:
                 d[k] = None
             else:

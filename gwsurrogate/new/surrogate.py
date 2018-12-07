@@ -43,6 +43,7 @@ from .saveH5Object import H5ObjectList
 from .saveH5Object import H5ObjectDict
 from .nodeFunction import NodeFunction
 from .spline_evaluation import TensorSplineGrid, fast_complex_tensor_spline_eval
+from gwsurrogate import spline_interp_Cwrapper
 
 PARAM_NUDGE_TOL = 1.e-12 # Default relative tolerance for nudging edge cases
 
@@ -76,6 +77,17 @@ def _splinterp(xout, xin, yin, k=3, ext='const'):
         return re + 1.j*im
     else:
         return _iuspline(xin, yin, k=k, ext=ext)(xout)
+
+def _splinterp_Cwrapper(xout, xin, yin):
+    """Uses gsl splines with a wrapper to interpolate real or complex data.
+    Uses natural boundary conditions instead of not-a-knot boundary conditions
+    like InterpolatedUnivariateSpline."""
+    if np.iscomplexobj(yin):
+        re = _splinterp_Cwrapper(xout, xin, np.real(yin))
+        im = _splinterp_Cwrapper(xout, xin, np.imag(yin))
+        return re + 1.j*im
+    else:
+        return spline_interp_Cwrapper.interpolate(xout, xin, yin)
 
 
 class ParamDim(SimpleH5Object):
@@ -588,7 +600,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
     Real and imaginary parts of coorbital frame waveform for other modes.
     """
 
-    def __init__(self, name=None, domain=None, param_space=None,
+    def __init__(self, name=None, domain=None, param_space=None, \
+            phaseAlignIdx=None, TaylorT3_t_ref=None, \
             coorb_mode_data={(2, 2): {}}
             ):
         """
@@ -598,6 +611,11 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                             values.
 
         param_space:        A ParamSpace for this surrogate.
+
+        phaseAlignIdx:      This value should be loaded direclty from the
+            surrogate's h5 file. Index of domain at which the orbital phase is
+            aligned. This is used when putting back the TaylorT3 contribution
+            that was subtracted before modeling the phase. 
 
         coorb_mode_data: A dictionary of modes with (l, m) integer keys, where
             the values are themselves dictionaries containing the coorbital
@@ -648,12 +666,19 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             many_function_components[mode] = ('identity', \
                 coorb_mode_data[mode], {})
 
+        # required for TaylorT3
+        self.phaseAlignIdx = phaseAlignIdx
+        self.TaylorT3_t_ref = TaylorT3_t_ref
+        self.TaylorT3_factor_without_eta = None
+
         super(AlignedSpinCoOrbitalFrameSurrogate, self).__init__(name,
                 domain, param_space, {}, many_function_components,
                 self.mode_type)
 
         self._h5_data_keys.append('mode_list')
         self._h5_data_keys.append('mode_type')
+        self._h5_data_keys.append('phaseAlignIdx')
+        self._h5_data_keys.append('TaylorT3_t_ref')
 
 
     def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
@@ -718,15 +743,17 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         else:
             do_interp = True
             if dtM is not None:
-                # Interpolate onto uniform domain if needed
-                timesM = np.arange(domain[0], domain[-1], dtM)
+                # Interpolate onto uniform domain if needed, add small offsets
+                # to ensure no extrapolation (GSL throws an error).
+                # timesM are returned, so no waveform evaluation error is made
+                timesM = np.arange(domain[0]+1e-10, domain[-1]-1e-10, dtM)
             else:
                 return_times = False
                 if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
                     raise Exception('Trying to evaluate at times outside the'
                         ' domain.')
-            Amp_22 = _splinterp(timesM, domain, Amp_22, ext='raise')
-            phi_22 = _splinterp(timesM, domain, phi_22, ext='raise')
+            Amp_22 = _splinterp_Cwrapper(timesM, domain, Amp_22)
+            phi_22 = _splinterp_Cwrapper(timesM, domain, phi_22)
 
 
         # Get reference index where waveform needs to be aligned. If fM_ref
@@ -762,14 +789,44 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                 if fM_low is not None:
                     h_coorb_lm = h_coorb_lm[startIdx:]
                 if do_interp:
-                    h_coorb_lm = _splinterp(timesM, domain, h_coorb_lm, \
-                        ext='raise')
+                    h_coorb_lm = _splinterp_Cwrapper(timesM, domain, h_coorb_lm)
+
                 h_dict[mode] = h_coorb_lm * np.exp(-1j*m*phi_22/2.)
 
         if return_times:
             return timesM, h_dict
         else:
             return h_dict
+
+    def _set_TaylorT3_factor(self):
+        """ Sets a term used in the 0 PN TaylorT3 phase. See Eq. (3.10a) of
+        https://arxiv.org/abs/0907.0700.
+        """
+        # Set only once
+        if self.TaylorT3_factor_without_eta is None:
+            #FIXME fill in arxiv
+            # TaylorT3_t_ref is arbitrary. This is where the phase diverges,
+            # so we choose it much after ringdown. This matches what was used
+            # in the construction of the surrogate. See discussion near Eq.42
+            # of arxiv.xxxx.xxxx
+            theta_without_eta = ((self.TaylorT3_t_ref - self.domain)/5)**(-1./8)
+            self.TaylorT3_factor_without_eta = -2./theta_without_eta**5
+
+    def _TaylorT3_phase_22(self, x):
+        """ 0 PN TaylorT3 phase. See Eq. (3.10a) of
+        https://arxiv.org/abs/0907.0700
+        """
+
+        q, chi1z, chi2z = x
+        eta = q/(1.+q)**2
+
+        # 0PN TaylorT3 phase
+        phi22_T3 = 1./eta**(3./8) * self.TaylorT3_factor_without_eta
+
+        # Align at phaseAlignIdx
+        phi22_T3 -= phi22_T3[self.phaseAlignIdx]
+
+        return phi22_T3
 
 
     def __call__(self, x, fM_low=None, fM_ref=None, dtM=None, timesM=None,
@@ -825,7 +882,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                     gwsurrogate format as we may want to do some checks that
                     the waveform has not been modified.
 
-    Returns 
+    Returns
     h: If timesM is given.
     timesM, h: If timesM is None.
         timesM : time array in units of M.
@@ -846,7 +903,15 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
         # always evaluate the (2,2) mode, the other modes neeed this
         # for transformation from coorbital to inertial frame
+
+        #FIXME fill in arxiv
+        # At this stage the phase of the (2,2) mode is the residual after
+        # removing the TaylorT3 part (see. Eq.43 of arxiv.xxxx.xxxx)
         h_22 = self._eval_sur(x, tuple([2, 2]))
+
+        # Get the TaylorT3 part and add to get the actual phase
+        self._set_TaylorT3_factor()
+        h_22[0]['phase'] += self._TaylorT3_phase_22(x)
 
         h_coorb = {k: self._eval_sur(x, k) for k in mode_list \
                         if k != tuple([2,2])}

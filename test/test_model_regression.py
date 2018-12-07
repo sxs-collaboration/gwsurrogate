@@ -36,7 +36,7 @@ surrogate_loader_interface = ["NRHybSur3dq8"]
 
 def test_model_regression(generate_regression_data=False):
   """ If generate_regression_data = True, this script will generate 
-  an hdf5 file to diff against. 
+  an hdf5 file to diff against. No regression will be done.
 
   If generate_regression_data = False, this script will compare 
   model evaluations to the hdf5 file produced when True. """
@@ -44,12 +44,16 @@ def test_model_regression(generate_regression_data=False):
   if generate_regression_data:
     h5_file = "regression_data.h5"
     print("Generating regression data file... Make sure this step is done BEFORE making any code changes!\n")
+    print(os.path.exists(h5_file))
+    if os.path.exists(h5_file):
+      raise RuntimeError("Refusing to overwrite a regression file!")
   else:
     h5_file = "test/comparison_data.h5" # assumes py.test runs from project-level folder
+    fp_regression = h5py.File("test/regression_data.h5",'r') 
 
   # remove models if you don't have them
-  dont_test = ["NRSur4d2s_TDROM_grid12",
-               "NRSur4d2s_FDROM_grid12",
+  dont_test = ["NRSur4d2s_TDROM_grid12", # 10 GB file
+               "NRSur4d2s_FDROM_grid12", # 10 GB file
                #"SpEC_q1_10_NoSpin_linear_alt",
                #"SpEC_q1_10_NoSpin_linear",
                "EOBNRv2", #TODO: this is two surrogates in one. Break up?
@@ -61,7 +65,7 @@ def test_model_regression(generate_regression_data=False):
   # Common directory where all surrogates are assumed to be located
   surrogate_path = gws.catalog.download_path()
  
-  # repeatability needed for regression tests to make sense 
+  # repeatability can be useful for regression tests
   np.random.seed(0)
 
   # for each model, associate its surrogate data file
@@ -97,6 +101,7 @@ def test_model_regression(generate_regression_data=False):
 
   # for each model, select three random points to evalaute at
   models_tested = []
+  param_samples_tested = []
   for model, datafile in models_to_test.items():
 
     print("Generating regression data for model = %s"%model)
@@ -117,14 +122,21 @@ def test_model_regression(generate_regression_data=False):
     print("parameter maximum values",p_maxs)
 
     param_samples = []
-    for i in range(3):  # sample parameter space 3 times 
-      param_sample = []
-      for j in range(len(p_mins)):
-        xj_min = p_mins[j]
-        xj_max = p_maxs[j]
-        tmp = float(np.random.uniform(xj_min, xj_max,size=1))
-        param_sample.append(tmp)
-      param_samples.append(param_sample)
+    if generate_regression_data: # pick new points to compute regression data at
+      for i in range(3):  # sample parameter space 3 times 
+        param_sample = []
+        for j in range(len(p_mins)):
+          xj_min = p_mins[j]
+          xj_max = p_maxs[j]
+          tmp = float(np.random.uniform(xj_min, xj_max,size=1))
+          param_sample.append(tmp)
+        param_samples.append(param_sample)
+    else: # pull regression points from regression data file
+      param_samples.append( list(fp_regression[model+"/parameter0/parameter"][:]) )
+      param_samples.append( list(fp_regression[model+"/parameter1/parameter"][:]) )
+      param_samples.append( list(fp_regression[model+"/parameter2/parameter"][:]) )
+
+    param_samples_tested.append(param_samples)
 
     model_grp = fp.create_group(model)
     for i, ps in enumerate(param_samples):
@@ -146,8 +158,10 @@ def test_model_regression(generate_regression_data=False):
       samplei.create_dataset("hp",data=hp)
       samplei.create_dataset("hc",data=hc)
   fp.close()
+
   
   if not generate_regression_data:
+    fp_regression.close()
     process = subprocess.Popen(["h5diff", "test/regression_data.h5",h5_file],
                                stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE,
@@ -160,7 +174,9 @@ def test_model_regression(generate_regression_data=False):
         print(stdout)
         print(stderr)
         assert(False)
-  print("models tested = ",models_tested)
+  print("models tested... ")
+  for i, model_tested in enumerate(models_tested):
+    print("model %s at points..."%model_tested+str(param_samples_tested[i]))
 
 
 #------------------------------------------------------------------------------

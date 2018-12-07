@@ -5,27 +5,32 @@ GWSurrogate is an easy to use interface to gravitational wave surrogate models.
 Surrogates provide a fast and accurate evaluation mechanism for gravitational
 waveforms which would otherwise be found through solving differential 
 equations. These equations must be solved in the ``building" phase, which 
-was performed using other codes. For details see:
+was performed using other codes. For details see
 
 [1] Scott Field, Chad Galley, Jan Hesthaven, Jason Kaye, and Manuel Tiglio. 
 `"Fast prediction and evaluation of gravitational waveforms using surrogate 
 models". Phys. Rev. X 4, 031006 (2014). arXiv: gr-qc:1308.3565
 
 If you find this package useful in your work, please cite reference [1] and, 
-if available, the relevant paper describing the specific surrogate used.
+if available, the relevant paper describing the specific surrogate used. 
+
+All available models can be found in gwsurrogate.catalog.list()
 
 gwsurrogate is available at https://pypi.python.org
 
-
 # Installation #
-
-gwsurrogate is a pure-Python module, thus installation is very easy. 
 
 ## Dependency ##
 
-gwsurrogate requires gwtools. If you are installing gwsurrogate with pip you
+gwsurrogate requires:
+
+1)  gwtools. If you are installing gwsurrogate with pip you
 will automatically get gwtools. If you are installing gwsurrogate from 
 source, please see https://bitbucket.org/chadgalley/gwtools/
+
+2) gsl. For speed, the long (hybrid) surrogates use gsl's spline function. 
+To build gwsurrogate you must have gsl installed. Fortunately, this is a
+common library and can be easily installed with a package manager. 
 
 ## From pip ##
 
@@ -96,20 +101,17 @@ instructions, see the basics.ipynb Jupyter notebook.
 # Tests #
 
 If you have downloaded the entire project as a tar.gz file, its a good idea
-to run some regression tests. 
+to run some regression tests. Note that if you are running the model regression
+tests, regression data must be generated locally on your machine.
+
 
 ```
->>> py.test   # run from the top folder (not the test folder)
+>>> cd test                          # move into the folder test
+>>> python test_model_regression.py  # create model regression data
+>>> cd ..                            # move back to the top-level folder
+>>> pytest                           # run all tests
+>>> pytest -v -s                     # run all tests with high verbosity
 ```
-
-Note that if you are running the model regression test, regression
-data must be generated locally on your machine:
-
-```
->>> cd test
->>> python test_model_regression.py
-```
-
 
 # NSF Support #
 
