@@ -21,6 +21,8 @@ pipelines:
           - pip install scikit-learn
           - git submodule init
           - git submodule update
-          - pip install gwsurrogate/ # install from local setup.py
-          - cd gwsurrogate
+          - cd ..
+          - ls
+          - pip install build/ # install from local setup.py
+          - cd build
           - pytest
