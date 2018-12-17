@@ -11,7 +11,13 @@ Before running this script (as a test), generate regression data
 
 >>> python test_model_regression.py
 
-from the folder test
+from the folder test.
+
+
+
+NOTE: waveform regression data is saved with single precision In order to,
+     (i) reduce the size of the regression file and
+     (ii) allow h5diff to not fail due to round-off error 
 """
 
 
@@ -25,7 +31,7 @@ import h5py, os, subprocess, time
 #atol = 0.0
 #rtol = 1.e-11
 
-# TODO: new and old surroagte interfaces should be similar enough to avoid
+# TODO: new and old surrogate interfaces should be similar enough to avoid
 #       model-specific cases like below
 
 # Old surrogate interface
@@ -39,17 +45,23 @@ def test_model_regression(generate_regression_data=False):
   an hdf5 file to diff against. No regression will be done.
 
   If generate_regression_data = False, this script will compare 
-  model evaluations to the hdf5 file produced when True. """
+  model evaluations to the hdf5 file produced when True. In a typical use case,
+  this regression file will be downloaded. """
 
   if generate_regression_data:
-    h5_file = "regression_data.h5"
+    h5_file = "model_regression_data.h5"
     print("Generating regression data file... Make sure this step is done BEFORE making any code changes!\n")
     print(os.path.exists(h5_file))
     if os.path.exists(h5_file):
       raise RuntimeError("Refusing to overwrite a regression file!")
   else:
-    h5_file = "test/comparison_data.h5" # assumes py.test runs from project-level folder
-    fp_regression = h5py.File("test/regression_data.h5",'r') 
+    h5_file = "test/comparison_data.h5" # assumes pytest runs from project-level folder
+    try: # try importing data. If it doesn't exist, download it
+      fp_regression = h5py.File("test/model_regression_data.h5",'r') 
+    except IOError:
+      print("Downloading regression data...")
+      os.system('wget --directory-prefix=test https://www.dropbox.com/s/ew83hq2jwkyw5p1/model_regression_data.h5')
+      fp_regression = h5py.File("test/model_regression_data.h5",'r') 
 
   # remove models if you don't have them
   dont_test = ["NRSur4d2s_TDROM_grid12", # 10 GB file
@@ -99,7 +111,7 @@ def test_model_regression(generate_regression_data=False):
 
   fp = h5py.File(h5_file,"w")
 
-  # for each model, select three random points to evalaute at
+  # for each model, select three random points to evaluate at
   models_tested = []
   param_samples_tested = []
   for model, datafile in models_to_test.items():
@@ -155,14 +167,14 @@ def test_model_regression(generate_regression_data=False):
         hc = np.imag(h_np)
       samplei = model_grp.create_group("parameter"+str(i))
       samplei.create_dataset("parameter",data=ps)
-      samplei.create_dataset("hp",data=hp)
-      samplei.create_dataset("hc",data=hc)
+      samplei.create_dataset("hp", data=hp, dtype='float32')
+      samplei.create_dataset("hc", data=hc, dtype='float32')
   fp.close()
 
   
   if not generate_regression_data:
     fp_regression.close()
-    process = subprocess.Popen(["h5diff", "test/regression_data.h5",h5_file],
+    process = subprocess.Popen(["h5diff", "test/model_regression_data.h5",h5_file],
                                stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
