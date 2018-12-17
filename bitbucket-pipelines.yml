@@ -12,8 +12,6 @@ pipelines:
         caches:
           - pip
         script: # Modify the commands below to build your repository.
-          - echo $PWD
-          - ls
           - pip install pytest
           - pip install scipy
           - pip install gwtools
@@ -22,7 +20,7 @@ pipelines:
           - git submodule init
           - git submodule update
           - cd ..
-          - ls
           - pip install build/ # install from local setup.py
           - cd build
+          - python test/download_regression_models.py
           - pytest
