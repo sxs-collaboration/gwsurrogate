@@ -13,4 +13,5 @@ pipelines:
         script: # Modify the commands below to build your repository.
           - pip install pytest
           - pip install scipy
+          - pip install gwtools
           - pytest
