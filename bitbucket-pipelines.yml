@@ -16,6 +16,7 @@ pipelines:
           - pip install scipy
           - pip install gwtools
           - pip install h5py
+          - pip install scikit-learn
           - git submodule init
           - git submodule update
           - pytest
