@@ -15,4 +15,6 @@ pipelines:
           - pip install scipy
           - pip install gwtools
           - pip install h5py
+          - git submodule init
+          - git submodule update
           - pytest
