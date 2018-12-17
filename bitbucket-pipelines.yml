@@ -1,0 +1,28 @@
+# This is a sample build configuration for Python.
+# Check our guides at https://confluence.atlassian.com/x/x4UWN for more examples.
+# Only use spaces to indent your .yml configuration.
+# -----
+# You can specify a custom docker image from Docker Hub as your build environment.
+#image: python:3.5.1
+image: python:2.7.15
+
+pipelines:
+  default:
+    - step:
+        caches:
+          - pip
+        script: # Modify the commands below to build your repository.
+          - echo $PWD
+          - ls
+          - pip install pytest
+          - pip install scipy
+          - pip install gwtools
+          - pip install h5py
+          - pip install scikit-learn
+          - git submodule init
+          - git submodule update
+          - cd ..
+          - ls
+          - pip install build/ # install from local setup.py
+          - cd build
+          - pytest
