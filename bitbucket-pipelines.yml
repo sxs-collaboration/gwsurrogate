@@ -12,6 +12,7 @@ pipelines:
         caches:
           - pip
         script: # Modify the commands below to build your repository.
+          - echo $PWD
           - pip install pytest
           - pip install scipy
           - pip install gwtools
@@ -19,4 +20,8 @@ pipelines:
           - pip install scikit-learn
           - git submodule init
           - git submodule update
+          - cd ..
+          - echo $PWD
+          - pip install gwsurrogate/ # install from local setup.py
+          - cd gwsurrogate
           - pytest
