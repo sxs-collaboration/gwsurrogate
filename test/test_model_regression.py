@@ -60,7 +60,7 @@ def test_model_regression(generate_regression_data=False):
       fp_regression = h5py.File("test/model_regression_data.h5",'r') 
     except IOError:
       print("Downloading regression data...")
-      os.system('wget --directory-prefix=test https://www.dropbox.com/s/ew83hq2jwkyw5p1/model_regression_data.h5')
+      os.system('wget --directory-prefix=test https://www.dropbox.com/s/bo1ioyba30znqiq/model_regression_data.h5')
       fp_regression = h5py.File("test/model_regression_data.h5",'r') 
 
   # remove models if you don't have them

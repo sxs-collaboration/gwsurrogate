@@ -1,4 +1,4 @@
-""" executed when running with py.test"""
+""" executed when running with pytest"""
 
 import pytest
 import sys
