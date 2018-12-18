@@ -17,7 +17,7 @@ from the folder test.
 
 NOTE: waveform regression data is saved with single precision In order to,
      (i) reduce the size of the regression file and
-     (ii) allow h5diff to not fail due to round-off error 
+     (ii) allow h5diff to not fail due to round-off error (Still fails! switched to allclose)
 """
 
 
@@ -28,8 +28,8 @@ from gwsurrogate.new import surrogate
 import h5py, os, subprocess, time
 
 # set global tolerances for floating point comparisons (see np.testing.assert_allclose)
-#atol = 0.0
-#rtol = 1.e-11
+atol = 0.0
+rtol = 1.e-11
 
 # TODO: new and old surrogate interfaces should be similar enough to avoid
 #       model-specific cases like below
@@ -144,9 +144,9 @@ def test_model_regression(generate_regression_data=False):
           param_sample.append(tmp)
         param_samples.append(param_sample)
     else: # pull regression points from regression data file
-      param_samples.append( list(fp_regression[model+"/parameter0/parameter"][:]) )
-      param_samples.append( list(fp_regression[model+"/parameter1/parameter"][:]) )
-      param_samples.append( list(fp_regression[model+"/parameter2/parameter"][:]) )
+      for i in range(3):
+        print(model+"/parameter%i/parameter"%i)
+        param_samples.append( list(fp_regression[model+"/parameter%i/parameter"%i][:]) )
 
     param_samples_tested.append(param_samples)
 
@@ -173,19 +173,30 @@ def test_model_regression(generate_regression_data=False):
 
   
   if not generate_regression_data:
-    fp_regression.close()
-    process = subprocess.Popen(["h5diff", "test/model_regression_data.h5",h5_file],
-                               stdin=subprocess.PIPE,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-    returncode = process.wait()
-    stdout, stderr = process.communicate()
-    if returncode == 0:
-        assert(True)
-    else:
-        print(stdout)
-        print(stderr)
-        assert(False)
+    fp = h5py.File(h5_file,"r") # reopen comparison data
+    for model in models_to_test.keys():
+      for i in range(3): # 3 parameter samples
+        hp_regression = fp_regression[model+"/parameter%i/hp"%i][:]
+        hc_regression = fp_regression[model+"/parameter%i/hp"%i][:]
+        hp_comparison = fp[model+"/parameter%i/hp"%i][:]
+        hc_comparison = fp[model+"/parameter%i/hp"%i][:]
+        np.testing.assert_allclose(hp_regression, hp_comparison, rtol=rtol, atol=atol)
+        np.testing.assert_allclose(hc_regression, hc_comparison, rtol=rtol, atol=atol)
+
+    # fails due to round-off error differences of different machines
+    #fp_regression.close()
+    #process = subprocess.Popen(["h5diff", "test/model_regression_data.h5",h5_file],
+    #                           stdin=subprocess.PIPE,
+    #                           stdout=subprocess.PIPE,
+    #                           stderr=subprocess.PIPE)
+    #returncode = process.wait()
+    #stdout, stderr = process.communicate()
+    #if returncode == 0:
+    #    assert(True)
+    #else:
+    #    print(stdout)
+    #    print(stderr)
+    #    assert(False)
   print("models tested... ")
   for i, model_tested in enumerate(models_tested):
     print("model %s at points..."%model_tested+str(param_samples_tested[i]))
