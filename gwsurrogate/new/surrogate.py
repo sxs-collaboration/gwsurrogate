@@ -615,7 +615,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         phaseAlignIdx:      This value should be loaded direclty from the
             surrogate's h5 file. Index of domain at which the orbital phase is
             aligned. This is used when putting back the TaylorT3 contribution
-            that was subtracted before modeling the phase. 
+            that was subtracted before modeling the phase.
 
         coorb_mode_data: A dictionary of modes with (l, m) integer keys, where
             the values are themselves dictionaries containing the coorbital
@@ -682,7 +682,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
 
     def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
-        timesM, fM_low, fM_ref, do_not_align):
+        timesM, fM_low, fM_ref, phi_ref, do_not_align):
         """ Transforms a dict from Coorbital frame to inertial frame.
 
             The surrogate data is sparsely sampled, so upsamples to time
@@ -693,9 +693,9 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             the (2, 2) mode is greater than fM_low is retained.
 
             if do_not_align = False:
-                Aligns the 22 mode phase to be zero at fM_ref. This means that
-                at this reference frequency, the larger BH is roughly on the
-                +ve x axis and the smaller BH is on the -ve x axis.
+                Aligns the 22 mode phase to be 2*phi_ref at fM_ref. This means
+                that at this reference frequency, the heavier BH is roughly on
+                the +ve x axis and the smaller BH is on the -ve x axis.
             do_not_align should be True only when converting from pySurrogate
             format to gwsurrogate format as we may want to do some checks that
             the waveform has not been modified
@@ -770,9 +770,17 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         # format to gwsurrogate format as we may want to do some checks that the
         # waveform has not been modified
         if not do_not_align:
-            # Align phase at refIdx. Note that the Coorbital frame data is not
-            # affected by this constant phase shift.
-            phi_22 -= phi_22[refIdx]
+            # Set orbital phase to phi_ref refIdx. Note that the Coorbital
+            # frame data is not affected by this constant phase shift.
+
+            # The orbital phase is obtained as phi_22/2, so this leaves a pi
+            # ambiguity.  But the surrogate data is already aligned such that
+            # the heavier BH is on the +ve x-axis at t=-1000M. See Sec.VI.A.4
+            # of arxiv:1812.07865, the resolves the pi ambiguity. This means
+            # that the after the realignment, the orbital phase at reference
+            # frequency is phiRef, or the heavier BH is at azimuthal angle =
+            # phiRef from the +ve x-axis.
+            phi_22 += -phi_22[refIdx] + 2*phi_ref
 
         h_dict = {}
         for mode in mode_list:
@@ -829,8 +837,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         return phi22_T3
 
 
-    def __call__(self, x, fM_low=None, fM_ref=None, dtM=None, timesM=None,
-        dfM=None, freqsM=None, mode_list=None, par_dict=None,
+    def __call__(self, x, phi_ref=0, fM_low=None, fM_ref=None, dtM=None,
+        timesM=None, dfM=None, freqsM=None, mode_list=None, par_dict=None,
         do_not_align=False):
         """
     Return dimensionless surrogate modes.
@@ -838,23 +846,21 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
     x :             The intrinsic parameters EXCLUDING total Mass (see
                     self.param_space)
 
+    phi_ref :       Orbital phase at reference epoch. Default: 0.
+
     fM_low :        Initial frequency of (2,2) mode in units of cycles/M.
                     If None, will use the entire data of the surrogate.
                     Default None.
 
-    fM_ref:         Reference frequency used to set the reference epoch at which
-                    the frame is aligned and the spins are specified. The frame
-                    is aligned at the reference epoch as follows:
-                        The orbital angular momentum points towards the
-                            +ve z-axis.
-                        The separation vector from the smaller BH to the larger
-                            BH points towards the +ve x-axis.
-                    For time domain models, this is used to detemine a t_ref,
-                    such that the frequency of the (2, 2) mode equals fM_ref
-                    at t=t_ref.
-                    Default: If fM_low is given, fM_ref = fM_low. If fM_low is
-                    None, fM_ref is set to the initial frequency (the first
-                    index).
+    fM_ref:         Frequency used to set the reference epoch at which
+                    the reference frame is defined and the spins are specified.
+                    See below for definition of the reference frame. Default:
+                    If f_low is given, f_ref = f_low. If f_low is None, f_ref
+                    is set to the initial frequency (the first index).
+
+                    For time domain models, f_ref is used to determine a t_ref,
+                    such that the frequency of the (2, 2) mode equals f_ref at
+                    t=t_ref.
 
     dtM :           Uniform time step to use, in units of M. If None, the
                     returned time array will be the array used in the
@@ -888,6 +894,18 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         timesM : time array in units of M.
         h : A dictionary of waveform modes sampled at times=t with
             (ell, m) keys.
+
+
+    IMPORTANT NOTES:
+    ===============
+
+    The reference frame is defined as follows:
+        The +ve z-axis is along the orbital angular momentum at the reference
+        epoch. The orbital phase at the reference epoch is phi_ref. This means
+        that the separation vector from the lighter BH to the heavier BH is at
+        an azimuthal angle phi_ref from the +ve x-axis, in the orbital plane at
+        the reference epoch. The y-axis completes the right-handed triad. The
+        reference epoch is set using fM_ref.
         """
 
         if par_dict is not None:
@@ -917,7 +935,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                         if k != tuple([2,2])}
 
         return self._coorbital_to_inertial_frame(h_coorb, h_22, \
-            mode_list, dtM, timesM, fM_low, fM_ref, do_not_align)
+            mode_list, dtM, timesM, fM_low, fM_ref, phi_ref, do_not_align)
 
 
 class SpEC_nonspinning_q10_surrogate(MultiModalSurrogate):
