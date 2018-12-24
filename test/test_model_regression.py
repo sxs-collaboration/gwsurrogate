@@ -109,15 +109,14 @@ def test_model_regression(generate_regression_data=False):
     except KeyError:
       print("model %s cannot be removed"%i)
 
+
   fp = h5py.File(h5_file,"w")
 
   # for each model, select three random points to evaluate at
-  models_tested = []
   param_samples_tested = []
   for model, datafile in models_to_test.items():
 
     print("Generating regression data for model = %s"%model)
-    models_tested.append(model)
     print(datafile)
 
     if model in surrogate_old_interface:
@@ -171,10 +170,10 @@ def test_model_regression(generate_regression_data=False):
       samplei.create_dataset("hc", data=hc, dtype='float32')
   fp.close()
 
-  
   if not generate_regression_data:
     fp = h5py.File(h5_file,"r") # reopen comparison data
     for model in models_to_test.keys():
+      print("testing model %s ..."%model)
       for i in range(3): # 3 parameter samples
         hp_regression = fp_regression[model+"/parameter%i/hp"%i][:]
         hc_regression = fp_regression[model+"/parameter%i/hp"%i][:]
@@ -198,8 +197,8 @@ def test_model_regression(generate_regression_data=False):
     #    print(stderr)
     #    assert(False)
   print("models tested... ")
-  for i, model_tested in enumerate(models_tested):
-    print("model %s at points..."%model_tested+str(param_samples_tested[i]))
+  #for i, model_tested in enumerate(models_to_test.keys()):
+  #  print("model %s at points..."%model_tested+str(param_samples_tested[i]))
 
 
 #------------------------------------------------------------------------------
