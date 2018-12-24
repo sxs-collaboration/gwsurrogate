@@ -705,49 +705,95 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         phi_22 = h_22[0]['phase']
         domain = np.copy(self.domain)
 
-        # Get omega22, the angular frequency of the 22 mode, but ignore the
-        # part after the peak. This way we avoid the noisy part at late times,
-        # which can randomly be at frequency = fM_low.
+        # Get omega22_sparse, the angular frequency of the 22 mode, from the
+        # sparse surrogate domain.
         # Use np.diff instead of np.gradient to match the LAL version
-        omega22 = np.append(np.diff(phi_22)/np.diff(domain), 0)
+        omega22_sparse = np.append(np.diff(phi_22)/np.diff(domain), 0)
+
         # t=0 is at the waveform peak for the surrogate
         peak22Idx = np.argmin(np.abs(domain))
-        omega22_peak = omega22[peak22Idx]
-        omega22 = omega22[domain <= domain[peak22Idx]]
+        omega22_peak = omega22_sparse[peak22Idx]
+        # We ignore the part after the peak.  This way we avoid the noisy part
+        # at late times, which can randomly be at frequency = fM_low.
+        omega22_sparse = omega22_sparse[domain <= domain[peak22Idx]]
 
-        # Get startIdx for truncating waveform such that the initial (2, 2)
-        # mode frequency = fM_low
-        if fM_low is not None:
+        # Get initIdx such that the initial (2, 2) mode frequency ~ fM_low.
+        # We will make this more precise below.
+        if fM_low != 0:
             omega_low = 2*np.pi*fM_low
-            if omega_low < omega22[0]:
+            if omega_low < omega22_sparse[0]:
                 raise ValueError('f_low is lower than the minimum allowed'
                     ' frequency')
             if omega_low > omega22_peak:
                 raise ValueError('f_low is higher than the peak frequency')
 
-            startIdx = np.argmin(np.abs(omega22 - omega_low))
+            # Choose one index less, to ensure omega_low is included
+            initIdx = np.argmin(np.abs(omega22_sparse - omega_low)) -1
+            Amp_22 = Amp_22[initIdx:]
+            phi_22 = phi_22[initIdx:]
+            domain = domain[initIdx:]
         else:
-            startIdx = None
+            # If fM_low is 0, we use the entire waveform
+            initIdx = 0
 
-        # Get reference index where waveform needs to be aligned. If fM_ref
-        # is not given, we pick the first index.
-        if fM_ref is not None:
+        if timesM is not None:
+            if timesM[-1] > domain[-1]:
+                raise Exception("'times' includes times larger than the"
+                    " maximum time value in domain.")
+            if timesM[0] < domain[0]:
+                raise Exception("'times' starts before start of domain. Try"
+                    " increasing initial value of times or reducing f_low.")
+
+        return_times = True
+        if dtM is None and timesM is None:
+            # Use the sparse domain
+            timesM = domain
+            omega22 = omega22_sparse[initIdx:]
+            do_interp = False
+        else:
+            ## Interpolate onto uniform domain if needed
+            do_interp = True
+            if dtM is not None:
+                t0 = domain[0]
+                tf = domain[-1]
+                num_times = int(np.ceil((tf - t0)/dtM));
+                timesM = t0 + dtM*np.arange(num_times)
+            else:
+                return_times = False
+                if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
+                    raise Exception('Trying to evaluate at times outside the'
+                        ' domain.')
+
+            Amp_22 = _splinterp_Cwrapper(timesM, domain, Amp_22)
+            phi_22 = _splinterp_Cwrapper(timesM, domain, phi_22)
+
+            # now recompute omega22 with the dense data, but retain only data
+            # upto the peak to avoid the noisy part
+            omega22 = np.append(np.diff(phi_22)/np.diff(timesM), 0)
+            omega22 = omega22[timesM <= timesM[np.argmax(Amp_22)]]
+
+            # Truncate data so that only freqs above omega_low are retained
+            # If timesM are already given, we don't need to truncate data
+            if dtM is not None:
+                startIdx = np.argmin(np.abs(omega22 - omega_low))
+                Amp_22 = Amp_22[startIdx:]
+                phi_22 = phi_22[startIdx:]
+                omega22 = omega22[startIdx:]
+                timesM = timesM[startIdx:]
+
+
+        # Get reference index where waveform needs to be aligned.
+        if (abs(fM_ref-fM_low)/fM_low < 1e-13) and (dtM is not None):
+            # This means that the data is already truncated at fM_low,
+            # so we just need the first index for fM_ref=fM_low
+            refIdx = 0
+        else:
             omega_ref = 2*np.pi*fM_ref
-            if omega_ref < omega22[0]:
-                raise ValueError('f_ref is lower than the minimum allowed'
-                    ' frequency')
             if omega_ref > omega22_peak:
                 raise ValueError('f_ref is higher than the peak frequency')
 
             refIdx = np.argmin(np.abs(omega22 - omega_ref))
-        else:
-            # If fM_low is given and fM_ref is not, set fM_ref to fM_low
-            if startIdx is not None:
-                refIdx = startIdx
-            else:
-                # If both fM_low and fM_ref are not given, set fM_ref to the
-                # initial index of the surrogate
-                refIdx = 0
+
 
         # do_not_align should be True only when converting from pySurrogate
         # format to gwsurrogate format as we may want to do some checks that
@@ -766,43 +812,6 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             phi_22 += -phi_22[refIdx] + 2*phi_ref
 
 
-        # Truncate frequencies >= omega_low if required
-        if startIdx is not None:
-            Amp_22 = Amp_22[startIdx:]
-            phi_22 = phi_22[startIdx:]
-            domain = domain[startIdx:]
-            omega22 = omega22[startIdx:]
-
-        if timesM is not None:
-            if timesM[-1] > domain[-1]:
-                raise Exception("'times' includes times larger than the"
-                    " maximum time value in domain.")
-            if timesM[0] < domain[0]:
-                raise Exception("'times' starts before start of domain. Try"
-                    " increasing initial value of times or reducing f_low.")
-
-
-        return_times = True
-        if dtM is None and timesM is None:
-            timesM = domain
-            do_interp = False
-        else:
-            do_interp = True
-            if dtM is not None:
-                ## Interpolate onto uniform domain if needed
-                t0 = domain[0]
-                tf = domain[-1]
-                num_times = int(np.ceil((tf - t0)/dtM));
-                timesM = t0 + dtM*np.arange(num_times)
-            else:
-                return_times = False
-                if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
-                    raise Exception('Trying to evaluate at times outside the'
-                        ' domain.')
-            Amp_22 = _splinterp_Cwrapper(timesM, domain, Amp_22)
-            phi_22 = _splinterp_Cwrapper(timesM, domain, phi_22)
-
-
         h_dict = {}
         for mode in mode_list:
             if mode == tuple([2, 2]):
@@ -815,8 +824,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                 if 'im' in h_coorb[mode][0].keys():
                     h_coorb_lm += 1j*h_coorb[mode][0]['im']
 
-                if startIdx is not None:
-                    h_coorb_lm = h_coorb_lm[startIdx:]
+                h_coorb_lm = h_coorb_lm[initIdx:]
                 if do_interp:
                     h_coorb_lm = _splinterp_Cwrapper(timesM,domain,h_coorb_lm)
 
@@ -868,14 +876,13 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
     phi_ref :       Orbital phase at reference epoch. Default: 0.
 
     fM_low :        Initial frequency of (2,2) mode in units of cycles/M.
-                    If None, will use the entire data of the surrogate.
+                    If 0, will use the entire data of the surrogate.
                     Default None.
 
     fM_ref:         Frequency used to set the reference epoch at which
                     the reference frame is defined and the spins are specified.
-                    See below for definition of the reference frame. Default:
-                    If f_low is given, f_ref = f_low. If f_low is None, f_ref
-                    is set to the initial frequency (the first index).
+                    See below for definition of the reference frame.
+                    Default: None.
 
                     For time domain models, f_ref is used to determine a t_ref,
                     such that the frequency of the (2, 2) mode equals f_ref at

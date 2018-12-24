@@ -1479,14 +1479,18 @@ class SurrogateEvaluator(object):
         M        :  Total mass (solar masses). Default: None.
         dist_mpc :  Distance to binary system (MegaParsecs). Default: None.
 
-    f_low :     Instantaneous initial frequency of the (2, 2) mode. If None,
-                the entire waveform is returned. Default: None.
+    f_low :     Instantaneous initial frequency of the (2, 2) mode. If 0,
+                the entire waveform is returned. Should be in cycles/M if
+                units = 'dimensionless', should be in Hertz if units = 'mks'.
+                Default: None.
 
     f_ref:      Frequency used to set the reference epoch at which
                 the reference frame is defined and the spins are specified.
-                See below for definition of the reference frame. Default: If
-                f_low is given, f_ref = f_low. If f_low is None, f_ref is set
-                to the initial frequency (the first index).
+                See below for definition of the reference frame. Should be in
+                cycles/M if units = 'dimensionless', should be in Hertz if
+                units = 'mks'. Default: If f_ref is not given, we set
+                f_ref = f_low. If f_low is 0, this corresponds to the initial
+                index.
 
                 For time domain models, f_ref is used to determine a t_ref,
                 such that the frequency of the (2, 2) mode equals f_ref at
@@ -1495,14 +1499,19 @@ class SurrogateEvaluator(object):
     dt, df :    Time/Frequency step size, specify at most one of dt/df,
                 depending on whether the surrogate is a time/frequency domain
                 surrogate. If None, the internal domain of the surrogate is
-                used, which can be nonuniformly sampled. Default None.
-                Do not specify times/freqs if using dt/df.
+                used, which can be nonuniformly sampled. dt (df) Should be in
+                M (cycles/M) if units = 'dimensionless', should be in
+                seconds (Hertz) if units = 'mks'. Do not specify times/freqs
+                if using dt/df. Default None.
+
 
     times, freqs:
                 Array of time/frequency samples at which to evaluate the
                 waveform, depending on whether the surrogate is a
-                time/frequency domain surrogate. Default None.
-                Do not specify dt/df if using times/freqs.
+                time/frequency domain surrogate. time (freqs) Should be in
+                M (cycles/M) if units = 'dimensionless', should be in
+                seconds (Hertz) if units = 'mks'. Do not specify dt/df if
+                using times/freqs. Default None.
 
     mode_list : A list of (l, m) modes to be evaluated. If None, evaluates all
                 available modes. Default: None.
@@ -1511,14 +1520,11 @@ class SurrogateEvaluator(object):
 
     inclination : Inclination angle between the orbital angular momentum
                 direction at the reference epoch and the line-of-sight to the
-                observer.
-                If inclination is None, the mode data is returned as a
-                dictionary. If specified, the complex strain (h = hplus -i
+                observer. If inclination is None, the mode data is returned as
+                a dictionary. If specified, the complex strain (h = hplus -i
                 hcross) evaluated at (inclination, pi/2) on the sky of the
-                reference frame is returned. See below for definition of
-                the reference frame.
-                Default: None.
-
+                reference frame is returned. See below for definition of the
+                reference frame. Default: None.
 
     par_dict:   A dictionary containing any additional parameters needed for a
                 particular surrogate model. Default: None.
@@ -1545,7 +1551,9 @@ class SurrogateEvaluator(object):
 
     domain :    Array of time/frequency samples, depending on whether the
                 surrogate is a time/frequency domain model. For time domain
-                models the time is set to 0 at the peak of the waveform.
+                models the time is set to 0 at the peak of the waveform. The
+                time (frequency) values are in M (cycles/M) if units =
+                'dimensionless', they are in seconds (Hertz) if units = 'mks'
 
     h :         Waveform.
                     If inclination is specified, the complex strain (h = hplus
@@ -1559,6 +1567,10 @@ class SurrogateEvaluator(object):
 
                     Else, h is a dictionary of available modes with (l, m)
                     tuples as keys.
+
+                    If M and dist_mpc are given, the physical waveform
+                    at that distance is returned. Else, it is returned in
+                    code units: r*h/M extrapolated to future null-infinity.
 
 
     IMPORTANT NOTES:
@@ -1608,7 +1620,10 @@ class SurrogateEvaluator(object):
         if (df is not None) and (freqs is not None):
             raise ValueError("Cannot specify both df and freqs.")
 
-        if (f_ref is not None) and (f_low is not None) and (f_ref < f_low):
+        if (f_low is None):
+            raise ValueError("f_low must be specified.")
+
+        if (f_ref is not None) and (f_ref < f_low):
             raise ValueError("f_ref cannot be lower than f_low.")
 
         # Warn/Exit if extrapolating
@@ -1626,8 +1641,7 @@ class SurrogateEvaluator(object):
         else:
             raise Exception('Invalid units')
 
-        # If f_ref is not given, we set it to f_low. If f_low is also None,
-        # f_ref will correspond to the initial frequency.
+        # If f_ref is not given, we set it to f_low.
         if f_ref is None:
             f_ref = f_low
 
@@ -1636,10 +1650,10 @@ class SurrogateEvaluator(object):
         timesM = None if times is None else times/t_scale
         dfM = None if df is None else df*t_scale
         freqsM = None if freqs is None else freqs*t_scale
-        fM_ref = None if f_ref is None else f_ref*t_scale
 
         # Get waveform modes and domain in dimensionless units
-        fM_low = None if f_low is None else f_low*t_scale
+        fM_low = f_low*t_scale
+        fM_ref = f_ref*t_scale
         data = self._call_dimless_modes(x, phi_ref=phi_ref, fM_low=fM_low,
             fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM, freqsM=freqsM,
             mode_list=mode_list, par_dict=par_dict)
