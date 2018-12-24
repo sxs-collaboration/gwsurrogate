@@ -32,7 +32,7 @@ extmod = Extension('gwsurrogate.spline_interp_Cwrapper._spline_interp',
 
 
 setup(name='gwsurrogate',
-      version='0.8.7',
+      version='0.9.0',
       author='Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma',
       author_email='sfield@umassd.edu',
       packages=['gwsurrogate'],
