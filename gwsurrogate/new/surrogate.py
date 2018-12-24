@@ -705,70 +705,53 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         phi_22 = h_22[0]['phase']
         domain = np.copy(self.domain)
 
-        # get omega22, the angular frequency of the 22 mode, but truncate the
-        # late time ( > 50 from peak). This way we avoid the noisy part at
-        # late times, which can randomly be at frequency = fM_low.
-        omega22 = np.gradient(phi_22)/np.gradient(domain)
-        peak22Idx = np.argmax(Amp_22)
-        omega22 = omega22[domain <= domain[peak22Idx]+50]
+        # Get omega22, the angular frequency of the 22 mode, but ignore the
+        # part after the peak. This way we avoid the noisy part at late times,
+        # which can randomly be at frequency = fM_low.
+        # Use np.diff instead of np.gradient to match the LAL version
+        omega22 = np.append(np.diff(phi_22)/np.diff(domain), 0)
+        # t=0 is at the waveform peak for the surrogate
+        peak22Idx = np.argmin(np.abs(domain))
+        omega22_peak = omega22[peak22Idx]
+        omega22 = omega22[domain <= domain[peak22Idx]]
 
-        # Truncate waveform such that the initial (2, 2) mode frequency = fM_low
+        # Get startIdx for truncating waveform such that the initial (2, 2)
+        # mode frequency = fM_low
         if fM_low is not None:
             omega_low = 2*np.pi*fM_low
             if omega_low < omega22[0]:
                 raise ValueError('f_low is lower than the minimum allowed'
                     ' frequency')
+            if omega_low > omega22_peak:
+                raise ValueError('f_low is higher than the peak frequency')
+
             startIdx = np.argmin(np.abs(omega22 - omega_low))
-            if domain[startIdx] > domain[peak22Idx] + 10:
-                raise Exception('The time that matches f_low is after the peak,'
-                    ' something must be wrong.')
-
-            Amp_22 = Amp_22[startIdx:]
-            phi_22 = phi_22[startIdx:]
-            domain = domain[startIdx:]
-            omega22 = omega22[startIdx:]
-
-            if timesM is not None:
-                if timesM[0] < domain[0]:
-                    raise Exception("'times' starts before start of domain. Try"
-                        " increasing initial value of times or reducing f_low.")
-                if timesM[-1] > domain[-1]:
-                    raise Exception("'times' includes times larger than the"
-                        " maximum time value in domain.")
-
-        return_times = True
-        if dtM is None and timesM is None:
-            timesM = domain
-            do_interp = False
         else:
-            do_interp = True
-            if dtM is not None:
-                # Interpolate onto uniform domain if needed, add small offsets
-                # to ensure no extrapolation (GSL throws an error).
-                # timesM are returned, so no waveform evaluation error is made
-                timesM = np.arange(domain[0]+1e-10, domain[-1]-1e-10, dtM)
-            else:
-                return_times = False
-                if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
-                    raise Exception('Trying to evaluate at times outside the'
-                        ' domain.')
-            Amp_22 = _splinterp_Cwrapper(timesM, domain, Amp_22)
-            phi_22 = _splinterp_Cwrapper(timesM, domain, phi_22)
-
+            startIdx = None
 
         # Get reference index where waveform needs to be aligned. If fM_ref
-        # is not given, we pick the first index
+        # is not given, we pick the first index.
         if fM_ref is not None:
-            refIdx = np.argmin(np.abs(omega22 - 2*np.pi*fM_ref))
-            if timesM[refIdx] > timesM[np.argmax(Amp_22)] + 10:
-                raise Exception('The time that matches f_ref is after the peak,'
-                    ' something must be wrong.')
+            omega_ref = 2*np.pi*fM_ref
+            if omega_ref < omega22[0]:
+                raise ValueError('f_ref is lower than the minimum allowed'
+                    ' frequency')
+            if omega_ref > omega22_peak:
+                raise ValueError('f_ref is higher than the peak frequency')
+
+            refIdx = np.argmin(np.abs(omega22 - omega_ref))
         else:
-            refIdx = 0
+            # If fM_low is given and fM_ref is not, set fM_ref to fM_low
+            if startIdx is not None:
+                refIdx = startIdx
+            else:
+                # If both fM_low and fM_ref are not given, set fM_ref to the
+                # initial index of the surrogate
+                refIdx = 0
 
         # do_not_align should be True only when converting from pySurrogate
-        # format to gwsurrogate format as we may want to do some checks that the
-        # waveform has not been modified
+        # format to gwsurrogate format as we may want to do some checks that
+        # the waveform has not been modified
         if not do_not_align:
             # Set orbital phase to phi_ref refIdx. Note that the Coorbital
             # frame data is not affected by this constant phase shift.
@@ -782,6 +765,44 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             # phiRef from the +ve x-axis.
             phi_22 += -phi_22[refIdx] + 2*phi_ref
 
+
+        # Truncate frequencies >= omega_low if required
+        if startIdx is not None:
+            Amp_22 = Amp_22[startIdx:]
+            phi_22 = phi_22[startIdx:]
+            domain = domain[startIdx:]
+            omega22 = omega22[startIdx:]
+
+        if timesM is not None:
+            if timesM[-1] > domain[-1]:
+                raise Exception("'times' includes times larger than the"
+                    " maximum time value in domain.")
+            if timesM[0] < domain[0]:
+                raise Exception("'times' starts before start of domain. Try"
+                    " increasing initial value of times or reducing f_low.")
+
+
+        return_times = True
+        if dtM is None and timesM is None:
+            timesM = domain
+            do_interp = False
+        else:
+            do_interp = True
+            if dtM is not None:
+                ## Interpolate onto uniform domain if needed
+                t0 = domain[0]
+                tf = domain[-1]
+                num_times = int(np.ceil((tf - t0)/dtM));
+                timesM = t0 + dtM*np.arange(num_times)
+            else:
+                return_times = False
+                if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
+                    raise Exception('Trying to evaluate at times outside the'
+                        ' domain.')
+            Amp_22 = _splinterp_Cwrapper(timesM, domain, Amp_22)
+            phi_22 = _splinterp_Cwrapper(timesM, domain, phi_22)
+
+
         h_dict = {}
         for mode in mode_list:
             if mode == tuple([2, 2]):
@@ -794,10 +815,10 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                 if 'im' in h_coorb[mode][0].keys():
                     h_coorb_lm += 1j*h_coorb[mode][0]['im']
 
-                if fM_low is not None:
+                if startIdx is not None:
                     h_coorb_lm = h_coorb_lm[startIdx:]
                 if do_interp:
-                    h_coorb_lm = _splinterp_Cwrapper(timesM, domain, h_coorb_lm)
+                    h_coorb_lm = _splinterp_Cwrapper(timesM,domain,h_coorb_lm)
 
                 h_dict[mode] = h_coorb_lm * np.exp(-1j*m*phi_22/2.)
 
