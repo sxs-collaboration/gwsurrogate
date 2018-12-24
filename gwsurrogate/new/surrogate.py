@@ -828,22 +828,20 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             return h_dict
 
     def _set_TaylorT3_factor(self):
-        """ Sets a term used in the 0 PN TaylorT3 phase. See Eq. (3.10a) of
-        https://arxiv.org/abs/0907.0700.
+        """ Sets a term used in the 0 PN TaylorT3 phase. See Eq.43 of
+        arxiv.1812.07865.
         """
         # Set only once
         if self.TaylorT3_factor_without_eta is None:
-            #FIXME fill in arxiv
             # TaylorT3_t_ref is arbitrary. This is where the phase diverges,
             # so we choose it much after ringdown. This matches what was used
-            # in the construction of the surrogate. See discussion near Eq.42
-            # of arxiv.xxxx.xxxx
-            theta_without_eta = ((self.TaylorT3_t_ref - self.domain)/5)**(-1./8)
+            # in the construction of the surrogate. See discussion near Eq.43
+            # of arxiv.1812.07865
+            theta_without_eta = ((self.TaylorT3_t_ref -self.domain)/5)**(-1./8)
             self.TaylorT3_factor_without_eta = -2./theta_without_eta**5
 
     def _TaylorT3_phase_22(self, x):
-        """ 0 PN TaylorT3 phase. See Eq. (3.10a) of
-        https://arxiv.org/abs/0907.0700
+        """ 0 PN TaylorT3 phase. See Eq.43 of arxiv.1812.07865
         """
 
         q, chi1z, chi2z = x
@@ -943,9 +941,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         # always evaluate the (2,2) mode, the other modes neeed this
         # for transformation from coorbital to inertial frame
 
-        #FIXME fill in arxiv
         # At this stage the phase of the (2,2) mode is the residual after
-        # removing the TaylorT3 part (see. Eq.43 of arxiv.xxxx.xxxx)
+        # removing the TaylorT3 part (see. Eq.44 of arxiv.1812.07865)
         h_22 = self._eval_sur(x, tuple([2, 2]))
 
         # Get the TaylorT3 part and add to get the actual phase

@@ -91,10 +91,10 @@ _surrogate_world['NRHybSur3dq8'] = \
   '''Surrogate model for aligned-spin binary black holes with mass ratios q<=8
   and spin magnitudes <=0.8. The model is trained on NR waveforms that have been
   hybridized using EOB/PN and spans the entire LIGO frequency band. This model
-  is  presented in Varma et al. 2018, in prep. Available modes are
+  is  presented in Varma et al. 2018, arxiv:1812.07865. Available modes are
   [(2,2), (2,1), (2,0), (3,3), (3,2), (3,1), (3,0), (4,4), (4,3), (4,2) and
   (5,5)]. The m<0 modes are deduced from the m>0 modes.''',
-  ''' ''')
+  '''https://arxiv.org/abs/1812.07865''')
 
 
 def download_path():
