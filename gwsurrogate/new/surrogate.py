@@ -612,10 +612,15 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
         param_space:        A ParamSpace for this surrogate.
 
-        phaseAlignIdx:      This value should be loaded direclty from the
+        phaseAlignIdx:      This value should be loaded directly from the
             surrogate's h5 file. Index of domain at which the orbital phase is
             aligned. This is used when putting back the TaylorT3 contribution
             that was subtracted before modeling the phase.
+
+        TaylorT3_t_ref:     This value should be loaded directly from the
+            surrogate's h5 file. This is an arbitrary reference time used
+            in the TaylorT3 contribution, but is fixed during the surrogate
+            construction.
 
         coorb_mode_data: A dictionary of modes with (l, m) integer keys, where
             the values are themselves dictionaries containing the coorbital
