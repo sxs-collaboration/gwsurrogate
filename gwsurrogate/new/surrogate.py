@@ -700,7 +700,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             if do_not_align = False:
                 Aligns the 22 mode phase to be 2*phi_ref at fM_ref. This means
                 that at this reference frequency, the heavier BH is roughly on
-                the +ve x axis and the smaller BH is on the -ve x axis.
+                the +ve x axis and the lighter BH is on the -ve x axis.
             do_not_align should be True only when converting from pySurrogate
             format to gwsurrogate format as we may want to do some checks that
             the waveform has not been modified

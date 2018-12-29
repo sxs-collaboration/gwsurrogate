@@ -1724,7 +1724,7 @@ The m<0 modes are deduced from the m>0 modes.
 
 The parameter space of validity is:
 q \in [1, 10] and chi1z/chi2z \in [-1, 1],
-where q is the mass ratio and chi1z/chi2z are the spins of the larger/smaller
+where q is the mass ratio and chi1z/chi2z are the spins of the heavier/lighter
 BH, respectively, in the direction of orbital angular momentum.
 
 The surrogate has been trained in the range
