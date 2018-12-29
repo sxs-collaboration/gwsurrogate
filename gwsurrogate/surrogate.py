@@ -1414,25 +1414,32 @@ class SurrogateEvaluator(object):
             raise Exception("Expected x to be of len=%d"\
                 %len(self.soft_param_lims))
 
-        if self.hard_param_lims is not None:
-            raise_hard_error = False
-            for i in range(len(x)):
-                if x[i] < self.hard_param_lims[i][0] \
-                    or x[i] > self.hard_param_lims[i][1]:
-                    raise_hard_error = True
+        ## Allow violations within this value.
+        # Sometimes, chi can be 1+1e-16 due to machine precision limitations,
+        # this will ignore such cases
+        grace = 1e-14
 
-            if raise_hard_error:
-                raise Exception('Parameters x are outside allowed range.')
+        if self.hard_param_lims is not None:
+            raise_hard_error = None
+            for i in range(len(x)):
+                if x[i] < self.hard_param_lims[i][0] - grace \
+                    or x[i] > self.hard_param_lims[i][1] + grace:
+                    raise_hard_error = i
+
+            if raise_hard_error is not None:
+                raise Exception('Parameter x[%d] is outside allowed '
+                        'range.'%raise_hard_error)
 
         if self.soft_param_lims is not None:
-            raise_soft_warning = False
+            raise_soft_warning = None
             for i in range(len(x)):
                 if x[i] < self.soft_param_lims[i][0] \
                     or x[i] > self.soft_param_lims[i][1]:
-                    raise_soft_warning = True
+                    raise_soft_warning = i
 
-            if raise_soft_warning:
-                warnings.warn('Parameters x are outside training range.')
+            if raise_soft_warning is not None:
+                warnings.warn('Parameter x[%d] is outside training range.'
+                    %raise_soft_warning)
 
 
     def _call_dimless_modes(self, x, phi_ref=0, fM_low=None, fM_ref=None,
@@ -1466,7 +1473,8 @@ class SurrogateEvaluator(object):
 
     def __call__(self, x, M=None, dist_mpc=None, f_low=None, t_ref=None,
         f_ref=None, dt=None, df=None, times=None, freqs=None, mode_list=None,
-        inclination=None, phi_ref=0, par_dict=None, units='dimensionless'):
+        inclination=None, phi_ref=0, par_dict=None, units='dimensionless',
+        skip_param_checks=False):
         """
     INPUT
     =====
@@ -1541,6 +1549,10 @@ class SurrogateEvaluator(object):
                     be in seconds, while f_ref, f_low and df/freqs should be
                     in Hz. M and dist_mpc must be specified. The waveform and
                     domain are returned in MKS units as well.
+
+    skip_param_checks :
+                Skip sanity checks for parameters. Use this if you want to
+                extrapolate outside allowed range. Default: False.
 
     RETURNS
     =====
@@ -1627,7 +1639,8 @@ class SurrogateEvaluator(object):
             raise ValueError("f_ref cannot be lower than f_low.")
 
         # Warn/Exit if extrapolating
-        self._check_param_limits(x)
+        if not skip_param_checks:
+            self._check_param_limits(x)
 
 
         # Get scalings from dimensionless units to mks units
