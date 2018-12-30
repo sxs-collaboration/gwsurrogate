@@ -788,7 +788,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
 
         # Get reference index where waveform needs to be aligned.
-        if (abs(fM_ref-fM_low)/fM_low < 1e-13) and (dtM is not None):
+        if (abs(fM_ref-fM_low) < 1e-13) and (dtM is not None):
             # This means that the data is already truncated at fM_low,
             # so we just need the first index for fM_ref=fM_low
             refIdx = 0
