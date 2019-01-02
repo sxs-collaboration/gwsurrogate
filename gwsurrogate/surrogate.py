@@ -1521,8 +1521,9 @@ class SurrogateEvaluator(object):
                 seconds (Hertz) if units = 'mks'. Do not specify dt/df if
                 using times/freqs. Default None.
 
-    mode_list : A list of (l, m) modes to be evaluated. If None, evaluates all
-                available modes. Default: None.
+    mode_list : A list of (l, m) modes tuples to be evaluated. If None,
+                evaluates all available modes.
+                Example: mode_list = [(2,2),(2,1)]. Default: None.
 
     phi_ref :   Orbital phase at reference epoch. Default: 0.
 
