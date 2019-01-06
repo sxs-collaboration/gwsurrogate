@@ -16,7 +16,11 @@ dll_dir = os.path.dirname(os.path.realpath(__file__))
 dll_path_glob = '%s/_spline_interp*so'%dll_dir
 spline_libs = glob(dll_path_glob)
 if len(spline_libs) == 0:
-  raise Exception('_spline_interp library not found!')
+  all_files = glob('%s/*'%dll_dir)
+  msg = '_spline_interp library not found! Searched in path %s which has files...\n'%dll_dir
+  for all_file in all_files:
+    msg += all_file+"\n"
+  raise Exception(msg)
 elif len(spline_libs) > 1:
   raise Exception('there should be only one _spline_interp library!')
 else:
