@@ -17,8 +17,9 @@ pipelines:
         script: # Modify the commands below to build your repository.
           - export DEBIAN_FRONTEND=noninteractive
           - apt-get -yq install gcc
+          - apt-get -yq install gsl
           #- conda install -y -c anaconda gcc
-          - conda install -y -c conda-forge gsl 
+          #- conda install -y -c conda-forge gsl 
           - pip install pytest
           - pip install scipy
           - pip install gwtools
