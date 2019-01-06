@@ -28,7 +28,7 @@ pipelines:
           - git submodule init
           - git submodule update
           - cd ..
-          - pip install build/ # install from local setup.py
+          - pip install -e build/ # install from local setup.py
           - cd build
           - python test/download_regression_models.py
           - pytest
