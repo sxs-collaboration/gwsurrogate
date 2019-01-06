@@ -14,7 +14,7 @@ pipelines:
         caches:
           - pip
         script: # Modify the commands below to build your repository.
-          - conda install -c conda-forge gsl 
+          - conda install -y -c conda-forge gsl 
           - pip install pytest
           - pip install scipy
           - pip install gwtools
