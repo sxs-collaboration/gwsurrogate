@@ -612,10 +612,15 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
         param_space:        A ParamSpace for this surrogate.
 
-        phaseAlignIdx:      This value should be loaded direclty from the
+        phaseAlignIdx:      This value should be loaded directly from the
             surrogate's h5 file. Index of domain at which the orbital phase is
             aligned. This is used when putting back the TaylorT3 contribution
-            that was subtracted before modeling the phase. 
+            that was subtracted before modeling the phase.
+
+        TaylorT3_t_ref:     This value should be loaded directly from the
+            surrogate's h5 file. This is an arbitrary reference time used
+            in the TaylorT3 contribution, but is fixed during the surrogate
+            construction.
 
         coorb_mode_data: A dictionary of modes with (l, m) integer keys, where
             the values are themselves dictionaries containing the coorbital
@@ -682,7 +687,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
 
     def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
-        timesM, fM_low, fM_ref, do_not_align):
+        timesM, fM_low, fM_ref, phi_ref, do_not_align):
         """ Transforms a dict from Coorbital frame to inertial frame.
 
             The surrogate data is sparsely sampled, so upsamples to time
@@ -693,9 +698,9 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             the (2, 2) mode is greater than fM_low is retained.
 
             if do_not_align = False:
-                Aligns the 22 mode phase to be zero at fM_ref. This means that
-                at this reference frequency, the larger BH is roughly on the
-                +ve x axis and the smaller BH is on the -ve x axis.
+                Aligns the 22 mode phase to be 2*phi_ref at fM_ref. This means
+                that at this reference frequency, the heavier BH is roughly on
+                the +ve x axis and the lighter BH is on the -ve x axis.
             do_not_align should be True only when converting from pySurrogate
             format to gwsurrogate format as we may want to do some checks that
             the waveform has not been modified
@@ -705,74 +710,112 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         phi_22 = h_22[0]['phase']
         domain = np.copy(self.domain)
 
-        # get omega22, the angular frequency of the 22 mode, but truncate the
-        # late time ( > 50 from peak). This way we avoid the noisy part at
-        # late times, which can randomly be at frequency = fM_low.
-        omega22 = np.gradient(phi_22)/np.gradient(domain)
-        peak22Idx = np.argmax(Amp_22)
-        omega22 = omega22[domain <= domain[peak22Idx]+50]
+        # Get omega22_sparse, the angular frequency of the 22 mode, from the
+        # sparse surrogate domain.
+        # Use np.diff instead of np.gradient to match the LAL version
+        omega22_sparse = np.append(np.diff(phi_22)/np.diff(domain), 0)
 
-        # Truncate waveform such that the initial (2, 2) mode frequency = fM_low
-        if fM_low is not None:
+        # t=0 is at the waveform peak for the surrogate
+        peak22Idx = np.argmin(np.abs(domain))
+        omega22_peak = omega22_sparse[peak22Idx]
+        # We ignore the part after the peak.  This way we avoid the noisy part
+        # at late times, which can randomly be at frequency = fM_low.
+        omega22_sparse = omega22_sparse[domain <= domain[peak22Idx]]
+
+        # Get initIdx such that the initial (2, 2) mode frequency ~ fM_low.
+        # We will make this more precise below.
+        if fM_low != 0:
             omega_low = 2*np.pi*fM_low
-            if omega_low < omega22[0]:
+            if omega_low < omega22_sparse[0]:
                 raise ValueError('f_low is lower than the minimum allowed'
                     ' frequency')
-            startIdx = np.argmin(np.abs(omega22 - omega_low))
-            if domain[startIdx] > domain[peak22Idx] + 10:
-                raise Exception('The time that matches f_low is after the peak,'
-                    ' something must be wrong.')
+            if omega_low > omega22_peak:
+                raise ValueError('f_low is higher than the peak frequency')
 
-            Amp_22 = Amp_22[startIdx:]
-            phi_22 = phi_22[startIdx:]
-            domain = domain[startIdx:]
-            omega22 = omega22[startIdx:]
+            # Choose one index less, to ensure omega_low is included
+            initIdx = np.argmin(np.abs(omega22_sparse - omega_low)) -1
+            Amp_22 = Amp_22[initIdx:]
+            phi_22 = phi_22[initIdx:]
+            domain = domain[initIdx:]
+        else:
+            # If fM_low is 0, we use the entire waveform
+            initIdx = 0
 
-            if timesM is not None:
-                if timesM[0] < domain[0]:
-                    raise Exception("'times' starts before start of domain. Try"
-                        " increasing initial value of times or reducing f_low.")
-                if timesM[-1] > domain[-1]:
-                    raise Exception("'times' includes times larger than the"
-                        " maximum time value in domain.")
+        if timesM is not None:
+            if timesM[-1] > domain[-1]:
+                raise Exception("'times' includes times larger than the"
+                    " maximum time value in domain.")
+            if timesM[0] < domain[0]:
+                raise Exception("'times' starts before start of domain. Try"
+                    " increasing initial value of times or reducing f_low.")
 
         return_times = True
         if dtM is None and timesM is None:
+            # Use the sparse domain
             timesM = domain
+            omega22 = omega22_sparse[initIdx:]
             do_interp = False
         else:
+            ## Interpolate onto uniform domain if needed
             do_interp = True
             if dtM is not None:
-                # Interpolate onto uniform domain if needed, add small offsets
-                # to ensure no extrapolation (GSL throws an error).
-                # timesM are returned, so no waveform evaluation error is made
-                timesM = np.arange(domain[0]+1e-10, domain[-1]-1e-10, dtM)
+                t0 = domain[0]
+                tf = domain[-1]
+                num_times = int(np.ceil((tf - t0)/dtM));
+                timesM = t0 + dtM*np.arange(num_times)
             else:
                 return_times = False
                 if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
                     raise Exception('Trying to evaluate at times outside the'
                         ' domain.')
+
             Amp_22 = _splinterp_Cwrapper(timesM, domain, Amp_22)
             phi_22 = _splinterp_Cwrapper(timesM, domain, phi_22)
 
+            # now recompute omega22 with the dense data, but retain only data
+            # upto the peak to avoid the noisy part
+            omega22 = np.append(np.diff(phi_22)/np.diff(timesM), 0)
+            omega22 = omega22[timesM <= timesM[np.argmax(Amp_22)]]
 
-        # Get reference index where waveform needs to be aligned. If fM_ref
-        # is not given, we pick the first index
-        if fM_ref is not None:
-            refIdx = np.argmin(np.abs(omega22 - 2*np.pi*fM_ref))
-            if timesM[refIdx] > timesM[np.argmax(Amp_22)] + 10:
-                raise Exception('The time that matches f_ref is after the peak,'
-                    ' something must be wrong.')
-        else:
+            # Truncate data so that only freqs above omega_low are retained
+            # If timesM are already given, we don't need to truncate data
+            if dtM is not None:
+                startIdx = np.argmin(np.abs(omega22 - omega_low))
+                Amp_22 = Amp_22[startIdx:]
+                phi_22 = phi_22[startIdx:]
+                omega22 = omega22[startIdx:]
+                timesM = timesM[startIdx:]
+
+
+        # Get reference index where waveform needs to be aligned.
+        if (abs(fM_ref-fM_low) < 1e-13) and (dtM is not None):
+            # This means that the data is already truncated at fM_low,
+            # so we just need the first index for fM_ref=fM_low
             refIdx = 0
+        else:
+            omega_ref = 2*np.pi*fM_ref
+            if omega_ref > omega22_peak:
+                raise ValueError('f_ref is higher than the peak frequency')
+
+            refIdx = np.argmin(np.abs(omega22 - omega_ref))
+
 
         # do_not_align should be True only when converting from pySurrogate
-        # format to gwsurrogate format as we may want to do some checks that the
-        # waveform has not been modified
+        # format to gwsurrogate format as we may want to do some checks that
+        # the waveform has not been modified
         if not do_not_align:
-            # Align phase at refIdx. Note that the Coorbital frame data is not
-            # affected by this constant phase shift.
-            phi_22 -= phi_22[refIdx]
+            # Set orbital phase to phi_ref refIdx. Note that the Coorbital
+            # frame data is not affected by this constant phase shift.
+
+            # The orbital phase is obtained as phi_22/2, so this leaves a pi
+            # ambiguity.  But the surrogate data is already aligned such that
+            # the heavier BH is on the +ve x-axis at t=-1000M. See Sec.VI.A.4
+            # of arxiv:1812.07865, the resolves the pi ambiguity. This means
+            # that the after the realignment, the orbital phase at reference
+            # frequency is phiRef, or the heavier BH is at azimuthal angle =
+            # phiRef from the +ve x-axis.
+            phi_22 += -phi_22[refIdx] + 2*phi_ref
+
 
         h_dict = {}
         for mode in mode_list:
@@ -786,10 +829,9 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                 if 'im' in h_coorb[mode][0].keys():
                     h_coorb_lm += 1j*h_coorb[mode][0]['im']
 
-                if fM_low is not None:
-                    h_coorb_lm = h_coorb_lm[startIdx:]
+                h_coorb_lm = h_coorb_lm[initIdx:]
                 if do_interp:
-                    h_coorb_lm = _splinterp_Cwrapper(timesM, domain, h_coorb_lm)
+                    h_coorb_lm = _splinterp_Cwrapper(timesM,domain,h_coorb_lm)
 
                 h_dict[mode] = h_coorb_lm * np.exp(-1j*m*phi_22/2.)
 
@@ -799,22 +841,20 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             return h_dict
 
     def _set_TaylorT3_factor(self):
-        """ Sets a term used in the 0 PN TaylorT3 phase. See Eq. (3.10a) of
-        https://arxiv.org/abs/0907.0700.
+        """ Sets a term used in the 0 PN TaylorT3 phase. See Eq.43 of
+        arxiv.1812.07865.
         """
         # Set only once
         if self.TaylorT3_factor_without_eta is None:
-            #FIXME fill in arxiv
             # TaylorT3_t_ref is arbitrary. This is where the phase diverges,
             # so we choose it much after ringdown. This matches what was used
-            # in the construction of the surrogate. See discussion near Eq.42
-            # of arxiv.xxxx.xxxx
-            theta_without_eta = ((self.TaylorT3_t_ref - self.domain)/5)**(-1./8)
+            # in the construction of the surrogate. See discussion near Eq.43
+            # of arxiv.1812.07865
+            theta_without_eta = ((self.TaylorT3_t_ref -self.domain)/5)**(-1./8)
             self.TaylorT3_factor_without_eta = -2./theta_without_eta**5
 
     def _TaylorT3_phase_22(self, x):
-        """ 0 PN TaylorT3 phase. See Eq. (3.10a) of
-        https://arxiv.org/abs/0907.0700
+        """ 0 PN TaylorT3 phase. See Eq.43 of arxiv.1812.07865
         """
 
         q, chi1z, chi2z = x
@@ -829,8 +869,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         return phi22_T3
 
 
-    def __call__(self, x, fM_low=None, fM_ref=None, dtM=None, timesM=None,
-        dfM=None, freqsM=None, mode_list=None, par_dict=None,
+    def __call__(self, x, phi_ref=0, fM_low=None, fM_ref=None, dtM=None,
+        timesM=None, dfM=None, freqsM=None, mode_list=None, par_dict=None,
         do_not_align=False):
         """
     Return dimensionless surrogate modes.
@@ -838,23 +878,20 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
     x :             The intrinsic parameters EXCLUDING total Mass (see
                     self.param_space)
 
+    phi_ref :       Orbital phase at reference epoch. Default: 0.
+
     fM_low :        Initial frequency of (2,2) mode in units of cycles/M.
-                    If None, will use the entire data of the surrogate.
+                    If 0, will use the entire data of the surrogate.
                     Default None.
 
-    fM_ref:         Reference frequency used to set the reference epoch at which
-                    the frame is aligned and the spins are specified. The frame
-                    is aligned at the reference epoch as follows:
-                        The orbital angular momentum points towards the
-                            +ve z-axis.
-                        The separation vector from the smaller BH to the larger
-                            BH points towards the +ve x-axis.
-                    For time domain models, this is used to detemine a t_ref,
-                    such that the frequency of the (2, 2) mode equals fM_ref
-                    at t=t_ref.
-                    Default: If fM_low is given, fM_ref = fM_low. If fM_low is
-                    None, fM_ref is set to the initial frequency (the first
-                    index).
+    fM_ref:         Frequency used to set the reference epoch at which
+                    the reference frame is defined and the spins are specified.
+                    See below for definition of the reference frame.
+                    Default: None.
+
+                    For time domain models, f_ref is used to determine a t_ref,
+                    such that the frequency of the (2, 2) mode equals f_ref at
+                    t=t_ref.
 
     dtM :           Uniform time step to use, in units of M. If None, the
                     returned time array will be the array used in the
@@ -888,6 +925,18 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         timesM : time array in units of M.
         h : A dictionary of waveform modes sampled at times=t with
             (ell, m) keys.
+
+
+    IMPORTANT NOTES:
+    ===============
+
+    The reference frame is defined as follows:
+        The +ve z-axis is along the orbital angular momentum at the reference
+        epoch. The orbital phase at the reference epoch is phi_ref. This means
+        that the separation vector from the lighter BH to the heavier BH is at
+        an azimuthal angle phi_ref from the +ve x-axis, in the orbital plane at
+        the reference epoch. The y-axis completes the right-handed triad. The
+        reference epoch is set using fM_ref.
         """
 
         if par_dict is not None:
@@ -904,9 +953,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         # always evaluate the (2,2) mode, the other modes neeed this
         # for transformation from coorbital to inertial frame
 
-        #FIXME fill in arxiv
         # At this stage the phase of the (2,2) mode is the residual after
-        # removing the TaylorT3 part (see. Eq.43 of arxiv.xxxx.xxxx)
+        # removing the TaylorT3 part (see. Eq.44 of arxiv.1812.07865)
         h_22 = self._eval_sur(x, tuple([2, 2]))
 
         # Get the TaylorT3 part and add to get the actual phase
@@ -917,7 +965,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                         if k != tuple([2,2])}
 
         return self._coorbital_to_inertial_frame(h_coorb, h_22, \
-            mode_list, dtM, timesM, fM_low, fM_ref, do_not_align)
+            mode_list, dtM, timesM, fM_low, fM_ref, phi_ref, do_not_align)
 
 
 class SpEC_nonspinning_q10_surrogate(MultiModalSurrogate):

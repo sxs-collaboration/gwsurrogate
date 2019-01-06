@@ -1414,36 +1414,43 @@ class SurrogateEvaluator(object):
             raise Exception("Expected x to be of len=%d"\
                 %len(self.soft_param_lims))
 
-        if self.hard_param_lims is not None:
-            raise_hard_error = False
-            for i in range(len(x)):
-                if x[i] < self.hard_param_lims[i][0] \
-                    or x[i] > self.hard_param_lims[i][1]:
-                    raise_hard_error = True
+        ## Allow violations within this value.
+        # Sometimes, chi can be 1+1e-16 due to machine precision limitations,
+        # this will ignore such cases
+        grace = 1e-14
 
-            if raise_hard_error:
-                raise Exception('Parameters x are outside allowed range.')
+        if self.hard_param_lims is not None:
+            raise_hard_error = None
+            for i in range(len(x)):
+                if x[i] < self.hard_param_lims[i][0] - grace \
+                    or x[i] > self.hard_param_lims[i][1] + grace:
+                    raise_hard_error = i
+
+            if raise_hard_error is not None:
+                raise Exception('Parameter x[%d] is outside allowed '
+                        'range.'%raise_hard_error)
 
         if self.soft_param_lims is not None:
-            raise_soft_warning = False
+            raise_soft_warning = None
             for i in range(len(x)):
                 if x[i] < self.soft_param_lims[i][0] \
                     or x[i] > self.soft_param_lims[i][1]:
-                    raise_soft_warning = True
+                    raise_soft_warning = i
 
-            if raise_soft_warning:
-                warnings.warn('Parameters x are outside training range.')
+            if raise_soft_warning is not None:
+                warnings.warn('Parameter x[%d] is outside training range.'
+                    %raise_soft_warning)
 
 
-    def _call_dimless_modes(self, x, fM_low=None, fM_ref=None,
+    def _call_dimless_modes(self, x, phi_ref=0, fM_low=None, fM_ref=None,
         dtM=None, timesM=None, dfM=None, freqsM=None, mode_list=None,
         par_dict=None):
         """ Evaluates the surrogate modes in dimensionless units.
         """
 
-        return self._sur_dimless(x, fM_low=fM_low, fM_ref=fM_ref, dtM=dtM,
-            timesM=timesM, dfM=dfM, freqsM=freqsM, mode_list=mode_list,
-            par_dict=par_dict)
+        return self._sur_dimless(x, phi_ref=phi_ref, fM_low=fM_low,
+            fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM, freqsM=freqsM,
+            mode_list=mode_list, par_dict=par_dict)
 
 
     def _mode_sum(self, h_modes, theta, phi, fake_neg_modes=False):
@@ -1466,7 +1473,8 @@ class SurrogateEvaluator(object):
 
     def __call__(self, x, M=None, dist_mpc=None, f_low=None, t_ref=None,
         f_ref=None, dt=None, df=None, times=None, freqs=None, mode_list=None,
-        inclination=None, phi_ref=None, par_dict=None, units='dimensionless'):
+        inclination=None, phi_ref=0, par_dict=None, units='dimensionless',
+        skip_param_checks=False):
         """
     INPUT
     =====
@@ -1479,45 +1487,56 @@ class SurrogateEvaluator(object):
         M        :  Total mass (solar masses). Default: None.
         dist_mpc :  Distance to binary system (MegaParsecs). Default: None.
 
-    f_low :     Instantaneous initial frequency of the (2, 2) mode. If None,
-                the entire waveform is returned. Default: None.
+    f_low :     [Required!] Instantaneous initial frequency of the (2, 2) mode. 
+                If 0, the entire waveform is returned. 
+                Should be in cycles/M if units = 'dimensionless', should be in
+                Hertz if units = 'mks'.
+                Default: None. Since f_low=0 can result in very long 
+                waveforms a value must now be passed. Earlier version of 
+                of the code defaulted to 0.
 
-    f_ref:      Reference frequency used to set the reference epoch at which
-                the frame is aligned and the spins are specified. The frame is
-                aligned at the reference epoch as follows:
-                    The orbital angular momentum points towards the +ve z-axis.
-                    The separation vector from the smaller BH to the larger
-                    BH points towards the +ve x-axis.
-                For time domain models, f_ref is used to detemine a t_ref, such
-                that the frequency of the (2, 2) mode equals f_ref at t=t_ref.
-                Default: If f_low is given, f_ref = f_low. If f_low is None,
-                f_ref is set to the initial frequency (the first index).
+    f_ref:      Frequency used to set the reference epoch at which
+                the reference frame is defined and the spins are specified.
+                See below for definition of the reference frame. Should be in
+                cycles/M if units = 'dimensionless', should be in Hertz if
+                units = 'mks'. Default: If f_ref is not given, we set
+                f_ref = f_low. If f_low is 0, this corresponds to the initial
+                index.
+
+                For time domain models, f_ref is used to determine a t_ref,
+                such that the frequency of the (2, 2) mode equals f_ref at
+                t=t_ref.
 
     dt, df :    Time/Frequency step size, specify at most one of dt/df,
                 depending on whether the surrogate is a time/frequency domain
                 surrogate. If None, the internal domain of the surrogate is
-                used, which can be nonuniformly sampled. Default None.
-                Do not specify times/freqs if using dt/df.
+                used, which can be nonuniformly sampled. dt (df) Should be in
+                M (cycles/M) if units = 'dimensionless', should be in
+                seconds (Hertz) if units = 'mks'. Do not specify times/freqs
+                if using dt/df. Default None.
 
-    times, freqs:     
+
+    times, freqs:
                 Array of time/frequency samples at which to evaluate the
-                waveform, depending on whether the surrogate is a 
-                time/frequency domain surrogate. Default None.
-                Do not specify dt/df if using times/freqs.
+                waveform, depending on whether the surrogate is a
+                time/frequency domain surrogate. time (freqs) Should be in
+                M (cycles/M) if units = 'dimensionless', should be in
+                seconds (Hertz) if units = 'mks'. Do not specify dt/df if
+                using times/freqs. Default None.
 
-    mode_list : A list of (l, m) modes to be evaluated. If None, evaluates all
-                available modes. Default: None.
+    mode_list : A list of (l, m) modes tuples to be evaluated. If None,
+                evaluates all available modes.
+                Example: mode_list = [(2,2),(2,1)]. Default: None.
 
-    inclination, phi_ref :  Either specify both or neither.
-                Evaluate the waveform at this location on the sphere by summing
-                over the modes given in the 'mode_list' argument. For
-                nonprecessing systems the m<0 modes are automatically deduced
-                from the m>0 modes. To see if a model is precessing check
-                self.keywords.
-                If both inclination and phi_ref are None, the mode data is
-                returned as a dictionary. If specified, the complex strain
-                (h = hplus -i hcross) evaluated at (inclination, phi_ref) on
-                the sky is returned. Defaults: None.
+    phi_ref :   Orbital phase at reference epoch. Default: 0.
+
+    inclination : Inclination angle between the orbital angular momentum
+                direction at the reference epoch and the line-of-sight to the
+                observer. If inclination is None, the mode data is returned as
+                a dictionary. If specified, the complex strain (h = hplus -i
+                hcross) evaluated at (inclination, pi/2) on the sky of the
+                reference frame is returned. See below for definition of the
+                reference frame. Default: None.
 
     par_dict:   A dictionary containing any additional parameters needed for a
                 particular surrogate model. Default: None.
@@ -1526,7 +1545,7 @@ class SurrogateEvaluator(object):
                 If 'dimensionless': Any of f_low, f_ref, dt, df, times and
                     freqs, if specified, must be in dimensionless units. That
                     is, dt/times should be in units of M, while f_ref, f_low
-                    and df/freqs should be in units of cycles/M. 
+                    and df/freqs should be in units of cycles/M.
                     M and dist_mpc must be None. The waveform and domain are
                     returned as dimensionless quantities as well.
                 If 'mks': Any of f_low, f_ref, dt, df, times and freqs, if
@@ -1534,6 +1553,10 @@ class SurrogateEvaluator(object):
                     be in seconds, while f_ref, f_low and df/freqs should be
                     in Hz. M and dist_mpc must be specified. The waveform and
                     domain are returned in MKS units as well.
+
+    skip_param_checks :
+                Skip sanity checks for parameters. Use this if you want to
+                extrapolate outside allowed range. Default: False.
 
     RETURNS
     =====
@@ -1544,20 +1567,46 @@ class SurrogateEvaluator(object):
 
     domain :    Array of time/frequency samples, depending on whether the
                 surrogate is a time/frequency domain model. For time domain
-                models the time is set to 0 at the peak of the waveform.
+                models the time is set to 0 at the peak of the waveform. The
+                time (frequency) values are in M (cycles/M) if units =
+                'dimensionless', they are in seconds (Hertz) if units = 'mks'
 
-    h :         Waveform. If inclination/phi_ref are specified, returns
-                complex strain h = hplus -i hcross, evaluated at
-                (inclination, phi_ref) on the sky.
-                Else, h is a dictionary of available modes with (l, m) tuples
-                as keys.
+    h :         Waveform.
+                    If inclination is specified, the complex strain (h = hplus
+                    -i hcross) evaluated at (inclination, pi/2) on the sky of
+                    the reference frame is returned. This follows the LAL
+                    convention, see below for details.  This includes all modes
+                    given in the 'mode_list' argument.  For nonprecessing
+                    systems the m<0 modes are automatically deduced from the
+                    m>0 modes. To see if a model is precessing check
+                    self.keywords.
+
+                    Else, h is a dictionary of available modes with (l, m)
+                    tuples as keys.
+
+                    If M and dist_mpc are given, the physical waveform
+                    at that distance is returned. Else, it is returned in
+                    code units: r*h/M extrapolated to future null-infinity.
+
+
+    IMPORTANT NOTES:
+    ===============
+
+    The reference frame is defined as follows:
+        The +ve z-axis is along the orbital angular momentum at the reference
+        epoch. The orbital phase at the reference epoch is phi_ref. This means
+        that the separation vector from the lighter BH to the heavier BH is at
+        an azimuthal angle phi_ref from the +ve x-axis, in the orbital plane at
+        the reference epoch. The y-axis completes the right-handed triad. The
+        reference epoch is set using f_ref.
+
+        Now, if inclination is given, the waveform is evaluated at
+        (inclination, pi/2) in the reference frame. This agrees with the LAL
+        convention. See Harald Pfeiffer's, LIGO DCC document T18002260-v1 for
+        the LAL frame diagram.
         """
 
         # Sanity checks
-        if (inclination is None) ^ (phi_ref is None):
-            raise ValueError("Either specify both inclination and phi_ref,"
-                " or neither")
-
         if (M is None) ^ (dist_mpc is None):
             raise ValueError("Either specify both M and dist_mpc, or neither")
 
@@ -1587,11 +1636,15 @@ class SurrogateEvaluator(object):
         if (df is not None) and (freqs is not None):
             raise ValueError("Cannot specify both df and freqs.")
 
-        if (f_ref is not None) and (f_low is not None) and (f_ref < f_low):
+        if (f_low is None):
+            raise ValueError("f_low must be specified.")
+
+        if (f_ref is not None) and (f_ref < f_low):
             raise ValueError("f_ref cannot be lower than f_low.")
 
         # Warn/Exit if extrapolating
-        self._check_param_limits(x)
+        if not skip_param_checks:
+            self._check_param_limits(x)
 
 
         # Get scalings from dimensionless units to mks units
@@ -1605,8 +1658,7 @@ class SurrogateEvaluator(object):
         else:
             raise Exception('Invalid units')
 
-        # If f_ref is not given, we set it to f_low. If f_low is also None,
-        # f_ref will correspond to the initial frequency.
+        # If f_ref is not given, we set it to f_low.
         if f_ref is None:
             f_ref = f_low
 
@@ -1615,11 +1667,11 @@ class SurrogateEvaluator(object):
         timesM = None if times is None else times/t_scale
         dfM = None if df is None else df*t_scale
         freqsM = None if freqs is None else freqs*t_scale
-        fM_ref = None if f_ref is None else f_ref*t_scale
 
         # Get waveform modes and domain in dimensionless units
-        fM_low = None if f_low is None else f_low*t_scale
-        data = self._call_dimless_modes(x, fM_low=fM_low,
+        fM_low = f_low*t_scale
+        fM_ref = f_ref*t_scale
+        data = self._call_dimless_modes(x, phi_ref=phi_ref, fM_low=fM_low,
             fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM, freqsM=freqsM,
             mode_list=mode_list, par_dict=par_dict)
         if len(data) == 2:
@@ -1628,14 +1680,14 @@ class SurrogateEvaluator(object):
             h = data
             domain = None       # Assuming times/freqs were specified.
 
-        # sum over modes to get complex strain if inclination/phi_ref are given
+        # sum over modes to get complex strain if inclination is given
         if inclination is not None:
             # For nonprecessing systems get the m<0 modes from the m>0 modes.
             fake_neg_modes = not self.keywords['Precessing']
-            theta = inclination
-            #FIXME document this better once a consensus is reached.
-            phi = -phi_ref + np.pi/2        # LAL convention
-            h = self._mode_sum(h, theta, phi, fake_neg_modes=fake_neg_modes)
+
+            # Follows the LAL convention (see help text)
+            h = self._mode_sum(h, inclination, np.pi/2,\
+                fake_neg_modes=fake_neg_modes)
 
         if domain is not None:
             # Rescale domain to physical units
@@ -1663,7 +1715,7 @@ class SurrogateEvaluator(object):
 class NRHybSur3dq8(SurrogateEvaluator):
     """
 A class for the NRHybSur3dq8 surrogate model presented in Varma et al. 2018,
-in prep.
+arxiv:1812.07865.
 
 Evaluates gravitational waveforms generated by aligned-spin binary black hole
 systems. This model was built using numerical relativity (NR) waveforms that
@@ -1676,7 +1728,7 @@ The m<0 modes are deduced from the m>0 modes.
 
 The parameter space of validity is:
 q \in [1, 10] and chi1z/chi2z \in [-1, 1],
-where q is the mass ratio and chi1z/chi2z are the spins of the larger/smaller
+where q is the mass ratio and chi1z/chi2z are the spins of the heavier/lighter
 BH, respectively, in the direction of orbital angular momentum.
 
 The surrogate has been trained in the range
