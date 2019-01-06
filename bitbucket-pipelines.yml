@@ -15,7 +15,8 @@ pipelines:
         caches:
           - pip
         script: # Modify the commands below to build your repository.
-          - conda install -y -c anaconda gcc
+          - apt-get install gcc
+          #- conda install -y -c anaconda gcc
           - conda install -y -c conda-forge gsl 
           - pip install pytest
           - pip install scipy
