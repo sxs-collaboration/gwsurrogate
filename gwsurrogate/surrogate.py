@@ -1487,10 +1487,13 @@ class SurrogateEvaluator(object):
         M        :  Total mass (solar masses). Default: None.
         dist_mpc :  Distance to binary system (MegaParsecs). Default: None.
 
-    f_low :     Instantaneous initial frequency of the (2, 2) mode. If 0,
-                the entire waveform is returned. Should be in cycles/M if
-                units = 'dimensionless', should be in Hertz if units = 'mks'.
-                Default: None.
+    f_low :     [Required!] Instantaneous initial frequency of the (2, 2) mode. 
+                If 0, the entire waveform is returned. 
+                Should be in cycles/M if units = 'dimensionless', should be in
+                Hertz if units = 'mks'.
+                Default: None. Since f_low=0 can result in very long 
+                waveforms a value must now be passed. Earlier version of 
+                of the code defaulted to 0.
 
     f_ref:      Frequency used to set the reference epoch at which
                 the reference frame is defined and the spins are specified.

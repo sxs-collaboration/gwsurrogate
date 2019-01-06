@@ -158,7 +158,7 @@ def test_model_regression(generate_regression_data=False):
       else:
         if model in surrogate_loader_interface:
           print(ps)
-          t, h = sur(ps)
+          t, h = sur(ps, f_low=0.0)
         else:
           h= sur(ps)
         h_np = [h[mode] for mode in sur.mode_list]
