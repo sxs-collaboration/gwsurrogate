@@ -32,7 +32,8 @@ atol = 0.0
 # why a high tolerance? For some reason, a high tolerance is needed when 
 # comparining to regression data on different machines
 # TODO: explore the orgin of these large discrepencies (note that hdf5 data is saved in single precision)
-rtol = 5.e-6
+rtol_gsl = 7.e-6
+rtol = 1.e-11
 
 # TODO: new and old surrogate interfaces should be similar enough to avoid
 #       model-specific cases like below
@@ -182,8 +183,12 @@ def test_model_regression(generate_regression_data=False):
         hc_regression = fp_regression[model+"/parameter%i/hp"%i][:]
         hp_comparison = fp[model+"/parameter%i/hp"%i][:]
         hc_comparison = fp[model+"/parameter%i/hp"%i][:]
-        np.testing.assert_allclose(hp_regression, hp_comparison, rtol=rtol, atol=atol)
-        np.testing.assert_allclose(hc_regression, hc_comparison, rtol=rtol, atol=atol)
+        if model == "NRHybSur3dq8":
+          local_rtol = rtol_gsl
+        else:
+          local_rtol = rtol_gsl
+        np.testing.assert_allclose(hp_regression, hp_comparison, rtol=local_rtol, atol=atol)
+        np.testing.assert_allclose(hc_regression, hc_comparison, rtol=local_rtol, atol=atol)
 
     # fails due to round-off error differences of different machines
     #fp_regression.close()
