@@ -1,6 +1,6 @@
 # This is a sample build configuration for Python.
 # Check our guides at https://confluence.atlassian.com/x/x4UWN for more examples.
-# Only use spaces to indent your .yml configuration.
+# Only use spaces to indent your .yml configuration. 
 # -----
 # You can specify a custom docker image from Docker Hub as your build environment.
 #image: python:3.5.1
@@ -28,7 +28,7 @@ pipelines:
           - git submodule init
           - git submodule update
           - cd ..
-          - pip install build/ # install from local setup.py
+          - pip install -e build/ # install from local setup.py
           - cd build
           - python test/download_regression_models.py
           - pytest
