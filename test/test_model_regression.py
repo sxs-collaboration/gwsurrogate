@@ -32,7 +32,7 @@ atol = 0.0
 # why a high tolerance? For some reason, a high tolerance is needed when 
 # comparining to regression data on different machines
 # TODO: explore the orgin of these large discrepencies (note that hdf5 data is saved in single precision)
-rtol_gsl = 7.e-6
+rtol_gsl = 1.e-5
 rtol = 1.e-11
 
 # TODO: new and old surrogate interfaces should be similar enough to avoid
