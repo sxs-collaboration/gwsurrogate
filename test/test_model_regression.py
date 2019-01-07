@@ -29,7 +29,10 @@ import h5py, os, subprocess, time
 
 # set global tolerances for floating point comparisons (see np.testing.assert_allclose)
 atol = 0.0
-rtol = 1.e-11
+# why a high tolerance? For some reason, a high tolerance is needed when 
+# comparining to regression data on different machines
+# TODO: explore the orgin of these large discrepencies (note that hdf5 data is saved in single precision)
+rtol = 5.e-6
 
 # TODO: new and old surrogate interfaces should be similar enough to avoid
 #       model-specific cases like below
