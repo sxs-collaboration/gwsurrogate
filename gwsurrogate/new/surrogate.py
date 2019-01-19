@@ -780,7 +780,12 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             # Truncate data so that only freqs above omega_low are retained
             # If timesM are already given, we don't need to truncate data
             if dtM is not None:
-                startIdx = np.argmin(np.abs(omega22 - omega_low))
+                if fM_low != 0:
+                    startIdx = np.argmin(np.abs(omega22 - omega_low))
+                else:
+                    # If fM_low is 0, we use the entire waveform
+                    startIdx = 0
+
                 Amp_22 = Amp_22[startIdx:]
                 phi_22 = phi_22[startIdx:]
                 omega22 = omega22[startIdx:]
