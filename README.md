@@ -44,8 +44,10 @@ Index). gwsurrogate can be installed to the standard location
 
 ## From source ##
 
-Download and unpack gwsurrogate-X.X.tar.gz to any folder gws_folder of your 
-choosing. The gwsurrogate module can be used immediately by adding
+First, please make sure you have the necessary dependencies
+installed (see above). Next, Download and unpack gwsurrogate-X.X.tar.gz
+to any folder gws_folder of your choosing. The gwsurrogate module can
+be used immediately by adding
 
 ```
 import sys
