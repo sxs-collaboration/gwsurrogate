@@ -8,6 +8,7 @@
 # this image allows conda to install gsl
 #image: continuumio/miniconda3:latest
 image: continuumio/anaconda3:latest
+#image: continuumio/anaconda:latest
 
 pipelines:
   default:
