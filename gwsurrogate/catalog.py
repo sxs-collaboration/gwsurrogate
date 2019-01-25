@@ -87,7 +87,7 @@ _surrogate_world['NRSur4d2s_FDROM_grid12'] = \
 
 _surrogate_world['NRHybSur3dq8'] = \
   surrogate_info(\
-  'https://www.dropbox.com/s/v10upxsdcdq5nim/NRHybSur3dq8.h5',
+  'https://zenodo.org/record/2549618/files/NRHybSur3dq8.h5',
   '''Surrogate model for aligned-spin binary black holes with mass ratios q<=8
   and spin magnitudes <=0.8. The model is trained on NR waveforms that have been
   hybridized using EOB/PN and spans the entire LIGO frequency band. This model
