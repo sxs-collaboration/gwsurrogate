@@ -1674,11 +1674,11 @@ class SurrogateEvaluator(object):
         data = self._call_dimless_modes(x, phi_ref=phi_ref, fM_low=fM_low,
             fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM, freqsM=freqsM,
             mode_list=mode_list, par_dict=par_dict)
-        if len(data) == 2:
-            domain, h = data
-        else:
+        if (timesM is not None) or (freqsM is not None):
             h = data
             domain = None       # Assuming times/freqs were specified.
+        else:
+            domain, h = data
 
         # sum over modes to get complex strain if inclination is given
         if inclination is not None:
