@@ -35,6 +35,7 @@ from scipy.interpolate import splev as _splev
 from gwtools.harmonics import sYlm as _sYlm
 from gwtools import plot_pretty as _plot_pretty
 from gwtools import gwtools as _gwtools # from the package gwtools, import the module gwtools (gwtools.py)....
+from gwtools import gwutils as _gwutils
 from .parametric_funcs import function_dict as my_funcs
 from .surrogateIO import H5Surrogate as _H5Surrogate
 from .surrogateIO import TextSurrogateRead as _TextSurrogateRead
@@ -1474,7 +1475,7 @@ class SurrogateEvaluator(object):
     def __call__(self, x, M=None, dist_mpc=None, f_low=None, t_ref=None,
         f_ref=None, dt=None, df=None, times=None, freqs=None, mode_list=None,
         inclination=None, phi_ref=0, par_dict=None, units='dimensionless',
-        skip_param_checks=False):
+        skip_param_checks=False, taper_end=False):
         """
     INPUT
     =====
@@ -1557,6 +1558,10 @@ class SurrogateEvaluator(object):
     skip_param_checks :
                 Skip sanity checks for parameters. Use this if you want to
                 extrapolate outside allowed range. Default: False.
+
+    taper_end: 
+                Taper the last 40M of a time-domain waveform. 
+                Default: False.
 
     RETURNS
     =====
@@ -1642,6 +1647,9 @@ class SurrogateEvaluator(object):
         if (f_ref is not None) and (f_ref < f_low):
             raise ValueError("f_ref cannot be lower than f_low.")
 
+        if taper_end and self._domain_type != 'Time':
+            raise ValueError("%s is not a Time domain model, cannot taper")
+
         # Warn/Exit if extrapolating
         if not skip_param_checks:
             self._check_param_limits(x)
@@ -1679,6 +1687,16 @@ class SurrogateEvaluator(object):
             domain = None       # Assuming times/freqs were specified.
         else:
             domain, h = data
+
+        # taper the last 40M of the waveform, regardless of whether or not
+        # this corresponds to inspiral, merger, or ringdown.
+        if taper_end:
+            td = domain if timesM is None else timesM # td = taper domain
+            h_tapered = {}
+            for mode, hlm in h.iteritems():
+                # NOTE: we use a roll on window [td[0]-100,td[0]-50] to not taper the beginning
+                h_tapered[mode] = _gwutils.windowWaveform(td, hlm, td[0]-100, td[0]-50, td[-1] - 40., td[-1], windowType="planck")
+            h = h_tapered
 
         # sum over modes to get complex strain if inclination is given
         if inclination is not None:
