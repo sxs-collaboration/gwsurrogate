@@ -1321,6 +1321,8 @@ class SurrogateEvaluator(object):
             keywords.
         3. define _load_dimless_surrogate(), this should return dimensionless
             domain and modes.
+        4. define _get_intrinsic_parameters(), this should put all intrinsic
+            parameters into a single array.
         4. define soft_param_lims and hard_param_lims, the limits for
             parameters beyond which warnings/errors are raised.
     See NRHybSur3dq8 for an example.
@@ -1337,8 +1339,7 @@ class SurrogateEvaluator(object):
                         determine the m<0 modes from the m>0 modes.
         soft_param_lims: Parameter bounds beyond which a warning is raised.
         hard_param_lims: Parameter bounds beyond which an error is raised.
-                         Same order and len as x in the __call__ function.
-                         Each element is a [minVal, maxVal] pair.
+                         Should be in format [qMax, chimax]
                          Setting soft_param_lims/hard_param_lims to None will
                          skip that particular check.
         """
@@ -1346,10 +1347,6 @@ class SurrogateEvaluator(object):
 
         # load the dimensionless surrogate
         self._sur_dimless = self._load_dimless_surrogate()
-
-        self.param_space = self._sur_dimless.param_space
-        self.domain      = self._sur_dimless.domain
-        self.mode_list   = self._sur_dimless.mode_list
 
         self._domain_type = domain_type
         if self._domain_type not in ['Time', 'Frequency']:
@@ -1377,6 +1374,15 @@ class SurrogateEvaluator(object):
         """
         raise NotImplementedError("Please override me.")
 
+    def _get_intrinsic_parameters(self, q, chiA, chiB, par_dict):
+        """
+        This function, which must be overriden for each derived class of
+        SurrogateEvaluator, puts all intrinsic parameters of the surrogate
+        into a single array.
+        For example, for NRHybSur3dq8: x = [q, chiAz, chiBz].
+        """
+        raise NotImplementedError("Please override me.")
+
 
     def _check_keywords_and_set_defaults(self):
         """ Does some sanity checks on self.keywords.
@@ -1386,6 +1392,7 @@ class SurrogateEvaluator(object):
         default_keywords = {
             'Precessing': False,
             'Eccentric': False,
+            'Tidal': False,
             'Hybridized': False,
             'nonGR': False,     # We will get there
             }
@@ -1405,42 +1412,64 @@ class SurrogateEvaluator(object):
                 self.keywords[key] = default_keywords[key]
 
 
-    def _check_param_limits(self, x):
-        """ Checks that x is within allowed range of paramters.
+    def _check_param_limits(self, q, chiA, chiB, par_dict):
+        """ Checks that the parameters are within allowed range.
             Raises a warning if outside self.soft_param_lims and
             raises an error if outside self.hard_param_lims.
             If these are None, skips the checks.
         """
-        if len(x) != len(self.soft_param_lims):
-            raise Exception("Expected x to be of len=%d"\
-                %len(self.soft_param_lims))
-
         ## Allow violations within this value.
         # Sometimes, chi can be 1+1e-16 due to machine precision limitations,
         # this will ignore such cases
         grace = 1e-14
 
-        if self.hard_param_lims is not None:
-            raise_hard_error = None
-            for i in range(len(x)):
-                if x[i] < self.hard_param_lims[i][0] - grace \
-                    or x[i] > self.hard_param_lims[i][1] + grace:
-                    raise_hard_error = i
+        chiAmag = np.linalg.norm(chiA)
+        chiBmag = np.linalg.norm(chiB)
 
-            if raise_hard_error is not None:
-                raise Exception('Parameter x[%d] is outside allowed '
-                        'range.'%raise_hard_error)
+        if not self.keywords['Precessing']:
+            if (np.linalg.norm(chiA[:2]) > grace
+                    or np.linalg.norm(chiB[:2]) > grace):
+                raise Exception('Got precessing spins for a nonprecessing '
+                    'model')
+
+        if par_dict is not None:
+            if self.keywords['Tidal']:
+                if (('Lambda1' not in par_dict.keys())
+                        or ('Lambda2' not in par_dict.keys())):
+                    raise Exception('Tidal parameters should be passed '
+                        'through par_dict for this model.')
+            else:
+                if (('Lambda1' in par_dict.keys())
+                        or ('Lambda2' in par_dict.keys())):
+                    raise Exception('Tidal parameters given for a '
+                        'non-tidal model')
+
+
+        if self.hard_param_lims is not None:
+            qMax = self.hard_param_lims[0]
+            chiMax = self.hard_param_lims[1]
+            if q > qMax + grace or q < 0.99:
+                raise Exception('Mass ratio q=%.4f is outside allowed '
+                    'range: 1<=q<=%.4f'%(q, qMax))
+            if chiAmag > chiMax + grace:
+                raise Exception('Spin magnitude of BhA=%.4f is outside '
+                    'allowed range: chi<=%.4f'%(chiAmag, chiMax))
+            if chiBmag > chiMax + grace:
+                raise Exception('Spin magnitude of BhB=%.4f is outside '
+                    'allowed range: chi<=%.4f'%(chiBmag, chiMax))
 
         if self.soft_param_lims is not None:
-            raise_soft_warning = None
-            for i in range(len(x)):
-                if x[i] < self.soft_param_lims[i][0] \
-                    or x[i] > self.soft_param_lims[i][1]:
-                    raise_soft_warning = i
-
-            if raise_soft_warning is not None:
-                warnings.warn('Parameter x[%d] is outside training range.'
-                    %raise_soft_warning)
+            qMax = self.soft_param_lims[0]
+            chiMax = self.soft_param_lims[1]
+            if q > qMax:
+                warnings.warn('Mass ratio q=%.4f is outside training '
+                    'range: 1<=q<=%.4f'%(q, qMax))
+            if chiAmag > chiMax:
+                warnings.warn('Spin magnitude of BhA=%.4f is outside '
+                    'training range: chi<=%.4f'%(chiAmag, chiMax))
+            if chiBmag > chiMax:
+                warnings.warn('Spin magnitude of BhB=%.4f is outside '
+                    'training range: chi<=%.4f'%(chiBmag, chiMax))
 
 
     def _call_dimless_modes(self, x, phi_ref=0, fM_low=None, fM_ref=None,
@@ -1472,17 +1501,21 @@ class SurrogateEvaluator(object):
         return h
 
 
-    def __call__(self, x, M=None, dist_mpc=None, f_low=None, t_ref=None,
-        f_ref=None, dt=None, df=None, times=None, freqs=None, mode_list=None,
-        inclination=None, phi_ref=0, par_dict=None, units='dimensionless',
-        skip_param_checks=False, taper_end_duration=None):
+    def __call__(self, q, chiA, chiB, M=None, dist_mpc=None, f_low=None,
+        t_ref=None, f_ref=None, dt=None, df=None, times=None, freqs=None,
+        mode_list=None, inclination=None, phi_ref=0, par_dict=None,
+        units='dimensionless', skip_param_checks=False,
+        taper_end_duration=None):
         """
     INPUT
     =====
-    x :         Array of binary parameter values EXCLUDING total mass M.
-                This depends on the particular surrogate model.
-                Examples:
-                    For NRHybSur3dq8, x=[q,chi1z,chi2z].
+    q :         Mass ratio, mA/mB >= 1.
+    chiA:       Dimensionless spin of the heavier black hole. For precessing
+                models, this will be taken to be the spin in the coprecessing
+                frame at reference time/frequency.
+    chiB:       Dimensionless spin of the lighter black hole. For precessing
+                models, this will be taken to be the spin in the coprecessing
+                frame at reference time/frequency.
 
     M, dist_mpc: Either specify both M and dist_mpc or neither.
         M        :  Total mass (solar masses). Default: None.
@@ -1654,8 +1687,9 @@ class SurrogateEvaluator(object):
 
         # Warn/Exit if extrapolating
         if not skip_param_checks:
-            self._check_param_limits(x)
+            self._check_param_limits(q, chiA, chiB, par_dict)
 
+        x = self._get_intrinsic_parameters(q, chiA, chiB, par_dict)
 
         # Get scalings from dimensionless units to mks units
         if units == 'dimensionless':
@@ -1684,6 +1718,7 @@ class SurrogateEvaluator(object):
         data = self._call_dimless_modes(x, phi_ref=phi_ref, fM_low=fM_low,
             fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM, freqsM=freqsM,
             mode_list=mode_list, par_dict=par_dict)
+
         if (timesM is not None) or (freqsM is not None):
             h = data
             domain = None       # Assuming times/freqs were specified.
@@ -1768,15 +1803,13 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         domain_type = 'Time'
         keywords = {
             'Precessing': False,
-            'Eccentric': False,
             'Hybridized': True,
             }
         # soft_lims -> raise warning when outside lims
         # hard_lim -> raise error when outside lims
-        # Same order as x in the call function. Each element is
-        # a [minVal, maxVal] pair.
-        soft_param_lims = [[0.99, 8.01], [-0.801, 0.801], [-0.801, 0.801]]
-        hard_param_lims = [[0.99, 10.01], [-1, 1], [-1, 1]]
+        # Format is [qMax, chiMax].
+        soft_param_lims = [8.01, 0.801]
+        hard_param_lims = [10.01, 1]
         super(NRHybSur3dq8, self).__init__(self.__class__.__name__, \
             domain_type, keywords, soft_param_lims, hard_param_lims)
 
@@ -1793,6 +1826,18 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         sur = new_surrogate.AlignedSpinCoOrbitalFrameSurrogate()
         sur.load(self.h5filename)
         return sur
+
+    def _get_intrinsic_parameters(self, q, chiA, chiB, par_dict):
+        """
+        This function, which must be overriden for each derived class of
+        SurrogateEvaluator, puts all intrinsic parameters of the surrogate
+        into a single array.
+        For example, for NRHybSur3dq8: x = [q, chiAz, chiBz].
+        """
+        if par_dict is not None:
+            raise ValueError('Expected par_dict to be None.')
+        x = [q, chiA[2], chiB[2]]
+        return x
 
 
 

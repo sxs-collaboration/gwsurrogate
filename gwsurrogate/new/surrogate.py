@@ -944,8 +944,6 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         reference epoch is set using fM_ref.
         """
 
-        if par_dict is not None:
-            raise ValueError('Expected par_dict to be None.')
         if dfM is not None:
             raise ValueError('Expected dfM to be None for a Time domain model')
         if freqsM is not None:
