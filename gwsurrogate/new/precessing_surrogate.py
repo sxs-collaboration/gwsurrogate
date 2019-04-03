@@ -1,33 +1,6 @@
-# --- NRSur7dq2.py ---
-
 """
-A module for evaluating the NRSur7dq2 surrogate model of gravitational waves
-from numerical relativity simulations of binary black hole mergers, as
-published in Blackman et al. 2017 PRD.
-"""
-
-__copyright__ = "Copyright (C) 2017 Jonathan Blackman"
-__email__     = "jonathan.blackman.0@gmail.com"
-__author__    = "Jonathan Blackman"
-__version__   = "1.0.5"
-__license__ = """
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+A module for evaluating precessing surrogate models of gravitational waves
+from numerical relativity simulations of binary black hole mergers.
 """
 
 import os
@@ -179,7 +152,7 @@ coprecessing frame to the inertial frame.
 
 def _get_fit_settings():
     """
-     These are to rescale the mass ratio fit range 
+     These are to rescale the mass ratio fit range
      from [-0.01, np.log(4+0.01)] to [-1, 1]. The chi fits are already in
      this range.
     """
@@ -212,7 +185,7 @@ def _get_fit_params(x):
     x[3] = chiHat
     x[6] = chi_a
 
-    return x   
+    return x
 
 def _eval_scalar_fit(fit_data, fit_params):
     """ Evaluates a single scalar fit.
@@ -344,7 +317,7 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
     def get_omega(self, i0, q, y):
         x = _utils.get_ds_fit_x(y, q)
         fit_params = _get_fit_params(x)
-        omega = _eval_scalar_fit(self.fit_data[i0], fit_params)
+        omega = _eval_scalar_fit(self.fit_data[i0]['omega'], fit_params)
         return omega
 
     def _get_t_ref(self, omega_ref, q, chiA0, chiB0, init_orbphase, init_quat):
@@ -376,7 +349,7 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
         return t_ref
 
     def __call__(self, q, chiA0, chiB0, init_quat=None, init_orbphase=0.0,
-                 t_ref=None, omega_ref=None, allow_extrapolation=False):
+                 t_ref=None, omega_ref=None):
         """
 Computes the modeled NR dynamics given the initial conditions.
 
@@ -394,8 +367,6 @@ t_ref: The reference (dimensionless) time, where the peak amplitude occurs at t=
 omega_ref: The dimensionless orbital angular frequency used to determine t_ref,
        which is the time derivative of the orbital phase in the coprecessing frame.
        Specify at most one of t_ref, omega_ref.
-allow_extrapolation: Enable arbitrary extrapolation of the surrogate in mass
-       ratio and spin magnitude. By default, only allow tiny extrapolations.
 
 Returns:
 ==================
@@ -404,37 +375,18 @@ orbphase: The orbital phase in the coprecessing frame with shape (L, )
 chiA: The time-dependent chiA in the coprecessing frame with shape (L, 3)
 chiB: The time-dependent chiB in the coprecessing frame with shape (L, 3)
 
-L = len(self.t), and these returned arrays are sampled at self.t 
+L = len(self.t), and these returned arrays are sampled at self.t
         """
 
         if t_ref is not None and omega_ref is not None:
             raise Exception("Specify at most one of t_ref, omega_ref.")
 
-        # Sanity checks, allowing tiny extrapolations, and either warning
-        # or raising exceptions on large extrapolations.
-        if q < 0.99:
-            # Black hole A is defined to be the one with a larger mass,
-            # and q = mA/mB.
-            raise Exception("The mass ratio q should be >= 1")
-        if q > 2.01:
-            if allow_extrapolation:
-                warnings.warn("Extrapolating dynamics to q=%s > 2.0"%(q))
-            else:
-                raise Exception("Mass ratio %s > 2 outside training range"%(q))
-        if chiA0.shape != (3, ) or chiB0.shape != (3, ):
-            raise Exception("chiA0 and chiB0 should have shape (3, )")
 
         normA = np.sqrt(np.sum(chiA0**2))
         normB = np.sqrt(np.sum(chiB0**2))
         maxNorm = max(normA, normB)
         if maxNorm > 1.001:
             raise Exception("Got a spin magnitude of %s > 1.0"%(maxNorm))
-        if maxNorm > 0.801:
-            if allow_extrapolation:
-                warnings.warn("Extrapolating dynamics to |chi|=%s > 0.8"%(
-                    maxNorm))
-            else:
-                raise Exception("Spin magnitude %s outside training range"%(maxNorm))
 
         if omega_ref is not None:
             t_ref = self._get_t_ref(omega_ref, q, chiA0, chiB0, init_orbphase, init_quat)
@@ -696,41 +648,14 @@ class CoorbitalWaveformSurrogate:
                         self.data['%s_%s_%s%s'%(ell, m, reim, pm)] = tmp_data
 
 
-    def __call__(self, q, chiA, chiB, LMax=4, allow_extrapolation=False):
+    def __call__(self, q, chiA, chiB, LMax=4):
         """
 Evaluates the coorbital waveform modes.
 q: The mass ratio
 chiA, chiB: The time-dependent spin in the coorbital frame. These should have
             shape (N, 3) where N = len(t_coorb)
 LMax: The maximum ell mode to evaluate.
-allow_extrapolation: Enable arbitrary extrapolation of the surrogate in mass
-       ratio and spin magnitude. By default, only allow tiny extrapolations.
         """
-
-        # Sanity checks, allowing small extrapolation and warning on
-        # larger extrapolations
-        if q < 0.99:
-            # Black hole A is defined to be the one with a larger mass,
-            # and q = mA/mB.
-            raise Exception("The mass ratio q should be >= 1")
-        if q > 2.01:
-            if allow_extrapolation:
-                warnings.warn("Extrapolating coorbital waveform to q=%s > 2.0"%(q))
-            else:
-                raise Exception("Mass ratio %s > 2 outside training range"%(q))
-        normA = np.sqrt(np.sum(chiA**2, 1))
-        normB = np.sqrt(np.sum(chiB**2, 1))
-        maxNorm = max(np.max(normA), np.max(normB))
-        if maxNorm > 1.001:
-            raise Exception("Got a spin magnitude of %s > 1.0"%(maxNorm))
-        if maxNorm > 0.801:
-            if allow_extrapolation:
-                warnings.warn("Extrapolating coorbital waveform to |chi|=%s > 0.8"%(
-                    maxNorm))
-            else:
-                raise Exception("Spin magnitude %s > 0.8 outside training range"%(maxNorm))
-
-
         nmodes = LMax*LMax + 2*LMax - 3
         modes = 1.j*np.zeros((nmodes, len(self.t)))
 
@@ -795,39 +720,31 @@ def normalize_spin(chi, chi_norm):
 
 ##############################################################################
 
-class NRSurrogate7dq2:
+class PrecessingSurrogate(object):
     """
-A class for the NRSur7dq2 surrogate model presented in Blackman et al. 2017,
-hence known as THE PAPER:
-https://journals.aps.org/prd/abstract/10.1103/PhysRevD.96.024058
-https://arxiv.org/abs/1705.07089
-
-This surrogate model evaluates gravitational wave modes up to L=4 from binary
-black hole mergers with mass ratios q <=2 and spin magnitudes up to 0.8,
-with arbitrary spin directions.
+A wrapper class for the precessing surrogate models.
 
 See the __call__ method on how to evaluate waveforms.
     """
 
-    def __init__(self, filename=None):
+    def __init__(self, filename):
         """
-Loads the NRSur7dq2 surrogate model data.
+Loads the surrogate model data.
 
-filename: The hdf5 file containing the surrogate data, probably named
-"NRSur7dq2.h5. Default: Look for it in package directory."
+filename: The hdf5 file containing the surrogate data."
         """
-        if filename is None:
-            filename = os.path.join(os.path.dirname(__file__), "NRSur7dq2.h5")
         h5file = h5py.File(filename, 'r')
         self.dynamics_sur = DynamicsSurrogate(h5file)
         self.coorb_sur = CoorbitalWaveformSurrogate(h5file)
         self.t_coorb = self.coorb_sur.t
-        self.tds = np.append(self.dynamics_sur.t[0:6:2], self.dynamics_sur.t[6:])
+        self.tds = np.append(self.dynamics_sur.t[0:6:2], \
+            self.dynamics_sur.t[6:])
+
         self.t_0 = self.t_coorb[0]
         self.t_f = self.t_coorb[-1]
 
     def get_dynamics(self, q, chiA0, chiB0, init_phase=0.0, init_quat=None,
-                     t_ref=None, omega_ref=None, allow_extrapolation=False):
+                     t_ref=None, omega_ref=None):
         """
 Evaluates only the dynamics surrogate.
 q: The mass ratio mA/mB, with 1 <= q <= 2.
@@ -842,9 +759,7 @@ t_ref: The reference (dimensionless) time, where the peak amplitude occurs at t=
        Default: The initial time, t_0/M = -4500.
 omega_ref: The orbital angular frequency in the coprecessing frame, used to
            determine t_ref.
-       Specify at most one of t_ref, f_ref.
-allow_extrapolation: Enable arbitrary extrapolation of the surrogate in mass
-       ratio and spin magnitude. By default, only allow tiny extrapolations.
+       Specify at most one of t_ref, fM_ref.
 
 Returns:
 q_copr: The quaternion representing the coprecessing frame with shape (4, L)
@@ -853,31 +768,27 @@ chiA: The time-dependent chiA with shape (L, 3)
 chiB: The time-dependent chiB with shape (L, 3)
 
 These are sampled on self.tds which has length L.
-        """ 
+        """
         return self.dynamics_sur(q, chiA0, chiB0, init_orbphase=init_phase,
-                                 init_quat=init_quat, t_ref=t_ref, omega_ref=omega_ref,
-                                 allow_extrapolation=allow_extrapolation)
+                 init_quat=init_quat, t_ref=t_ref, omega_ref=omega_ref)
 
-    def get_coorb_waveform(self, q, chiA_coorb, chiB_coorb, LMax=4, allow_extrapolation=False):
+    def get_coorb_waveform(self, q, chiA_coorb, chiB_coorb, LMax=4):
         """
 Evaluates the coorbital waveform surrogate.
 q: The mass ratio mA/mB, with 1 <= q <=2.
 chiA_coorb, chiB_coorb: The spins in the coorbital frame, with shape (N, 3)
     where N = len(self.t_coorb).
 LMax: The maximum ell mode to evaluate.
-allow_extrapolation: Enable arbitrary extrapolation of the surrogate in mass
-       ratio and spin magnitude. By default, only allow tiny extrapolations.
 
 Returns a 2d array with shape (n_modes, N) where the modes are ordered:
     (2, -2), ..., (2, 2), (3, -3), ...
 with n_modes = 5, 12, or 21 for LMax = 2, 3, or 4 respectively
         """
-        return self.coorb_sur(q, chiA_coorb, chiB_coorb, LMax=LMax,
-                              allow_extrapolation=allow_extrapolation)
+        return self.coorb_sur(q, chiA_coorb, chiB_coorb, LMax=LMax)
 
     def get_time_from_freq(self, freq, q, chiA0, chiB0, MTot=None,
                            init_phase=0.0, init_quat=None, t_ref=None,
-                           f_ref=None):
+                           fM_ref=None):
         """
 Obtain the time at which a particular gravitational wave frequency occurs.
 freq: The gravitational wave frequency. If MTot is given, freq is given in Hz.
@@ -886,12 +797,12 @@ See the __call__ docstring for other parameters.
         """
         # Determine omega_ref if needed
         omega_ref = None
-        if f_ref is not None:
+        if fM_ref is not None:
             if MTot is None:
-                omega_ref = f_ref * np.pi
+                omega_ref = fM_ref * np.pi
             else:
                 # Get dimensionless omega_ref
-                omega_ref = f_ref * MTot * SOLAR_TIME_IN_SECONDS * np.pi
+                omega_ref = fM_ref * MTot * SOLAR_TIME_IN_SECONDS * np.pi
                 t_ref = self.dynamics_sur._get_t_ref(omega_ref, q, chiA0, chiB0,
                                                      init_orbphase, init_quat)
 
@@ -920,13 +831,19 @@ See the __call__ docstring for other parameters.
 
         return t0
 
-    def __call__(self, q, chiA0, chiB0, init_phase=0.0, init_quat=None,
-                 return_spins=False, t=None, theta=None, phi=None, LMax=4,
-                 t_ref=None, f_ref=None, MTot=None, distance=None,
-                 use_lalsimulation_conventions=False, allow_extrapolation=False):
+    #def __call__(self, q, chiA0, chiB0, init_phase=0.0, init_quat=None,
+    #             return_spins=False, t=None, theta=None, phi=None, LMax=4,
+    #             t_ref=None, fM_ref=None, MTot=None, distance=None,
+    #             use_lalsimulation_conventions=False, allow_extrapolation=False):
+
+     #   return self._sur_dimless(x, phi_ref=phi_ref, fM_low=fM_low,
+     #       fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM, freqsM=freqsM,
+     #       mode_list=mode_list, par_dict=par_dict)
+
+    def __call__(self, x, phi_ref=None, fM_low=None, fM_ref=None, dtM=None,
+            timesM=None, dfM=None, freqsM=None, mode_list=None, par_dict=None):
         """
-Evaluates the surrogate model, returning either the inertial frame waveform
-modes, or the waveform evaluated at some point on the sphere.
+Evaluates a precessing surrogate model.
 
 Arguments:
     q: The mass ratio mA/mB, with 1 <= q <=2
@@ -960,16 +877,16 @@ Arguments:
                     The NRSur7dq2 surrogate model contains modes up to L=4.
                     Using LMax=2 or LMax=3 reduces the evaluation time.
     t_ref:
-    f_ref:
+    fM_ref:
     t_ref:          The reference (dimensionless) time, where the peak amplitude
                     occurs at t=0.
                     Default: The initial time, t_0/M = -4500.
-    f_ref:          A gravitational wave frequency used to determine t_ref,
+    fM_ref:          A gravitational wave frequency used to determine t_ref,
                     taken to be $\omega / pi$ where $\omega$ is the angular
                     orbital frequency in the coprecessing frame.
-                    Specify at most one of t_ref, f_ref.
+                    Specify at most one of t_ref, fM_ref.
     MTot:           The total mass of the system, given in solar masses.
-                    If given, scales times appropriately, and f_ref should be
+                    If given, scales times appropriately, and fM_ref should be
                     given in Hz if specified.
                     If t=None, returns the results at
                     self.t_coorb * MTot * SOLAR_TIME_IN_SECONDS
@@ -983,8 +900,6 @@ Arguments:
                     This agrees with lalsimulation's ChooseTDWaveform but not
                     ChooseTDModes; set this to false to agree with ChooseTDModes.
                     This is as of June 2018.
-    allow_extrapolation: Enable arbitrary extrapolation of the surrogate in mass
-                    ratio and spin magnitude. By default, only allow tiny extrapolations.
 
 Returns:
     h (with return_spins=False)
@@ -998,38 +913,29 @@ Returns:
     chiA, chiB: The inertial frame spins with shape (N, 3), where N=len(t)
                 (or len(self.t_coorb) if t=None).
 
-
-Examples:
-
-# Load the surrogate
->>> sur = NRSur7dq2.NRSurrogate7dq2('NRSur7dq2.h5')
-
-#Evaluate a waveform with aligned spins
->>> q = 1.5
->>> chiA0 = np.array([0.0, 0.0, 0.5])
->>> chiB0 = np.array([0.0, 0.0, 0.2])
->>> h_mode_dict = sur(q, chiA0, chiB0)
-
-# Plot the results
->>> t = sur.t_coorb
->>> import matplotlib.pyplot as plt
->>> plt.plot(t, np.real(h_mode_dict[2, 2]), label='(2, 2) mode, real part')
->>> plt.plot(t, np.imag(h_mode_dict[2, 2]), label='(2, 2) mode, imag part')
->>> plt.legend()
->>> plt.show()
-
-# Evaluate a precessing waveform, evaluate it on the sphere, and get the spins
->>> t_dense = np.arange(-4500.0, 100.01, 0.1)
->>> chiA0 = np.array([0.8, 0.0, 0.0])
->>> theta, phi = np.pi/3, 0.0
->>> h, chiA, chiB = sur(q, chiA0, chiB0, return_spins=True, t=t_dense,
-...                     theta=theta, phi=phi)
->>> plt.plot(t_dense, np.real(h), label='h_+')
->>> plt.plot(t_dense, -1*np.imag(h), label='h_x')
->>> plt.plot(t_dense, chiA[:, 0], label='chiA_x')
->>> plt.legend()
->>> plt.show()
         """
+
+        if dfM is not None:
+            raise ValueError('Expected dfM to be None for a Time domain model')
+        if freqsM is not None:
+            raise ValueError('Expected freqsM to be None for a Time domain'
+                ' model')
+
+        if par_dict is None:
+            par_dict = {}
+
+        init_phase = par_dict.pop('init_phase', 0)
+        init_quat = par_dict.pop('init_quat', None)
+        return_dynamics = par_dict.pop('return_dynamics', False)
+        use_lalsimulation_conventions \
+            = par_dict.pop('use_lalsimulation_conventions', False)
+
+    #def __call__(self, q, chiA0, chiB0, init_phase=0.0, init_quat=None,
+    #             return_spins=False, t=None, theta=None, phi=None, LMax=4,
+    #             t_ref=None, fM_ref=None, MTot=None, distance=None,
+    #             use_lalsimulation_conventions=False, allow_extrapolation=False):
+        q, chiA0, chiB0 = x
+
         if use_lalsimulation_conventions:
             # rotate_spin rotates in the -z direction
             chiA0 = rotate_spin(chiA0, -1 * init_phase)
@@ -1040,17 +946,21 @@ Examples:
         chiA_norm = np.sqrt(np.sum(chiA0**2))
         chiB_norm = np.sqrt(np.sum(chiB0**2))
 
-        # Get dynamics
-        if f_ref is None:
+        ## Get dynamics
+
+        # Get dimensionless omega_ref
+        if fM_ref is None or fM_ref == 0:
             omega_ref = None
-        elif MTot is None:
-            omega_ref = f_ref * np.pi
         else:
-            # Get dimensionless omega_ref
-            omega_ref = f_ref * MTot * SOLAR_TIME_IN_SECONDS * np.pi
+            omega_ref = fM_ref * np.pi
+
+        #FIXME FIXME
+        t_ref = None
+        LMax = 4
+
         quat, orbphase, chiA_copr, chiB_copr = self.get_dynamics(
                 q, chiA0, chiB0, init_phase=init_phase, init_quat=init_quat,
-                t_ref=t_ref, omega_ref=omega_ref, allow_extrapolation=allow_extrapolation)
+                t_ref=t_ref, omega_ref=omega_ref)
 
         # Interpolate to the coorbital time grid, and transform to coorb frame.
         # Interpolate first since coorbital spins oscillate faster than
@@ -1066,52 +976,40 @@ Examples:
                 chiA_copr, chiB_copr, orbphase)
 
         # Evaluate coorbital waveform surrogate
-        h_coorb = self.get_coorb_waveform(q, chiA_coorb, chiB_coorb, LMax=LMax,
-                                          allow_extrapolation=allow_extrapolation)
+        h_coorb = self.get_coorb_waveform(q, chiA_coorb, chiB_coorb, LMax=LMax)
 
         # Transform the sparsely sampled waveform
-        h_inertial = inertial_waveform_modes(self.t_coorb, orbphase, quat, h_coorb)
+        h_inertial = inertial_waveform_modes(self.t_coorb, orbphase, quat,
+                h_coorb)
 
-        # Sum up modes if desired
-        if ((theta is None) - (phi is None)) != 0:
-            raise Exception("Either specify theta and phi, or neither")
-        if theta is not None:
-            h_inertial = np.array([mode_sum(h_inertial, LMax, theta, phi)])
+        if dtM is not None:
+            # FIXME use fM_low
+            timesM = np.arange(self.t_0, self.t_f, dtM)
 
         # Interpolate to desired times
-        if t is not None:
-            if MTot is not None:
-                t = t / (MTot * SOLAR_TIME_IN_SECONDS)
-            # Extrapolating up to 1M in time is not the worst thing in the world
-            if t[0] < self.t_0 - 1.0:
-                raise Exception("Got t[0]=%s < self.t_0=%s"%(
-                        t[0], self.t_0))
-            if t[-1] > self.t_f + 1.0:
-                raise Exception("Got t[-1]=%s > self.t_f=%s"%(
-                        t[-1], self.t_f))
-            hre = splinterp_many(self.t_coorb, t, np.real(h_inertial))
-            him = splinterp_many(self.t_coorb, t, np.imag(h_inertial))
+        if timesM is not None:
+            # Extrapolating up to 1M in time is not the worst thing in the
+            # world
+            if timesM[0] < self.t_0 - 1.0:
+                raise Exception("Got timesM[0]=%s < self.t_0=%s"%(
+                        timesM[0], self.t_0))
+            if timesM[-1] > self.t_f + 1.0:
+                raise Exception("Got timesM[-1]=%s > self.t_f=%s"%(
+                        timesM[-1], self.t_f))
+            hre = splinterp_many(self.t_coorb, timesM, np.real(h_inertial))
+            him = splinterp_many(self.t_coorb, timesM, np.imag(h_inertial))
             h_inertial = hre + 1.j*him
 
-        # Scale waveform if needed
-        if distance is not None:
-            if MTot is None:
-                raise Exception("MTot must be specified if distance is specified")
-            h_inertial *= MTot * SOLAR_DISTANCE_IN_MEGAPARSECS / distance
-
-        # Make mode dict if needed
-        if theta is not None:
-            h = h_inertial[0]
-        else:
-            h = {}
-            i=0
-            for ell in range(2, LMax+1):
-                for m in range(-ell, ell+1):
-                    h[ell, m] = h_inertial[i]
-                    i+=1
+        # Make mode dict
+        h = {}
+        i=0
+        for ell in range(2, LMax+1):
+            for m in range(-ell, ell+1):
+                h[(ell, m)] = h_inertial[i]
+                i += 1
 
         #  Transform and interpolate spins if needed
-        if return_spins:
+        if return_dynamics:
             chiA_inertial = transformTimeDependentVector(quat, chiA_copr.T).T
             chiB_inertial = transformTimeDependentVector(quat, chiB_copr.T).T
             if t is not None:
@@ -1120,6 +1018,8 @@ Examples:
                 chiA_inertial = normalize_spin(chiA_inertial, chiA_norm)
                 chiB_inertial = normalize_spin(chiB_inertial, chiB_norm)
             return h, chiA_inertial, chiB_inertial
-        return h
+
+        #FIXME don't return timesM is timesM given
+        return timesM, h
 
 #-----------------------------------------------------------------------------
