@@ -12,9 +12,6 @@ import warnings
 from gwtools.harmonics import sYlm
 from gwsurrogate import spline_interp_Cwrapper
 
-SOLAR_TIME_IN_SECONDS = 4.925491025543576e-06
-SOLAR_DISTANCE_IN_MEGAPARSECS = 4.785415917274702e-20
-
 
 ###############################################################################
 # Simple quaternion functions
@@ -39,10 +36,10 @@ def quatInv(q):
 def _assemble_powers(thing, powers):
     return np.array([thing**power for power in powers])
 
-def _wignerD_matrices(q, LMax):
+def _wignerD_matrices(q, ellMax):
     """
-Given a quaternion q with shape (4, N) and some maximum ell value LMax,
-computes W[ell, m', m](t_i) for i=0, ..., N-1, for 2 \leq ell \leq LMax,
+Given a quaternion q with shape (4, N) and some maximum ell value ellMax,
+computes W[ell, m', m](t_i) for i=0, ..., N-1, for 2 \leq ell \leq ellMax,
 for -L \leq m', m \leq L.
 Returns a list where each entry is a numpy array with shape
 ((2*ell+1), (2*ell+1), N) corresponding to a given value of ell, taking indices
@@ -62,7 +59,7 @@ http://arxiv.org/abs/1302.2919
     i3 = np.where((1 - ra_small)*rb_small)[0]
 
     n = len(ra)
-    lvals = range(2, LMax+1)
+    lvals = range(2, ellMax+1)
     matrices = [0.j*np.zeros((2*ell+1, 2*ell+1, n)) for ell in lvals]
 
     # Determine res at i2: it's 0 unless mp == -m
@@ -78,18 +75,18 @@ http://arxiv.org/abs/1302.2919
     # Determine res at i1, where we can safely divide by ra and rb
     ra = ra[i1]
     rb = rb[i1]
-    ra_pows = _assemble_powers(ra, range(-2*LMax, 2*LMax+1))
-    rb_pows = _assemble_powers(rb, range(-2*LMax, 2*LMax+1))
-    abs_raSqr_pows = _assemble_powers(abs(ra)**2, range(0, 2*LMax+1))
+    ra_pows = _assemble_powers(ra, range(-2*ellMax, 2*ellMax+1))
+    rb_pows = _assemble_powers(rb, range(-2*ellMax, 2*ellMax+1))
+    abs_raSqr_pows = _assemble_powers(abs(ra)**2, range(0, 2*ellMax+1))
     absRRatioSquared = (abs(rb)/abs(ra))**2
-    ratio_pows = _assemble_powers(absRRatioSquared, range(0, 2*LMax+1))
+    ratio_pows = _assemble_powers(absRRatioSquared, range(0, 2*ellMax+1))
 
     for i, ell in enumerate(lvals):
         for m in range(-ell, ell+1):
             for mp in range(-ell, ell+1):
                 factor = _utils.wigner_coef(ell, mp, m)
-                factor *= ra_pows[2*LMax + m+mp]
-                factor *= rb_pows[2*LMax + m-mp]
+                factor *= ra_pows[2*ellMax + m+mp]
+                factor *= rb_pows[2*ellMax + m-mp]
                 factor *= abs_raSqr_pows[ell-m]
                 rhoMin = max(0, mp-m)
                 rhoMax = min(ell+mp, ell-m)
@@ -109,13 +106,13 @@ quat: A quaternion array with shape (4, N) where N is the number of time
       samples describing the coprecessing frame
 h: An array of waveform modes with shape (n_modes, N). The modes are ordered
     (2, -2), ..., (2, 2), (3, -3), ...
-    and n_modes = 5, 12, or 21 for LMax = 2, 3, or 4.
+    and n_modes = 5, 12, or 21 for ellMax = 2, 3, or 4.
 
 Returns: h_inertial, a similar array to h containing the inertial frame modes.
     """
     quat = quatInv(quat)
 
-    LMax = {
+    ellMax = {
             5: 2,
             12: 3,
             21: 4,
@@ -125,11 +122,11 @@ Returns: h_inertial, a similar array to h containing the inertial frame modes.
             77: 8,
             }[len(h)]
 
-    matrices = _wignerD_matrices(quat, LMax)
+    matrices = _wignerD_matrices(quat, ellMax)
 
     res = 0.*h
     i=0
-    for ell in range(2, LMax+1):
+    for ell in range(2, ellMax+1):
         for m in range(-ell, ell+1):
             for mp in range(-ell, ell+1):
                 res[i+m+ell] += matrices[ell-2][ell+m, ell+mp]*h[i+mp+ell]
@@ -293,7 +290,9 @@ These time derivatives are given to the AB4 ODE solver.
         cBdot_coorb = _eval_vector_fit(data['chiB'], 3, fit_params)
 
         # Do rotations to the coprecessing frame, find dqdt, and append
-        dydt = _utils.assemble_dydt(y, ooxy_coorb, omega, cAdot_coorb, cBdot_coorb)
+        dydt = _utils.assemble_dydt(y, ooxy_coorb, omega,
+                cAdot_coorb, cBdot_coorb)
+
         return dydt
 
     def get_time_deriv(self, t, q, y):
@@ -309,7 +308,9 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
         else:
             imin = i0-2
         imin = min(max(0, imin), len(self.t)-4)
-        dydts = np.array([self.get_time_deriv_from_index(imin+i, q, y) for i in range(4)])
+        dydts = np.array([self.get_time_deriv_from_index(imin+i, q, y)
+            for i in range(4)])
+
         ts = self.t[imin:imin+4]
         dydt = np.array([spline(ts, x)(t) for x in dydts.T])
         return dydt
@@ -322,16 +323,19 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
 
     def _get_t_ref(self, omega_ref, q, chiA0, chiB0, init_orbphase, init_quat):
         if omega_ref > 0.201:
-            raise Exception("Got omega_ref = %0.4f > 0.2, too large!"%(omega_ref))
+            raise Exception("Got omega_ref = %0.4f > 0.2, too "
+                    "large!"%(omega_ref))
 
-        y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]), np.append(chiA0, chiB0))
+        y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
+                np.append(chiA0, chiB0))
+
         if init_quat is not None:
             y0[:4] = init_quat
 
         omega0 = self.get_omega(0, q, y0)
         if omega_ref < omega0:
-            raise Exception("Got omega_ref = %0.4f < %0.4f = omega_0, too small!"%(
-                    omega_ref, omega0))
+            raise Exception("Got omega_ref = %0.4f < %0.4f = omega_0, "
+                    "too small!"%(omega_ref, omega0))
 
         # i0=0 is a lower bound, find the first index where omega > omega_ref
         imax=1
@@ -343,9 +347,13 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
             omega_max = self.get_omega(imax, q, y0)
 
         # Interpolate
-        t_ref = (self.t[imax-1] * (omega_max - omega_ref) + self.t[imax] * (omega_ref - omega_min))/(omega_max - omega_min)
+        t_ref = (self.t[imax-1] * (omega_max - omega_ref)
+            + self.t[imax] * (omega_ref - omega_min))/(omega_max - omega_min)
+
         if t_ref < self.t[0] or t_ref > self.t[-1]:
-            raise Exception("Somehow, t_ref ended up being outside of the time domain limits!")
+            raise Exception("Somehow, t_ref ended up being outside of "
+                    "the time domain limits!")
+
         return t_ref
 
     def __call__(self, q, chiA0, chiB0, init_quat=None, init_orbphase=0.0,
@@ -389,23 +397,30 @@ L = len(self.t), and these returned arrays are sampled at self.t
             raise Exception("Got a spin magnitude of %s > 1.0"%(maxNorm))
 
         if omega_ref is not None:
-            t_ref = self._get_t_ref(omega_ref, q, chiA0, chiB0, init_orbphase, init_quat)
-        y_of_t, i0 = self._initialize(q, chiA0, chiB0, init_quat, init_orbphase, t_ref,
-                                      normA, normB)
+            t_ref = self._get_t_ref(omega_ref, q, chiA0, chiB0, init_orbphase,
+                init_quat)
+
+        y_of_t, i0 = self._initialize(q, chiA0, chiB0, init_quat,
+                init_orbphase, t_ref, normA, normB)
 
         if i0 == 0:
             # Just gonna send it!
             k_ab4, dt_ab4, y_of_t = self._initial_RK4(q, y_of_t, normA, normB)
-            y_of_t = self._integrate_forward(q, y_of_t, normA, normB, 3, k_ab4, dt_ab4)
+            y_of_t = self._integrate_forward(q, y_of_t, normA, normB, 3,
+                    k_ab4, dt_ab4)
+
         elif i0 > 2:
             # Initialize by taking 3 steps backwards with RK4
             k_ab4 = [None, None, None]
             for i in range(3):
-                y_of_t, tmp_k = self._one_backward_RK4_step(q, y_of_t, normA, normB, i0-i)
+                y_of_t, tmp_k = self._one_backward_RK4_step(q, y_of_t,
+                    normA, normB, i0-i)
                 k_ab4[i] = tmp_k
+
             dt_array = np.append(2 * self.diff_t[:6:2], self.diff_t[6:])
             dt_ab4 = dt_array[i0-3:i0][::-1]
-            self._integrate_backward(q, y_of_t, normA, normB, i0-3, k_ab4, dt_ab4)
+            self._integrate_backward(q, y_of_t, normA, normB, i0-3, k_ab4,
+                dt_ab4)
             tmp_k = self.get_time_deriv_from_index(i0, q, y_of_t[i0-3])
             k_ab4 = [tmp_k, k_ab4[2], k_ab4[1]]
             dt_ab4 = dt_ab4[::-1]
@@ -414,15 +429,19 @@ L = len(self.t), and these returned arrays are sampled at self.t
             # Initialize by taking 3 steps forwards with RK4
             k_ab4 = [None, None, None]
             for i in range(3):
-                y_of_t, tmp_k = self._one_forward_RK4_step(q, y_of_t, normA, normB, i0+i)
+                y_of_t, tmp_k = self._one_forward_RK4_step(q, y_of_t,
+                    normA, normB, i0+i)
                 k_ab4[i] = tmp_k
+
             dt_array = np.append(2 * self.diff_t[:6:2], self.diff_t[6:])
             dt_ab4 = dt_array[i0:i0+3]
-            self._integrate_forward(q, y_of_t, normA, normB, i0+3, k_ab4, dt_ab4)
+            self._integrate_forward(q, y_of_t, normA, normB, i0+3, k_ab4,
+                dt_ab4)
             tmp_k = self.get_time_deriv_from_index(i0+3, q, y_of_t[i0+3])
             k_ab4 = [tmp_k, k_ab4[2], k_ab4[1]]
             dt_ab4 = dt_ab4[::-1]
-            self._integrate_backward(q, y_of_t, normA, normB, i0, k_ab4, dt_ab4)
+            self._integrate_backward(q, y_of_t, normA, normB, i0, k_ab4,
+                dt_ab4)
 
         quat = y_of_t[:, :4].T
         orbphase = y_of_t[:, 4]
@@ -431,18 +450,22 @@ L = len(self.t), and these returned arrays are sampled at self.t
 
         return quat, orbphase, chiA_copr, chiB_copr
 
-    def _initialize(self, q, chiA0, chiB0, init_quat, init_orbphase, t_ref, normA, normB):
+    def _initialize(self, q, chiA0, chiB0, init_quat, init_orbphase, t_ref,
+            normA, normB):
         """
 Initializes an array of data with the initial conditions.
 If t_ref does not correspond to a time node, takes one small time step to
 the nearest time node.
         """
-        # data is [q0, qx, qy, qz, orbphase, chiAx, chiAy, chiAz, chiBx, chiBy, chiBz]
+        # data is [q0, qx, qy, qz, orbphase, chiAx, chiAy, chiAz, chiBx,
+        #   chiBy, chiBz]
         # We do three steps of RK4, so we have 3 fewer timesteps in the output
         # compared to self.t
         data = np.zeros((self.L-3, 11))
 
-        y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]), np.append(chiA0, chiB0))
+        y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
+                np.append(chiA0, chiB0))
+
         if init_quat is not None:
             y0[:4] = init_quat
 
@@ -462,8 +485,7 @@ the nearest time node.
         return data, i0
 
     def _initial_RK4(self, q, y_of_t, normA, normB):
-        """This is used to initialize the AB4 system when t_ref=t_0 (default)"""
-
+        """This is used to initialize the AB4 system when t_ref=t_0"""
 
         # Three steps of RK4
         k_ab4 = []
@@ -483,7 +505,8 @@ the nearest time node.
     def _one_forward_RK4_step(self, q, y_of_t, normA, normB, i0):
         """Steps forward one step using RK4"""
 
-        # i0 is on the y_of_t grid, which has 3 fewer samples than the self.t grid
+        # i0 is on the y_of_t grid, which has 3 fewer samples than the
+        # self.t grid
         i_t = i0 + 3
         if i0 < 3:
             i_t = i0*2
@@ -505,7 +528,8 @@ the nearest time node.
     def _one_backward_RK4_step(self, q, y_of_t, normA, normB, i0):
         """Steps backward one step using RK4"""
 
-        # i0 is on the y_of_t grid, which has 3 fewer samples than the self.t grid
+        # i0 is on the y_of_t grid, which has 3 fewer samples than the
+        # self.t grid
         i_t = i0 + 3
         if i0 < 3:
             i_t = i0*2
@@ -542,11 +566,15 @@ fractional nodes.
         k1, k2, k3 = k_ab4
         dt1, dt2, dt3 = dt_ab4
 
-        # Run AB4
-        for i, dt4 in enumerate(self.diff_t[i0+3:]): #i0+3 due to 3 half time steps
+        # Run AB4   (i0+3 due to 3 half time steps)
+        for i, dt4 in enumerate(self.diff_t[i0+3:]):
             i_output = i0+i
-            k4 = self.get_time_deriv_from_index(i_output+3, q, y_of_t[i_output])
-            ynext = y_of_t[i_output] + _utils.ab4_dy(k1, k2, k3, k4, dt1, dt2, dt3, dt4)
+            k4 = self.get_time_deriv_from_index(i_output+3, q,
+                    y_of_t[i_output])
+
+            ynext = y_of_t[i_output] + _utils.ab4_dy(k1, k2, k3, k4, dt1,
+                    dt2, dt3, dt4)
+
             y_of_t[i_output+1] = _utils.normalize_y(ynext, normA, normB)
 
             # Setup for next iteration
@@ -576,8 +604,12 @@ dt_ab4 is [t(i0 + 3) - t(i0 + 2), t(i0 + 2) - t(i0 + 1), t(i0 + 1) - t(i0)]
             if i_output < 2:
                 node_index = 2 + 2*i_output
             dt4 = dt_array[i_output]
-            k4 = self.get_time_deriv_from_index(node_index, q, y_of_t[i_output+1])
-            ynext = y_of_t[i_output+1] - _utils.ab4_dy(k1, k2, k3, k4, dt1, dt2, dt3, dt4)
+            k4 = self.get_time_deriv_from_index(node_index, q,
+                    y_of_t[i_output+1])
+
+            ynext = y_of_t[i_output+1] - _utils.ab4_dy(k1, k2, k3, k4,
+                    dt1, dt2, dt3, dt4)
+
             y_of_t[i_output] = _utils.normalize_y(ynext, normA, normB)
 
             # Setup for next iteration
@@ -601,7 +633,9 @@ def _extract_component_data(h5_group):
 
 def _eval_comp(data, q, chiA, chiB):
     nodes = []
-    for orders, coefs, ni in zip(data['orders'], data['coefs'], data['nodeIndices']):
+    for orders, coefs, ni in zip(data['orders'], data['coefs'],
+            data['nodeIndices']):
+
         fit_data = {
             'bfOrders': orders,
             'coefs': coefs,
@@ -627,18 +661,19 @@ class CoorbitalWaveformSurrogate:
     """This surrogate models the waveform in the coorbital frame."""
 
     def __init__(self, h5file):
-        self.LMax = 2
-        while 'hCoorb_%s_%s_Re+'%(self.LMax+1, self.LMax+1) in h5file.keys():
-            self.LMax += 1
+        self.ellMax = 2
+        while 'hCoorb_%s_%s_Re+'%(self.ellMax+1, self.ellMax+1) in h5file.keys():
+            self.ellMax += 1
 
         self.t = h5file['t_coorb'].value
 
         self.data = {}
-        for ell in range(2, self.LMax+1):
+        for ell in range(2, self.ellMax+1):
             # m=0 is different
             for reim in ['real', 'imag']:
                 group = h5file['hCoorb_%s_0_%s'%(ell, reim)]
-                self.data['%s_0_%s'%(ell, reim)] = _extract_component_data(group)
+                self.data['%s_0_%s'%(ell, reim)] \
+                        = _extract_component_data(group)
 
             for m in range(1, ell+1):
                 for reim in ['Re', 'Im']:
@@ -648,28 +683,28 @@ class CoorbitalWaveformSurrogate:
                         self.data['%s_%s_%s%s'%(ell, m, reim, pm)] = tmp_data
 
 
-    def __call__(self, q, chiA, chiB, LMax=4):
+    def __call__(self, q, chiA, chiB, ellMax=4):
         """
 Evaluates the coorbital waveform modes.
 q: The mass ratio
 chiA, chiB: The time-dependent spin in the coorbital frame. These should have
             shape (N, 3) where N = len(t_coorb)
-LMax: The maximum ell mode to evaluate.
+ellMax: The maximum ell mode to evaluate.
         """
-        nmodes = LMax*LMax + 2*LMax - 3
+        nmodes = ellMax*ellMax + 2*ellMax - 3
         modes = 1.j*np.zeros((nmodes, len(self.t)))
 
-        for ell in range(2, LMax+1):
+        for ell in range(2, ellMax+1):
             # m=0 is different
             re = _eval_comp(self.data['%s_0_real'%(ell)], q, chiA, chiB)
             im = _eval_comp(self.data['%s_0_imag'%(ell)], q, chiA, chiB)
             modes[ell*(ell+1) - 4] = re + 1.j*im
 
             for m in range(1, ell+1):
-                rep = _eval_comp(self.data['%s_%s_Re+'%(ell, m)], q, chiA, chiB)
-                rem = _eval_comp(self.data['%s_%s_Re-'%(ell, m)], q, chiA, chiB)
-                imp = _eval_comp(self.data['%s_%s_Im+'%(ell, m)], q, chiA, chiB)
-                imm = _eval_comp(self.data['%s_%s_Im-'%(ell, m)], q, chiA, chiB)
+                rep = _eval_comp(self.data['%s_%s_Re+'%(ell, m)], q, chiA,chiB)
+                rem = _eval_comp(self.data['%s_%s_Re-'%(ell, m)], q, chiA,chiB)
+                imp = _eval_comp(self.data['%s_%s_Im+'%(ell, m)], q, chiA,chiB)
+                imm = _eval_comp(self.data['%s_%s_Im-'%(ell, m)], q, chiA,chiB)
                 h_posm, h_negm = _assemble_mode_pair(rep, rem, imp, imm)
                 modes[ell*(ell+1) - 4 + m] = h_posm
                 modes[ell*(ell+1) - 4 - m] = h_negm
@@ -705,9 +740,9 @@ def inertial_waveform_modes(t, orbphase, quat, h_coorb):
 def splinterp_many(t_in, t_out, many_things):
     return np.array([spline(t_in, thing)(t_out) for thing in many_things])
 
-def mode_sum(h_modes, LMax, theta, phi):
+def mode_sum(h_modes, ellMax, theta, phi):
     coefs = []
-    for ell in range(2, LMax+1):
+    for ell in range(2, ellMax+1):
         for m in range(-ell, ell+1):
             coefs.append(sYlm(-2, ell, m, theta, phi))
     return np.array(coefs).dot(h_modes)
@@ -772,50 +807,39 @@ These are sampled on self.tds which has length L.
         return self.dynamics_sur(q, chiA0, chiB0, init_orbphase=init_phase,
                  init_quat=init_quat, t_ref=t_ref, omega_ref=omega_ref)
 
-    def get_coorb_waveform(self, q, chiA_coorb, chiB_coorb, LMax=4):
+    def get_coorb_waveform(self, q, chiA_coorb, chiB_coorb, ellMax=4):
         """
 Evaluates the coorbital waveform surrogate.
 q: The mass ratio mA/mB, with 1 <= q <=2.
 chiA_coorb, chiB_coorb: The spins in the coorbital frame, with shape (N, 3)
     where N = len(self.t_coorb).
-LMax: The maximum ell mode to evaluate.
+ellMax: The maximum ell mode to evaluate.
 
 Returns a 2d array with shape (n_modes, N) where the modes are ordered:
     (2, -2), ..., (2, 2), (3, -3), ...
-with n_modes = 5, 12, or 21 for LMax = 2, 3, or 4 respectively
+with n_modes = 5, 12, or 21 for ellMax = 2, 3, or 4 respectively
         """
-        return self.coorb_sur(q, chiA_coorb, chiB_coorb, LMax=LMax)
+        return self.coorb_sur(q, chiA_coorb, chiB_coorb, ellMax=ellMax)
 
-    def get_time_from_freq(self, freq, q, chiA0, chiB0, MTot=None,
-                           init_phase=0.0, init_quat=None, t_ref=None,
-                           fM_ref=None):
+    def get_time_from_freq(self, freq, q, chiA0, chiB0, init_phase=0.0,
+        init_quat=None, t_ref=None, fM_ref=None):
         """
 Obtain the time at which a particular gravitational wave frequency occurs.
-freq: The gravitational wave frequency. If MTot is given, freq is given in Hz.
-      Otherwise, freq is dimensionless.
+freq: The gravitational wave frequency.
 See the __call__ docstring for other parameters.
         """
         # Determine omega_ref if needed
         omega_ref = None
         if fM_ref is not None:
-            if MTot is None:
-                omega_ref = fM_ref * np.pi
-            else:
-                # Get dimensionless omega_ref
-                omega_ref = fM_ref * MTot * SOLAR_TIME_IN_SECONDS * np.pi
-                t_ref = self.dynamics_sur._get_t_ref(omega_ref, q, chiA0, chiB0,
-                                                     init_orbphase, init_quat)
+            omega_ref = fM_ref * np.pi
 
         # Get freqs vs time
         quat, orbphase, chiA_copr, chiB_copr = self.get_dynamics(
                 q, chiA0, chiB0, init_phase=init_phase, init_quat=init_quat,
                 t_ref=t_ref, omega_ref=omega_ref)
 
-        omega = np.gradient(orbphase) / np.gradient(self.tds)
-        if MTot is not None:
-            freqs = omega / (MTot * SOLAR_TIME_IN_SECONDS * np.pi)
-        else:
-            freqs = omega / np.pi
+        omega = np.gradient(orbphase, self.tds)
+        freqs = omega / np.pi
 
         # Find the first time where freqs >= freq, and interpolate to find the time
         if freqs[0] > freq:
@@ -826,22 +850,13 @@ See the __call__ docstring for other parameters.
                     freq, np.max(freqs)))
         i0 = np.where(freqs >= freq)[0][0]
         t0 = np.interp(freq, freqs, self.tds)
-        if MTot is not None:
-            t0 = t0 * MTot * SOLAR_TIME_IN_SECONDS
 
         return t0
 
-    #def __call__(self, q, chiA0, chiB0, init_phase=0.0, init_quat=None,
-    #             return_spins=False, t=None, theta=None, phi=None, LMax=4,
-    #             t_ref=None, fM_ref=None, MTot=None, distance=None,
-    #             use_lalsimulation_conventions=False, allow_extrapolation=False):
-
-     #   return self._sur_dimless(x, phi_ref=phi_ref, fM_low=fM_low,
-     #       fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM, freqsM=freqsM,
-     #       mode_list=mode_list, par_dict=par_dict)
-
     def __call__(self, x, phi_ref=None, fM_low=None, fM_ref=None, dtM=None,
-            timesM=None, dfM=None, freqsM=None, mode_list=None, par_dict=None):
+            timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
+            precessing_opts=None, tidal_opts=None, par_dict=None,
+            return_dynamics=False):
         """
 Evaluates a precessing surrogate model.
 
@@ -873,9 +888,9 @@ Arguments:
                     If not given, returns a dictionary of waveform modes h_dict
                     with (ell, m) keys such that (for example) the (2, 2) mode
                     is h_dict[2, 2].
-    LMax:           The maximum ell modes to use.
+    ellMax:           The maximum ell modes to use.
                     The NRSur7dq2 surrogate model contains modes up to L=4.
-                    Using LMax=2 or LMax=3 reduces the evaluation time.
+                    Using ellMax=2 or ellMax=3 reduces the evaluation time.
     t_ref:
     fM_ref:
     t_ref:          The reference (dimensionless) time, where the peak amplitude
@@ -885,14 +900,6 @@ Arguments:
                     taken to be $\omega / pi$ where $\omega$ is the angular
                     orbital frequency in the coprecessing frame.
                     Specify at most one of t_ref, fM_ref.
-    MTot:           The total mass of the system, given in solar masses.
-                    If given, scales times appropriately, and fM_ref should be
-                    given in Hz if specified.
-                    If t=None, returns the results at
-                    self.t_coorb * MTot * SOLAR_TIME_IN_SECONDS
-    distance:       The distance to the source, given in megaparsecs.
-                    If given, MTot must also be given, and the waveform amplitude
-                    will be scaled appropriately.
     use_lalsimulation_conventions: If True, interprets the spin directions and phi
                     using lalsimulation conventions. Specifically, before evaluating
                     the surrogate, the spins will be rotated about the z-axis by
@@ -921,19 +928,22 @@ Returns:
             raise ValueError('Expected freqsM to be None for a Time domain'
                 ' model')
 
-        if par_dict is None:
-            par_dict = {}
+        if par_dict is not None:
+            raise ValueError('par_dict should be None for this model')
 
-        init_phase = par_dict.pop('init_phase', 0)
-        init_quat = par_dict.pop('init_quat', None)
-        return_dynamics = par_dict.pop('return_dynamics', False)
+        if precessing_opts is None:
+            precessing_opts = {}
+
+
+        init_phase = precessing_opts.pop('init_phase', 0)
+        init_quat = precessing_opts.pop('init_quat', None)
+        return_dynamics = precessing_opts.pop('return_dynamics', False)
         use_lalsimulation_conventions \
-            = par_dict.pop('use_lalsimulation_conventions', False)
+            = precessing_opts.pop('use_lalsimulation_conventions', False)
 
-    #def __call__(self, q, chiA0, chiB0, init_phase=0.0, init_quat=None,
-    #             return_spins=False, t=None, theta=None, phi=None, LMax=4,
-    #             t_ref=None, fM_ref=None, MTot=None, distance=None,
-    #             use_lalsimulation_conventions=False, allow_extrapolation=False):
+        if ellMax is None:
+            ellMax = 4
+
         q, chiA0, chiB0 = x
 
         if use_lalsimulation_conventions:
@@ -954,13 +964,9 @@ Returns:
         else:
             omega_ref = fM_ref * np.pi
 
-        #FIXME FIXME
-        t_ref = None
-        LMax = 4
-
         quat, orbphase, chiA_copr, chiB_copr = self.get_dynamics(
                 q, chiA0, chiB0, init_phase=init_phase, init_quat=init_quat,
-                t_ref=t_ref, omega_ref=omega_ref)
+                t_ref=None, omega_ref=omega_ref)
 
         # Interpolate to the coorbital time grid, and transform to coorb frame.
         # Interpolate first since coorbital spins oscillate faster than
@@ -976,26 +982,39 @@ Returns:
                 chiA_copr, chiB_copr, orbphase)
 
         # Evaluate coorbital waveform surrogate
-        h_coorb = self.get_coorb_waveform(q, chiA_coorb, chiB_coorb, LMax=LMax)
+        h_coorb = self.get_coorb_waveform(q, chiA_coorb, chiB_coorb, ellMax=ellMax)
 
         # Transform the sparsely sampled waveform
         h_inertial = inertial_waveform_modes(self.t_coorb, orbphase, quat,
                 h_coorb)
 
-        if dtM is not None:
-            # FIXME use fM_low
-            timesM = np.arange(self.t_0, self.t_f, dtM)
-
-        # Interpolate to desired times
         if timesM is not None:
-            # Extrapolating up to 1M in time is not the worst thing in the
-            # world
-            if timesM[0] < self.t_0 - 1.0:
-                raise Exception("Got timesM[0]=%s < self.t_0=%s"%(
-                        timesM[0], self.t_0))
-            if timesM[-1] > self.t_f + 1.0:
-                raise Exception("Got timesM[-1]=%s > self.t_f=%s"%(
-                        timesM[-1], self.t_f))
+            if timesM[-1] > self.t_coorb[-1]:
+                raise Exception("'times' includes times larger than the"
+                    " maximum time value in domain.")
+            if timesM[0] < self.t_coorb[0]:
+                raise Exception("'times' starts before start of domain. Try"
+                    " increasing initial value of times or reducing f_low.")
+
+        return_times = True
+        if dtM is None and timesM is None:
+            # Use the sparse domain
+            timesM = self.t_coorb
+            do_interp = False
+        else:
+            ## Interpolate onto uniform domain if needed
+            do_interp = True
+            if dtM is not None:
+                # FIXME use fM_low
+                t0 = self.t_coorb[0]
+                tf = self.t_coorb[-1]
+                num_times = int(np.ceil((tf - t0)/dtM));
+                timesM = t0 + dtM*np.arange(num_times)
+            else:
+                return_times = False
+
+
+        if do_interp:
             hre = splinterp_many(self.t_coorb, timesM, np.real(h_inertial))
             him = splinterp_many(self.t_coorb, timesM, np.imag(h_inertial))
             h_inertial = hre + 1.j*him
@@ -1003,7 +1022,7 @@ Returns:
         # Make mode dict
         h = {}
         i=0
-        for ell in range(2, LMax+1):
+        for ell in range(2, ellMax+1):
             for m in range(-ell, ell+1):
                 h[(ell, m)] = h_inertial[i]
                 i += 1
@@ -1012,14 +1031,27 @@ Returns:
         if return_dynamics:
             chiA_inertial = transformTimeDependentVector(quat, chiA_copr.T).T
             chiB_inertial = transformTimeDependentVector(quat, chiB_copr.T).T
-            if t is not None:
-                chiA_inertial = splinterp_many(self.t_coorb, t, chiA_inertial.T).T
-                chiB_inertial = splinterp_many(self.t_coorb, t, chiB_inertial.T).T
+            if do_interp:
+                chiA_inertial = splinterp_many(self.t_coorb, timesM,
+                        chiA_inertial.T).T
+
+                chiB_inertial = splinterp_many(self.t_coorb, timesM,
+                        chiB_inertial.T).T
+
                 chiA_inertial = normalize_spin(chiA_inertial, chiA_norm)
                 chiB_inertial = normalize_spin(chiB_inertial, chiB_norm)
-            return h, chiA_inertial, chiB_inertial
 
-        #FIXME don't return timesM is timesM given
-        return timesM, h
+                orbphase = spline(self.t_coorb, orbphase)(timesM)
+                quat = splinterp_many(self.t_coorb, timesM, quat)
+                quat = quat/np.sqrt(np.sum(abs(quat)**2, 0))
 
-#-----------------------------------------------------------------------------
+                dynamics = {
+                    'chiA': chiA_inertial,
+                    'chiB': chiB_inertial,
+                    'q_copr': quat,
+                    'orbphase': orbphase,
+                    }
+        else:
+            dynamics = None
+
+        return timesM, h, dynamics

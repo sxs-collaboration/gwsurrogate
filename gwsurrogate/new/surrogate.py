@@ -749,14 +749,13 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                 raise Exception("'times' starts before start of domain. Try"
                     " increasing initial value of times or reducing f_low.")
 
-        return_times = True
         if dtM is None and timesM is None:
             # Use the sparse domain
             timesM = domain
             omega22 = omega22_sparse[initIdx:]
             do_interp = False
         else:
-            ## Interpolate onto uniform domain if needed
+            ## Interpolate onto uniform-domain/timesM if needed
             do_interp = True
             if dtM is not None:
                 t0 = domain[0]
@@ -764,7 +763,6 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                 num_times = int(np.ceil((tf - t0)/dtM));
                 timesM = t0 + dtM*np.arange(num_times)
             else:
-                return_times = False
                 if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
                     raise Exception('Trying to evaluate at times outside the'
                         ' domain.')
@@ -840,10 +838,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
                 h_dict[mode] = h_coorb_lm * np.exp(-1j*m*phi_22/2.)
 
-        if return_times:
-            return timesM, h_dict
-        else:
-            return h_dict
+        return timesM, h_dict, None     # None is for dynamics
 
     def _set_TaylorT3_factor(self):
         """ Sets a term used in the 0 PN TaylorT3 phase. See Eq.43 of
@@ -874,9 +869,10 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         return phi22_T3
 
 
-    def __call__(self, x, phi_ref=0, fM_low=None, fM_ref=None, dtM=None,
-        timesM=None, dfM=None, freqsM=None, mode_list=None, par_dict=None,
-        do_not_align=False):
+    def __call__(self, x, phi_ref=None, fM_low=None, fM_ref=None, dtM=None,
+            timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
+            precessing_opts=None, tidal_opts=None, par_dict=None,
+            return_dynamics=False, do_not_align=False):
         """
     Return dimensionless surrogate modes.
     Arguments:
@@ -913,6 +909,11 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
     freqsM:         Frequency samples to evaluate the waveform at. Use either
                     dfM or freqsM, not both.
 
+    ellMax:         Maximum ell index for modes to include. All available m
+                    indicies for each ell will be included automatically.
+                    Default: None, in which case all available modes wll be
+                    included.
+
     mode_list :     A list of (ell, m) modes to be evaluated.
                     Default None, which evaluates all avilable modes.
                     Will deduce the m<0 modes from m>0 modes.
@@ -925,11 +926,11 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                     the waveform has not been modified.
 
     Returns
-    h: If timesM is given.
-    timesM, h: If timesM is None.
+    timesM, h, dynamics:
         timesM : time array in units of M.
-        h : A dictionary of waveform modes sampled at times=t with
+        h : A dictionary of waveform modes sampled at timesM with
             (ell, m) keys.
+        dynamics: None, since this is a nonprecessing model.
 
 
     IMPORTANT NOTES:
@@ -952,6 +953,16 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
         if mode_list is None:
             mode_list = self.mode_list
+        if ellMax is not None:
+            if ellMax > np.max(np.array(self.mode_list).T[0]):
+                raise ValueError('ellMax is greater than max allowed ell.')
+            include_modes = np.array(self.mode_list).T[0] <= ellMax
+            mode_list = [self.mode_list[idx]
+                    for idx in range(len(self.mode_list))
+                    if include_modes[idx]]
+
+        if par_dict is not None:
+            raise ValueError('par_dict should be None for this model')
 
         # always evaluate the (2,2) mode, the other modes neeed this
         # for transformation from coorbital to inertial frame

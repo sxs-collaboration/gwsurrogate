@@ -1320,8 +1320,8 @@ class SurrogateEvaluator(object):
         2. Set keywords for model, see
             self._check_keywords_and_set_defaults.default_keywords for allowed
             keywords.
-        3. define _load_dimless_surrogate(), this should return dimensionless
-            domain and modes.
+        3. define _load_dimless_surrogate(), this should return an object that
+            returns dimensionless domain, modes and dynamics.
         4. define _get_intrinsic_parameters(), this should put all intrinsic
             parameters into a single array.
         4. define soft_param_lims and hard_param_lims, the limits for
@@ -1370,17 +1370,25 @@ class SurrogateEvaluator(object):
         This should return the loaded surrogate.
         The loaded surrogate should have a __call__ function that returns the
         dimensionless time/frequency array and dimensionless waveform modes.
-        This __call__ function should take the same inputs as
-        self._call_dimless_modes
+        The return value of this functions will be stored as
+        self._sur_dimless()
+        The __call__ function of self._sur_dimless() should take all inputs
+        passed to self._sur_dimless() in the __call__ function of this class.
+        See NRHybSur3dq8 for an example.
         """
         raise NotImplementedError("Please override me.")
 
-    def _get_intrinsic_parameters(self, q, chiA, chiB, par_dict):
+
+    def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,
+            tidal_opts, par_dict):
         """
         This function, which must be overriden for each derived class of
         SurrogateEvaluator, puts all intrinsic parameters of the surrogate
         into a single array.
-        For example, for NRHybSur3dq8: x = [q, chiAz, chiBz].
+        For example:
+            For NRHybSur3dq8: x = [q, chiAz, chiBz].
+            For NRSur7dq4: x = [q, chiA, chiB], where chiA/chiB are vectors of
+                size 3.
         """
         raise NotImplementedError("Please override me.")
 
@@ -1413,39 +1421,47 @@ class SurrogateEvaluator(object):
                 self.keywords[key] = default_keywords[key]
 
 
-    def _check_param_limits(self, q, chiA, chiB, par_dict):
-        """ Checks that the parameters are within allowed range.
+    def _check_params(self, q, chiA0, chiB0, precessing_opts, tidal_opts,
+            par_dict):
+        """ Checks that the parameters are valid.
+
             Raises a warning if outside self.soft_param_lims and
             raises an error if outside self.hard_param_lims.
             If these are None, skips the checks.
+
+            Also some sanity checks for precessing and tidal models.
         """
         ## Allow violations within this value.
         # Sometimes, chi can be 1+1e-16 due to machine precision limitations,
         # this will ignore such cases
         grace = 1e-14
 
-        chiAmag = np.linalg.norm(chiA)
-        chiBmag = np.linalg.norm(chiB)
+        chiAmag = np.linalg.norm(chiA0)
+        chiBmag = np.linalg.norm(chiB0)
 
         if not self.keywords['Precessing']:
-            if (np.linalg.norm(chiA[:2]) > grace
-                    or np.linalg.norm(chiB[:2]) > grace):
+            if (np.linalg.norm(chiA0[:2]) > grace
+                    or np.linalg.norm(chiB0[:2]) > grace):
                 raise Exception('Got precessing spins for a nonprecessing '
                     'model')
 
-        if par_dict is not None:
-            if self.keywords['Tidal']:
-                if (('Lambda1' not in par_dict.keys())
-                        or ('Lambda2' not in par_dict.keys())):
-                    raise Exception('Tidal parameters should be passed '
-                        'through par_dict for this model.')
-            else:
-                if (('Lambda1' in par_dict.keys())
-                        or ('Lambda2' in par_dict.keys())):
-                    raise Exception('Tidal parameters given for a '
-                        'non-tidal model')
+            if precessing_opts is not None:
+                raise Exception('precessing_opts should be None for '
+                        'nonprecessing models')
 
 
+        if self.keywords['Tidal']:
+            if (('Lambda1' not in tidal_opts.keys())
+                    or ('Lambda2' not in tidal_opts.keys())):
+                raise Exception('Tidal parameters Lambda1 and Lambda2 should '
+                        'be passed through tidal_opts for this model.')
+        else:
+            if tidal_opts is not None:
+                raise Exception('tidal_opts should be None for nontidal '
+                        'models')
+
+
+        # Extrapolation checks
         if self.hard_param_lims is not None:
             qMax = self.hard_param_lims[0]
             chiMax = self.hard_param_lims[1]
@@ -1473,16 +1489,6 @@ class SurrogateEvaluator(object):
                     'training range: chi<=%.4f'%(chiBmag, chiMax))
 
 
-    def _call_dimless_modes(self, x, phi_ref=0, fM_low=None, fM_ref=None,
-        dtM=None, timesM=None, dfM=None, freqsM=None, mode_list=None,
-        par_dict=None):
-        """ Evaluates the surrogate modes in dimensionless units.
-        """
-
-        return self._sur_dimless(x, phi_ref=phi_ref, fM_low=fM_low,
-            fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM, freqsM=freqsM,
-            mode_list=mode_list, par_dict=par_dict)
-
 
     def _mode_sum(self, h_modes, theta, phi, fake_neg_modes=False):
         """ Sums over h_modes at a given theta, phi.
@@ -1502,66 +1508,88 @@ class SurrogateEvaluator(object):
         return h
 
 
-    def __call__(self, q, chiA, chiB, M=None, dist_mpc=None, f_low=None,
-        t_ref=None, f_ref=None, dt=None, df=None, times=None, freqs=None,
-        mode_list=None, inclination=None, phi_ref=0, par_dict=None,
+    def __call__(self, q, chiA0, chiB0, M=None, dist_mpc=None, f_low=None,
+        f_ref=None, dt=None, df=None, times=None, freqs=None,
+        mode_list=None, ellMax=None, inclination=None, phi_ref=0,
+        precessing_opts=None, tidal_opts=None, par_dict=None,
         units='dimensionless', skip_param_checks=False,
         taper_end_duration=None):
         """
     INPUT
     =====
     q :         Mass ratio, mA/mB >= 1.
-    chiA:       Dimensionless spin of the heavier black hole. For precessing
-                models, this will be taken to be the spin in the coprecessing
-                frame at reference time/frequency.
-    chiB:       Dimensionless spin of the lighter black hole. For precessing
-                models, this will be taken to be the spin in the coprecessing
-                frame at reference time/frequency.
+    chiA0:      Dimensionless spin vector of the heavier black hole, given in
+                the coprecessing frame at reference epoch.
+    chiB0:      Dimensionless spin vector of the lighter black hole, given in
+                the coprecessing frame at reference epoch.
+
+                The coprecessing frame is the minimal rotation frame of
+                arXiv:1110.2965, where the z-axis of this frame always tracks
+                the direction of the instantaneous orbital angular momentum.
+                For nonprecessing models, the direction of orbital angular
+                momentum is constant and this is the same as the inertial
+                frame.
 
     M, dist_mpc: Either specify both M and dist_mpc or neither.
         M        :  Total mass (solar masses). Default: None.
         dist_mpc :  Distance to binary system (MegaParsecs). Default: None.
 
-    f_low :     [Required!] Instantaneous initial frequency of the (2, 2) mode. 
-                If 0, the entire waveform is returned.
+    f_low :     Instantaneous initial frequency of the (2, 2) mode. In
+                practice, this is estimated to be twice the initial orbital
+                frequency in the coprecessing frame.
                 Should be in cycles/M if units = 'dimensionless', should be in
                 Hertz if units = 'mks'.
-                Default: None. Since f_low=0 can result in very long
-                waveforms a value must now be passed. Earlier version of
-                of the code defaulted to 0.
+                If 0, the entire waveform is returned.
+                Default: None, must be specified by user.
+                WARNING: Using f_low=0 with a small dt (like 0.1M) can lead to
+                very expensive evaluation for hybridized surrogates.
 
-    f_ref:      Frequency used to set the reference epoch at which
-                the reference frame is defined and the spins are specified.
-                See below for definition of the reference frame. Should be in
-                cycles/M if units = 'dimensionless', should be in Hertz if
-                units = 'mks'. Default: If f_ref is not given, we set
-                f_ref = f_low. If f_low is 0, this corresponds to the initial
-                index.
+    f_ref:      Frequency used to set the reference epoch at which the
+                reference frame is defined and the spins are specified.
+                See below for definition of the reference frame.
+                Should be in cycles/M if units = 'dimensionless', should be
+                in Hertz if units = 'mks'.
+                Default: If f_ref is not given, we set f_ref = f_low. If
+                f_low is 0, this corresponds to the initial index.
 
                 For time domain models, f_ref is used to determine a t_ref,
-                such that the frequency of the (2, 2) mode equals f_ref at
-                t=t_ref.
+                such that the orbital frequency in the coprecessing frame
+                equals f_ref/2 at t=t_ref.
 
     dt, df :    Time/Frequency step size, specify at most one of dt/df,
                 depending on whether the surrogate is a time/frequency domain
-                surrogate. If None, the internal domain of the surrogate is
-                used, which can be nonuniformly sampled. dt (df) Should be in
-                M (cycles/M) if units = 'dimensionless', should be in
-                seconds (Hertz) if units = 'mks'. Do not specify times/freqs
-                if using dt/df. Default None.
+                surrogate.
+                Default: None. If None, the internal domain of the surrogate is
+                used, which can be nonuniformly sampled.
+                dt (df) Should be in M (cycles/M) if units = 'dimensionless',
+                should be in seconds (Hertz) if units = 'mks'. Do not specify
+                times/freqs if using dt/df.
 
 
     times, freqs:
                 Array of time/frequency samples at which to evaluate the
                 waveform, depending on whether the surrogate is a
-                time/frequency domain surrogate. time (freqs) Should be in
+                time/frequency domain surrogate. time (freqs) should be in
                 M (cycles/M) if units = 'dimensionless', should be in
                 seconds (Hertz) if units = 'mks'. Do not specify dt/df if
                 using times/freqs. Default None.
 
-    mode_list : A list of (l, m) modes tuples to be evaluated. If None,
-                evaluates all available modes.
-                Example: mode_list = [(2,2),(2,1)]. Default: None.
+    ellMax:     Maximum ell index for modes to include. All available m
+                indicies for each ell will be included automatically.
+                Default: None, in which case all available modes wll be
+                included.
+
+    mode_list : A list of (ell, m) modes tuples to be included.
+                Example: mode_list = [(2,2),(2,1)].
+                Default: None, in which case all available modes are included.
+                The m<0 modes will automatically be included for nonprecessing
+                models. At most one of ellMax and mode_list can be specified.
+
+                Note: mode_list is allowed only for nonprecessing models; for
+                precessing models use ellMax. For precessing systems, all m
+                indices of a given ell index mix with each other, so there is
+                no clear hierarchy. To get the individual modes just don't
+                specify inclination and a dictionary of modes will be returned.
 
     phi_ref :   Orbital phase at reference epoch. Default: 0.
 
@@ -1572,6 +1600,34 @@ class SurrogateEvaluator(object):
                 hcross) evaluated at (inclination, pi/2) on the sky of the
                 reference frame is returned. See below for definition of the
                 reference frame. Default: None.
+
+    precessing_opts:
+                A dictionary containing optional parameters for a precessing
+                surrogate model. Default: None.
+                Allowed keys are:
+                init_quat: The initial unit quaternion (length 4 vector)
+                    giving the rotation from the coprecessing frame to the
+                    inertial frame at the reference epoch.
+                    Default: None, in which case the spins in the coprecessing
+                    frame are equal to the spins in the inertial frame.
+                return_dynamics:
+                    Return the frame dynamics and spin evolution along with
+                    the waveform. Default: False.
+                Example: precessing_opts = {
+                                    'init_quat': [1,0,0,0],
+                                    'return_dynamics': True
+                                    }
+
+    tidal_opts:
+                A dictionary containing optional parameters for a tidal
+                surrogate model. Default: None.
+                Allowed keys are:
+                Lambda1: The tidal deformability parameter for the heavier
+                    object.
+                Lambda2: The tidal deformability parameter for the lighter
+                    object.
+                Example: tidal_opts = {'Lambda1': 200, 'Lambda2': 300}
+
 
     par_dict:   A dictionary containing any additional parameters needed for a
                 particular surrogate model. Default: None.
@@ -1589,8 +1645,9 @@ class SurrogateEvaluator(object):
                     in Hz. M and dist_mpc must be specified. The waveform and
                     domain are returned in MKS units as well.
 
+
     skip_param_checks :
-                Skip sanity checks for parameters. Use this if you want to
+                Skip sanity checks for inputs. Use this if you want to
                 extrapolate outside allowed range. Default: False.
 
     taper_end_durataion:
@@ -1601,39 +1658,57 @@ class SurrogateEvaluator(object):
 
     RETURNS
     =====
-    if times/freqs is given:
-        h
-    else:
-        domain, h
 
-    domain :    Array of time/frequency samples, depending on whether the
-                surrogate is a time/frequency domain model. For time domain
-                models the time is set to 0 at the peak of the waveform. The
-                time (frequency) values are in M (cycles/M) if units =
-                'dimensionless', they are in seconds (Hertz) if units = 'mks'
+    domain, h, dynamics
 
-    h :         Waveform.
+
+    domain :    Array of time/frequency samples corresponding to h and
+                dynamics, depending on whether the surrogate is a
+                time/frequency domain model. This is the same as times/freqs
+                if times/freqs are given as an inputs.
+                For time domain models the time is set to 0 at the peak of
+                the waveform. The time (frequency) values are in M (cycles/M)
+                if units = 'dimensionless', they are in seconds (Hertz) if
+                units = 'mks'
+
+    h :         The waveform.
                     If inclination is specified, the complex strain (h = hplus
                     -i hcross) evaluated at (inclination, pi/2) on the sky of
                     the reference frame is returned. This follows the LAL
                     convention, see below for details.  This includes all modes
-                    given in the 'mode_list' argument.  For nonprecessing
+                    given in the ellMax/mode_list argument. For nonprecessing
                     systems the m<0 modes are automatically deduced from the
                     m>0 modes. To see if a model is precessing check
                     self.keywords.
 
                     Else, h is a dictionary of available modes with (l, m)
-                    tuples as keys.
+                    tuples as keys. For example, h22 = h[(2,2)].
 
                     If M and dist_mpc are given, the physical waveform
                     at that distance is returned. Else, it is returned in
                     code units: r*h/M extrapolated to future null-infinity.
 
+    dynamics:   A dict containing the frame dynamics and spin evolution. This
+                is None for nonprecessing models. This is also None if
+                return_dynamics in precessing_opts is False (Default).
+
+                The dynamics include (L=len(domain)):
+
+                q_copr = dynamics['q_copr']
+                    The quaternion representing the coprecessing frame with
+                    shape (4, L)
+                orbphase = dynamics['orbphase']
+                    The orbital phase in the coprecessing frame with length L.
+                chiA = dynamics['chiA']
+                    The time-dependent inertial frame chiA with shape (L, 3)
+                chiB = dynamics['chiB']
+                    The time-dependent inertial frame chiB with shape (L, 3)
+
 
     IMPORTANT NOTES:
     ===============
 
-    The reference frame is defined as follows:
+    The reference frame (or inertial frame) is defined as follows:
         The +ve z-axis is along the orbital angular momentum at the reference
         epoch. The orbital phase at the reference epoch is phi_ref. This means
         that the separation vector from the lighter BH to the heavier BH is at
@@ -1647,53 +1722,66 @@ class SurrogateEvaluator(object):
         the LAL frame diagram.
         """
 
+        chiA0 = np.array(chiA0)
+        chiB0 = np.array(chiB0)
+
         # Sanity checks
-        if (M is None) ^ (dist_mpc is None):
-            raise ValueError("Either specify both M and dist_mpc, or neither")
-
-        if (M is not None) ^ (units == 'mks'):
-            raise ValueError("M/dist_mpc must be specified if and only if"
-                " units='mks'")
-
-        if (dt is not None) and (self._domain_type != 'Time'):
-            raise ValueError("%s is not a Time domain model, cannot specify"
-                " dt"%self.name)
-
-        if (times is not None) and (self._domain_type != 'Time'):
-            raise ValueError("%s is not a Time domain model, cannot specify"
-                " times"%self.name)
-
-        if (df is not None) and (self._domain_type != 'Frequency'):
-            raise ValueError("%s is not a Frequency domain model, cannot"
-                " specify df"%self.name)
-
-        if (freqs is not None) and (self._domain_type != 'Frequency'):
-            raise ValueError("%s is not a Frequency domain model, cannot"
-                " specify freqs"%self.name)
-
-        if (dt is not None) and (times is not None):
-            raise ValueError("Cannot specify both dt and times.")
-
-        if (df is not None) and (freqs is not None):
-            raise ValueError("Cannot specify both df and freqs.")
-
-        if (f_low is None):
-            raise ValueError("f_low must be specified.")
-
-        if (f_ref is not None) and (f_ref < f_low):
-            raise ValueError("f_ref cannot be lower than f_low.")
-
-        if (taper_end_duration is not None) and self._domain_type != 'Time':
-            raise ValueError("%s is not a Time domain model, cannot taper")
-
-        chiA = np.array(chiA)
-        chiB = np.array(chiB)
-
-        # Warn/Exit if extrapolating
         if not skip_param_checks:
-            self._check_param_limits(q, chiA, chiB, par_dict)
 
-        x = self._get_intrinsic_parameters(q, chiA, chiB, par_dict)
+            if (M is None) ^ (dist_mpc is None):
+                raise ValueError("Either specify both M and dist_mpc, or "
+                        "neither")
+
+            if (M is not None) ^ (units == 'mks'):
+                raise ValueError("M/dist_mpc must be specified if and only if"
+                    " units='mks'")
+
+            if (dt is not None) and (self._domain_type != 'Time'):
+                raise ValueError("%s is not a Time domain model, cannot "
+                        "specify dt"%self.name)
+
+            if (times is not None) and (self._domain_type != 'Time'):
+                raise ValueError("%s is not a Time domain model, cannot "
+                        "specify times"%self.name)
+
+            if (df is not None) and (self._domain_type != 'Frequency'):
+                raise ValueError("%s is not a Frequency domain model, cannot"
+                    " specify df"%self.name)
+
+            if (freqs is not None) and (self._domain_type != 'Frequency'):
+                raise ValueError("%s is not a Frequency domain model, cannot"
+                    " specify freqs"%self.name)
+
+            if (dt is not None) and (times is not None):
+                raise ValueError("Cannot specify both dt and times.")
+
+            if (df is not None) and (freqs is not None):
+                raise ValueError("Cannot specify both df and freqs.")
+
+            if (f_low is None):
+                raise ValueError("f_low must be specified.")
+
+            if (f_ref is not None) and (f_ref < f_low):
+                raise ValueError("f_ref cannot be lower than f_low.")
+
+            if (mode_list is not None) and (ellMax is not None):
+                raise ValueError("Cannot specify both mode_list and ellMax.")
+
+            if (mode_list is not None) and self.keywords['Precessing']:
+                raise ValueError("mode_list is not allowed for precessing "
+                        "models, use ellMax instead.")
+
+            if (taper_end_duration is not None) and self._domain_type !='Time':
+                raise ValueError("%s is not a Time domain model, cannot taper")
+
+            # more sanity checks including extrapolation checks
+            self._check_params(q, chiA0, chiB0, precessing_opts, tidal_opts,
+                    par_dict)
+
+
+        x = self._get_intrinsic_parameters(q, chiA0, chiB0, precessing_opts,
+            tidal_opts, par_dict)
+
 
         # Get scalings from dimensionless units to mks units
         if units == 'dimensionless':
@@ -1716,30 +1804,29 @@ class SurrogateEvaluator(object):
         dfM = None if df is None else df*t_scale
         freqsM = None if freqs is None else freqs*t_scale
 
+
         # Get waveform modes and domain in dimensionless units
         fM_low = f_low*t_scale
         fM_ref = f_ref*t_scale
-        data = self._call_dimless_modes(x, phi_ref=phi_ref, fM_low=fM_low,
-            fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM, freqsM=freqsM,
-            mode_list=mode_list, par_dict=par_dict)
-
-        if (timesM is not None) or (freqsM is not None):
-            h = data
-            domain = None       # Assuming times/freqs were specified.
-        else:
-            domain, h = data
+        domain, h, dynamics = self._sur_dimless(x, phi_ref=phi_ref,
+            fM_low=fM_low, fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM,
+            freqsM=freqsM, mode_list=mode_list, ellMax=ellMax,
+            precessing_opts=precessing_opts, tidal_opts=tidal_opts,
+            par_dict=par_dict)
 
         # taper the last portion of the waveform, regardless of whether or not
         # this corresponds to inspiral, merger, or ringdown.
         if taper_end_duration is not None:
-            td = domain if timesM is None else timesM # td = taper domain
             h_tapered = {}
             for mode, hlm in h.iteritems():
-                # NOTE: we use a roll on window [td[0]-100,td[0]-50] to trick
-                # the window function into not tapering the beginning of h
-                h_tapered[mode] = _gwutils.windowWaveform(td, hlm,\
-                    td[0]-100, td[0]-50,\
-                    td[-1] - taper_end_duration, td[-1], windowType="planck")
+                # NOTE: we use a roll on window [domain[0]-100, domain[0]-50]
+                # to trick the window function into not tapering the beginning
+                # of h
+                h_tapered[mode] = _gwutils.windowWaveform(domain, hlm, \
+                    domain[0]-100, domain[0]-50, \
+                    domain[-1] - taper_end_duration, domain[-1], \
+                    windowType="planck")
+
             h = h_tapered
 
         # sum over modes to get complex strain if inclination is given
@@ -1748,28 +1835,36 @@ class SurrogateEvaluator(object):
             fake_neg_modes = not self.keywords['Precessing']
 
             # Follows the LAL convention (see help text)
-            h = self._mode_sum(h, inclination, np.pi/2,\
-                fake_neg_modes=fake_neg_modes)
+            h = self._mode_sum(h, inclination, np.pi/2,
+                    fake_neg_modes=fake_neg_modes)
 
-        if domain is not None:
-            # Rescale domain to physical units
-            if self._domain_type == 'Time':
-                domain = domain*t_scale
-            elif self._domain_type == 'Frequency':
-                domain = domain/t_scale
-            else:
-                raise Exception('Invalid _domain_type.')
+        # Rescale domain to physical units
+        if self._domain_type == 'Time':
+            domain *= t_scale
+        elif self._domain_type == 'Frequency':
+            domain /= t_scale
+        else:
+            raise Exception('Invalid _domain_type.')
+
+        # Assuming times/freqs were specified, so they must be the same
+        # when returning
+        if (times is not None):
+            if not np.array_equal(domain, times):
+                raise Exception("times were given as input but returned "
+                    "domain somehow does not match.")
+        if (freqs is not None):
+            if not np.array_equal(domain, freqs):
+                raise Exception("freqs were given as input but returned "
+                    "domain somehow does not match.")
 
         # Rescale waveform to physical units
-        if type(h) == dict:
-            h.update((x, y*amp_scale) for x, y in h.items())
-        else:
-            h = h*amp_scale
+        if amp_scale != 1:
+            if type(h) == dict:
+                h.update((x, y*amp_scale) for x, y in h.items())
+            else:
+                h *= amp_scale
 
-        if domain is None:
-            return h
-        else:
-            return domain, h
+        return domain, h, dynamics
 
 
 
@@ -1824,14 +1919,17 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         This should return the loaded surrogate.
         The loaded surrogate should have a __call__ function that returns the
         dimensionless time/frequency array and dimensionless waveform modes.
-        This __call__ function should take the same inputs as
-        self._call_dimless_modes.
+        The return value of this functions will be stored as
+        self._sur_dimless()
+        The __call__ function of self._sur_dimless() should take all inputs
+        passed to self._sur_dimless() in the __call__ function of this class.
         """
         sur = new_surrogate.AlignedSpinCoOrbitalFrameSurrogate()
         sur.load(self.h5filename)
         return sur
 
-    def _get_intrinsic_parameters(self, q, chiA, chiB, par_dict):
+    def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,
+            tidal_opts, par_dict):
         """
         This function, which must be overriden for each derived class of
         SurrogateEvaluator, puts all intrinsic parameters of the surrogate
@@ -1840,7 +1938,7 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         """
         if par_dict is not None:
             raise ValueError('Expected par_dict to be None.')
-        x = [q, chiA[2], chiB[2]]
+        x = [q, chiA0[2], chiB0[2]]
         return x
 
 
@@ -1874,13 +1972,12 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         domain_type = 'Time'
         keywords = {
             'Precessing': True,
-            'Hybridized': False,
             }
         # soft_lims -> raise warning when outside lims
         # hard_lim -> raise error when outside lims
         # Format is [qMax, chiMax].
-        soft_param_lims = [8.01, 0.801]
-        hard_param_lims = [10.01, 1]
+        soft_param_lims = [4.01, 0.801]
+        hard_param_lims = [6.01, 1]
         super(NRSur7dq4, self).__init__(self.__class__.__name__, \
             domain_type, keywords, soft_param_lims, hard_param_lims)
 
@@ -1891,21 +1988,24 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         This should return the loaded surrogate.
         The loaded surrogate should have a __call__ function that returns the
         dimensionless time/frequency array and dimensionless waveform modes.
-        This __call__ function should take the same inputs as
-        self._call_dimless_modes.
+        The return value of this functions will be stored as
+        self._sur_dimless()
+        The __call__ function of self._sur_dimless() should take all inputs
+        passed to self._sur_dimless() in the __call__ function of this class.
+        See NRHybSur3dq8 for an example.
         """
         sur = precessing_surrogate.PrecessingSurrogate(self.h5filename)
         return sur
 
-    def _get_intrinsic_parameters(self, q, chiA, chiB, par_dict):
+    def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,
+            tidal_opts, par_dict):
         """
         This function, which must be overriden for each derived class of
         SurrogateEvaluator, puts all intrinsic parameters of the surrogate
         into a single array.
-        For example, for NRSur7dq4: x = [q, chiA, chiB].
+        For example, for NRSur7dq4: x = [q, chiA0, chiB0].
         """
-        x = [q, chiA, chiB]
-
+        x = [q, chiA0, chiB0]
         return x
 
 
