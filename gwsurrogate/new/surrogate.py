@@ -82,6 +82,8 @@ def _splinterp_Cwrapper(xout, xin, yin):
     """Uses gsl splines with a wrapper to interpolate real or complex data.
     Uses natural boundary conditions instead of not-a-knot boundary conditions
     like InterpolatedUnivariateSpline."""
+    if len(xin) != len(yin):
+        raise Exception('Expected x and y input lengths to match.')
     if np.iscomplexobj(yin):
         re = _splinterp_Cwrapper(xout, xin, np.real(yin))
         im = _splinterp_Cwrapper(xout, xin, np.imag(yin))
@@ -685,6 +687,15 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         self._h5_data_keys.append('phaseAlignIdx')
         self._h5_data_keys.append('TaylorT3_t_ref')
 
+    def _search_omega(self, omega22, omega_val):
+        """ Find closest index such taht omega22[index] = omega_val
+        """
+        # find first index where omega22 > omega_val
+        idx = np.where(omega22 > omega_val)[0][0]
+        # if idx-1 is closer to omega_val, pick that instead
+        if abs(omega22[idx-1] - omega_val) < abs(omega22[idx] - omega_val):
+            idx -= 1
+        return idx
 
     def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
         timesM, fM_low, fM_ref, phi_ref, do_not_align):
@@ -732,14 +743,30 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             if omega_low > omega22_peak:
                 raise ValueError('f_low is higher than the peak frequency')
 
-            # Choose one index less, to ensure omega_low is included
-            initIdx = np.argmin(np.abs(omega22_sparse - omega_low)) -1
-            Amp_22 = Amp_22[initIdx:]
-            phi_22 = phi_22[initIdx:]
-            domain = domain[initIdx:]
+            # Choose 5 indices less, to ensure omega_low is included
+            initIdx = self._search_omega(omega22_sparse, omega_low) - 5
+            # But if initIdx < 0, we are at the start of the surrogate data
+            # so just choose 0
+            if initIdx < 0:
+                initIdx = 0
+
         else:
             # If fM_low is 0, we use the entire waveform
             initIdx = 0
+
+            # But, if fM_low = 0 and timesM is given, the output of the
+            # interpolant depends very slightly on the length of the sparse
+            # data used to construct the interpolant. So, to achieve machine
+            # precision equivalence between using dtM and timesM options, we
+            # need to do the following: truncate before interpolation to the
+            # same index as the dtM option would have used above (initIdx).
+            # Using 6 rather than 5 because of the greater than condition.
+            if timesM is not None:
+                initIdx = np.where(domain > timesM[0])[0][0] - 6
+
+        Amp_22 = Amp_22[initIdx:]
+        phi_22 = phi_22[initIdx:]
+        domain = domain[initIdx:]
 
         if timesM is not None:
             if timesM[-1] > domain[-1]:
@@ -773,13 +800,13 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             # now recompute omega22 with the dense data, but retain only data
             # upto the peak to avoid the noisy part
             omega22 = np.append(np.diff(phi_22)/np.diff(timesM), 0)
-            omega22 = omega22[timesM <= timesM[np.argmax(Amp_22)]]
+            omega22 = omega22[timesM <= 0]
 
             # Truncate data so that only freqs above omega_low are retained
             # If timesM are already given, we don't need to truncate data
             if dtM is not None:
                 if fM_low != 0:
-                    startIdx = np.argmin(np.abs(omega22 - omega_low))
+                    startIdx = self._search_omega(omega22, omega_low)
                 else:
                     # If fM_low is 0, we use the entire waveform
                     startIdx = 0
@@ -800,7 +827,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             if omega_ref > omega22_peak:
                 raise ValueError('f_ref is higher than the peak frequency')
 
-            refIdx = np.argmin(np.abs(omega22 - omega_ref))
+            refIdx = self._search_omega(omega22, omega_ref)
 
 
         # do_not_align should be True only when converting from pySurrogate
