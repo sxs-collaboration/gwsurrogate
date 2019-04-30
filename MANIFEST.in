@@ -9,3 +9,7 @@ recursive-include tutorial/TutorialSurrogate/EOB_q1_2_NoSpin_Mode22/l2_m2_len122
 exclude gwsurrogate/LALsurrogate.py
 include gwsurrogate/spline_interp_Cwrapper/*.py
 include gwsurrogate/spline_interp_Cwrapper/Readme.md
+include gwsurrogate/precessing_utils/Readme.md
+include gwsurrogate/precessing_utils/*.py
+include gwsurrogate/precessing_utils/include/*
+
