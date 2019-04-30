@@ -15,7 +15,10 @@ try:
 except ImportError:
     long_description = open('README.md').read()
 
-# build extension: python wrapper to gsl's spline function
+# all extensions here
+extmods = []
+
+# build extension 1: python wrapper to gsl's spline function
 if os.path.isdir('/opt/local/include'):
     IncDirs = ['/opt/local/include']
 else:
@@ -29,10 +32,21 @@ extmod = Extension('gwsurrogate.spline_interp_Cwrapper._spline_interp',
                    libraries = ['gsl'],
                    library_dirs = LibDirs,
                    sources = ['gwsurrogate/spline_interp_Cwrapper/_spline_interp.c'])
+extmods.append(extmod)
+
+# build extension 2: precessing utils
+import numpy
+extmod =  Extension('gwsurrogate.precessing_utils._utils',
+                    sources=['gwsurrogate/precessing_utils/src/precessing_utils.c'],
+                    include_dirs = ['gwsurrogate/precessing_utils/include', numpy.get_include()],
+                    language='c',
+                    extra_compile_args = ['-fPIC', '-O3'])
+extmods.append(extmod)
+
 
 
 setup(name='gwsurrogate',
-      version='0.9.4',
+      version='0.9.5',
       author='Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma',
       author_email='sfield@umassd.edu',
       packages=['gwsurrogate'],
@@ -55,5 +69,5 @@ setup(name='gwsurrogate',
                 'Topic :: Scientific/Engineering :: Mathematics',
                 'Topic :: Scientific/Engineering :: Physics',
       ],
-      ext_modules = [extmod],
+      ext_modules = extmods,
 )

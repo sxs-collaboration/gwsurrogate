@@ -125,14 +125,19 @@ def test_model_regression(generate_regression_data=False):
 
     if model in surrogate_old_interface:
       sur = gws.EvaluateSurrogate(datafile)
+      p_mins = sur.param_space.min_vals()
+      p_maxs = sur.param_space.max_vals()
     elif model in surrogate_loader_interface:
       sur = gws.LoadSurrogate(datafile)
+      p_mins = sur._sur_dimless.param_space.min_vals()
+      p_maxs = sur._sur_dimless.param_space.max_vals()
     else:
       sur = surrogate.FastTensorSplineSurrogate()
       sur.load(datafile)
+      p_mins = sur.param_space.min_vals()
+      p_maxs = sur.param_space.max_vals()
+ 
         
-    p_mins = sur.param_space.min_vals()
-    p_maxs = sur.param_space.max_vals()
     print("parameter minimum values",p_mins)
     print("parameter maximum values",p_maxs)
 
@@ -161,10 +166,17 @@ def test_model_regression(generate_regression_data=False):
       else:
         if model in surrogate_loader_interface:
           print(ps)
-          t, h = sur(ps, f_low=0.0)
+          q = ps[0]
+          chiA = np.array([0, 0, ps[1]])
+          chiB = np.array([0, 0, ps[2]])
+          t, h, dyanmics = sur(q, chiA, chiB, f_low=0.0)
         else:
           h= sur(ps)
-        h_np = [h[mode] for mode in sur.mode_list]
+        try:
+          h_np = [h[mode] for mode in sur.mode_list]
+        except AttributeError: # for new interface
+          h_np = [h[mode] for mode in sur._sur_dimless.mode_list]
+
         h_np = np.vstack(h_np)
         hp = np.real(h_np)
         hc = np.imag(h_np)

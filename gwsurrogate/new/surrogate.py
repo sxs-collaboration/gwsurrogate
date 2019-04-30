@@ -82,6 +82,8 @@ def _splinterp_Cwrapper(xout, xin, yin):
     """Uses gsl splines with a wrapper to interpolate real or complex data.
     Uses natural boundary conditions instead of not-a-knot boundary conditions
     like InterpolatedUnivariateSpline."""
+    if len(xin) != len(yin):
+        raise Exception('Expected x and y input lengths to match.')
     if np.iscomplexobj(yin):
         re = _splinterp_Cwrapper(xout, xin, np.real(yin))
         im = _splinterp_Cwrapper(xout, xin, np.imag(yin))
@@ -685,6 +687,15 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         self._h5_data_keys.append('phaseAlignIdx')
         self._h5_data_keys.append('TaylorT3_t_ref')
 
+    def _search_omega(self, omega22, omega_val):
+        """ Find closest index such taht omega22[index] = omega_val
+        """
+        # find first index where omega22 > omega_val
+        idx = np.where(omega22 > omega_val)[0][0]
+        # if idx-1 is closer to omega_val, pick that instead
+        if abs(omega22[idx-1] - omega_val) < abs(omega22[idx] - omega_val):
+            idx -= 1
+        return idx
 
     def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
         timesM, fM_low, fM_ref, phi_ref, do_not_align):
@@ -732,14 +743,30 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             if omega_low > omega22_peak:
                 raise ValueError('f_low is higher than the peak frequency')
 
-            # Choose one index less, to ensure omega_low is included
-            initIdx = np.argmin(np.abs(omega22_sparse - omega_low)) -1
-            Amp_22 = Amp_22[initIdx:]
-            phi_22 = phi_22[initIdx:]
-            domain = domain[initIdx:]
+            # Choose 5 indices less, to ensure omega_low is included
+            initIdx = self._search_omega(omega22_sparse, omega_low) - 5
+            # But if initIdx < 0, we are at the start of the surrogate data
+            # so just choose 0
+            if initIdx < 0:
+                initIdx = 0
+
         else:
             # If fM_low is 0, we use the entire waveform
             initIdx = 0
+
+            # But, if fM_low = 0 and timesM is given, the output of the
+            # interpolant depends very slightly on the length of the sparse
+            # data used to construct the interpolant. So, to achieve machine
+            # precision equivalence between using dtM and timesM options, we
+            # need to do the following: truncate before interpolation to the
+            # same index as the dtM option would have used above (initIdx).
+            # Using 6 rather than 5 because of the greater than condition.
+            if timesM is not None:
+                initIdx = np.where(domain > timesM[0])[0][0] - 6
+
+        Amp_22 = Amp_22[initIdx:]
+        phi_22 = phi_22[initIdx:]
+        domain = domain[initIdx:]
 
         if timesM is not None:
             if timesM[-1] > domain[-1]:
@@ -749,14 +776,13 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                 raise Exception("'times' starts before start of domain. Try"
                     " increasing initial value of times or reducing f_low.")
 
-        return_times = True
         if dtM is None and timesM is None:
             # Use the sparse domain
             timesM = domain
             omega22 = omega22_sparse[initIdx:]
             do_interp = False
         else:
-            ## Interpolate onto uniform domain if needed
+            ## Interpolate onto uniform-domain/timesM if needed
             do_interp = True
             if dtM is not None:
                 t0 = domain[0]
@@ -764,7 +790,6 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                 num_times = int(np.ceil((tf - t0)/dtM));
                 timesM = t0 + dtM*np.arange(num_times)
             else:
-                return_times = False
                 if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
                     raise Exception('Trying to evaluate at times outside the'
                         ' domain.')
@@ -775,13 +800,13 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             # now recompute omega22 with the dense data, but retain only data
             # upto the peak to avoid the noisy part
             omega22 = np.append(np.diff(phi_22)/np.diff(timesM), 0)
-            omega22 = omega22[timesM <= timesM[np.argmax(Amp_22)]]
+            omega22 = omega22[timesM <= 0]
 
             # Truncate data so that only freqs above omega_low are retained
             # If timesM are already given, we don't need to truncate data
             if dtM is not None:
                 if fM_low != 0:
-                    startIdx = np.argmin(np.abs(omega22 - omega_low))
+                    startIdx = self._search_omega(omega22, omega_low)
                 else:
                     # If fM_low is 0, we use the entire waveform
                     startIdx = 0
@@ -802,7 +827,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             if omega_ref > omega22_peak:
                 raise ValueError('f_ref is higher than the peak frequency')
 
-            refIdx = np.argmin(np.abs(omega22 - omega_ref))
+            refIdx = self._search_omega(omega22, omega_ref)
 
 
         # do_not_align should be True only when converting from pySurrogate
@@ -840,10 +865,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
                 h_dict[mode] = h_coorb_lm * np.exp(-1j*m*phi_22/2.)
 
-        if return_times:
-            return timesM, h_dict
-        else:
-            return h_dict
+        return timesM, h_dict, None     # None is for dynamics
 
     def _set_TaylorT3_factor(self):
         """ Sets a term used in the 0 PN TaylorT3 phase. See Eq.43 of
@@ -874,9 +896,10 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         return phi22_T3
 
 
-    def __call__(self, x, phi_ref=0, fM_low=None, fM_ref=None, dtM=None,
-        timesM=None, dfM=None, freqsM=None, mode_list=None, par_dict=None,
-        do_not_align=False):
+    def __call__(self, x, phi_ref=None, fM_low=None, fM_ref=None, dtM=None,
+            timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
+            precessing_opts=None, tidal_opts=None, par_dict=None,
+            return_dynamics=False, do_not_align=False):
         """
     Return dimensionless surrogate modes.
     Arguments:
@@ -913,6 +936,11 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
     freqsM:         Frequency samples to evaluate the waveform at. Use either
                     dfM or freqsM, not both.
 
+    ellMax:         Maximum ell index for modes to include. All available m
+                    indicies for each ell will be included automatically.
+                    Default: None, in which case all available modes wll be
+                    included.
+
     mode_list :     A list of (ell, m) modes to be evaluated.
                     Default None, which evaluates all avilable modes.
                     Will deduce the m<0 modes from m>0 modes.
@@ -925,11 +953,11 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
                     the waveform has not been modified.
 
     Returns
-    h: If timesM is given.
-    timesM, h: If timesM is None.
+    timesM, h, dynamics:
         timesM : time array in units of M.
-        h : A dictionary of waveform modes sampled at times=t with
+        h : A dictionary of waveform modes sampled at timesM with
             (ell, m) keys.
+        dynamics: None, since this is a nonprecessing model.
 
 
     IMPORTANT NOTES:
@@ -944,8 +972,6 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         reference epoch is set using fM_ref.
         """
 
-        if par_dict is not None:
-            raise ValueError('Expected par_dict to be None.')
         if dfM is not None:
             raise ValueError('Expected dfM to be None for a Time domain model')
         if freqsM is not None:
@@ -954,6 +980,16 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
         if mode_list is None:
             mode_list = self.mode_list
+        if ellMax is not None:
+            if ellMax > np.max(np.array(self.mode_list).T[0]):
+                raise ValueError('ellMax is greater than max allowed ell.')
+            include_modes = np.array(self.mode_list).T[0] <= ellMax
+            mode_list = [self.mode_list[idx]
+                    for idx in range(len(self.mode_list))
+                    if include_modes[idx]]
+
+        if par_dict is not None:
+            raise ValueError('par_dict should be None for this model')
 
         # always evaluate the (2,2) mode, the other modes neeed this
         # for transformation from coorbital to inertial frame
