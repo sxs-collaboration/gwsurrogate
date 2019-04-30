@@ -46,7 +46,7 @@ import warnings
 import os
 
 from .new import surrogate as new_surrogate
-from .new import precessing_surrogate
+#from .new import precessing_surrogate
 from . import catalog
 
 try:
@@ -2015,7 +2015,7 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
 ####       the default cases suitable for most people
 SURROGATE_CLASSES = {
     "NRHybSur3dq8": NRHybSur3dq8,
-    "NRSur7dq4": NRSur7dq4,
+#    "NRSur7dq4": NRSur7dq4,
 #    "SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5":EvaluateSurrogate # model SpEC_q1_10_NoSpin
         }
 
