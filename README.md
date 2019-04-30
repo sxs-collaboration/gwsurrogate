@@ -32,6 +32,10 @@ source, please see https://bitbucket.org/chadgalley/gwtools/
 To build gwsurrogate you must have gsl installed. Fortunately, this is a
 common library and can be easily installed with a package manager. 
 
+Note that at runtime (ie when you do import gwsurrogate) you may need to let
+gsl know where your BLAS library is installed. This can be done by setting
+your LD_PRELOAD or LD_LIBRARY_PATH environment variables. 
+
 ## From pip ##
 
 The python package pip supports installing from PyPI (the Python Package 
