@@ -935,7 +935,7 @@ Returns:
             precessing_opts = {}
 
 
-        init_phase = precessing_opts.pop('init_phase', 0)
+        init_phase = phi_ref
         init_quat = precessing_opts.pop('init_quat', None)
         return_dynamics = precessing_opts.pop('return_dynamics', False)
         use_lalsimulation_conventions \
