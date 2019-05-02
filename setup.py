@@ -43,11 +43,16 @@ extmod =  Extension('gwsurrogate.precessing_utils._utils',
                     extra_compile_args = ['-fPIC', '-O3'])
 extmods.append(extmod)
 
-
+# Extract code version from surrogate.py
+def read_main_file(key):
+    with open('gwsurrogate/surrogate.py') as f:
+        for line in f.readlines():
+            if key in line:
+                return line.split('"')[1]
 
 setup(name='gwsurrogate',
-      version='0.9.5',
-      author='Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma',
+      version=read_main_file("__version__"),
+      author=read_main_file("__author__"),
       author_email='sfield@umassd.edu',
       packages=['gwsurrogate'],
       license='MIT',
