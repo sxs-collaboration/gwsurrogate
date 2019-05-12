@@ -1451,7 +1451,7 @@ class SurrogateEvaluator(object):
 
 
         if self.keywords['Tidal']:
-            if (('Lambda1' not in tidal_opts.keys())
+            if (tidal_opts is None) or (('Lambda1' not in tidal_opts.keys())
                     or ('Lambda2' not in tidal_opts.keys())):
                 raise Exception('Tidal parameters Lambda1 and Lambda2 should '
                         'be passed through tidal_opts for this model.')
@@ -2016,9 +2016,13 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
             raise ValueError('Expected par_dict to be None.')
         Lambda1 = tidal_opts['Lambda1']
         Lambda2 = tidal_opts['Lambda2']
-        if Lambda1 > 10000 or Lambda2 > 10000:
-            raise Exception('NRHybSur3dq8Tidal is only valid for ' \
-                    'Lambda1<=10000 and Lambda2<=10000')
+        if Lambda1 < 0 or Lambda1 > 10000:
+            raise Exception('Lambda1=%.3f is outside the valid range ' \
+                '[0,10000]'%Lambda1)
+        if Lambda2 < 0 or Lambda2 > 10000:
+            raise Exception('Lambda2=%.3f is outside the valid range ' \
+                '[0,10000]'%Lambda2)
+
         x = [q, chiA0[2], chiB0[2], Lambda1, Lambda2]
         return x
 
