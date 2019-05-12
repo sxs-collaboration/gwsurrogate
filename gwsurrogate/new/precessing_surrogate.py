@@ -321,7 +321,9 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
         omega = _eval_scalar_fit(self.fit_data[i0]['omega'], fit_params)
         return omega
 
-    def _get_t_ref(self, omega_ref, q, chiA0, chiB0, init_orbphase, init_quat):
+    def _get_t_from_omega(self, omega_ref, q, chiA0, chiB0, init_orbphase,
+            init_quat):
+
         if omega_ref > 0.201:
             raise Exception("Got omega_ref = %0.4f > 0.2, too "
                     "large!"%(omega_ref))
@@ -397,8 +399,8 @@ L = len(self.t), and these returned arrays are sampled at self.t
             raise Exception("Got a spin magnitude of %s > 1.0"%(maxNorm))
 
         if omega_ref is not None:
-            t_ref = self._get_t_ref(omega_ref, q, chiA0, chiB0, init_orbphase,
-                init_quat)
+            t_ref = self._get_t_from_omega(omega_ref, q, chiA0, chiB0, \
+                    init_orbphase, init_quat)
 
         y_of_t, i0 = self._initialize(q, chiA0, chiB0, init_quat,
                 init_orbphase, t_ref, normA, normB)
@@ -712,8 +714,7 @@ ellMax: The maximum ell mode to evaluate.
         return modes
 
 ##############################################################################
-
-# Utility functions for the NRSurrogate7dq2 class:
+# Utility functions
 
 def rotate_spin(chi, phase):
     """For transforming spins between the coprecessing and coorbital frames"""
@@ -853,6 +854,57 @@ See the __call__ docstring for other parameters.
 
         return t0
 
+
+    def _get_omega(self, q, chiA0, chiB0, init_orbphase, init_quat):
+
+        if omega_ref > 0.201:
+            raise Exception("Got omega_ref = %0.4f > 0.2, too "
+                    "large!"%(omega_ref))
+
+        y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
+                np.append(chiA0, chiB0))
+
+        if init_quat is not None:
+            y0[:4] = init_quat
+
+        omega0 = self.get_omega(0, q, y0)
+        if omega_ref < omega0:
+            raise Exception("Got omega_ref = %0.4f < %0.4f = omega_0, "
+                    "too small!"%(omega_ref, omega0))
+
+        # i0=0 is a lower bound, find the first index where omega > omega_ref
+        imax=1
+        omega_max = self.get_omega(imax, q, y0)
+        omega_min = omega0
+        while omega_max <= omega_ref:
+            imax += 1
+            omega_min = omega_max
+            omega_max = self.get_omega(imax, q, y0)
+
+        # Interpolate
+        t_ref = (self.t[imax-1] * (omega_max - omega_ref)
+            + self.t[imax] * (omega_ref - omega_min))/(omega_max - omega_min)
+
+        if t_ref < self.t[0] or t_ref > self.t[-1]:
+            raise Exception("Somehow, t_ref ended up being outside of "
+                    "the time domain limits!")
+
+        return t_ref
+
+    def _check_unused_opts(self, precessing_opts):
+        """ Call this at the end of call module to check if all the 
+        precessing_opts have been used. Assumes precessing_opts were 
+        extracted using pop.
+        """
+        if len(precessing_opts.keys()) != 0:
+            unused = ""
+            for k in precessing_opts.keys():
+                unused += "'%s', "%k
+            if unused[-2:] == ", ":     # get rid of trailing comma
+                unused = unused[:-2]
+            raise Exception('Unused keys in precessing_opts: %s'%unused) 
+
+
     def __call__(self, x, phi_ref=None, fM_low=None, fM_ref=None, dtM=None,
             timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
             precessing_opts=None, tidal_opts=None, par_dict=None,
@@ -940,9 +992,12 @@ Returns:
         return_dynamics = precessing_opts.pop('return_dynamics', False)
         use_lalsimulation_conventions \
             = precessing_opts.pop('use_lalsimulation_conventions', False)
+        self._check_unused_opts(precessing_opts)
 
         if ellMax is None:
             ellMax = 4
+        if ellMax > 4:
+            raise ValueError("NRSur7dq4 only allows ellMax<=4.")
 
         q, chiA0, chiB0 = x
 
@@ -951,7 +1006,8 @@ Returns:
             chiA0 = rotate_spin(chiA0, -1 * init_phase)
             chiB0 = rotate_spin(chiB0, -1 * init_phase)
             if phi is not None:
-                phi += 0.5 * np.pi
+                phi += 0.5 * np.pi      #FIXME
+
 
         chiA_norm = np.sqrt(np.sum(chiA0**2))
         chiB_norm = np.sqrt(np.sum(chiB0**2))
@@ -1005,7 +1061,7 @@ Returns:
             ## Interpolate onto uniform domain if needed
             do_interp = True
             if dtM is not None:
-                # FIXME use fM_low
+                # FIXME #FIXME use fM_low
                 t0 = self.t_coorb[0]
                 tf = self.t_coorb[-1]
                 num_times = int(np.ceil((tf - t0)/dtM));
