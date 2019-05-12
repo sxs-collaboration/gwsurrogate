@@ -1063,7 +1063,7 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
         # Get omega22_sparse, the angular frequency of the 22 mode, from the
         # sparse surrogate domain.
         # Use np.gradient
-        omega22_sparse = np.gradient(phi_22)/np.gradient(domain)
+        omega22_sparse = np.gradient(phi_22, domain)
 
         # t=0 is at the waveform peak for the surrogate
         peak22Idx = np.argmin(np.abs(domain))
@@ -1091,13 +1091,13 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
         else:
             # If fM_low is 0, we use the entire waveform where frequency is
             # monotonic
-            freq_orbital = np.gradient(phi_22[:peak22Idx])/np.gradient(domain[:peak22Idx])
+            freq_orbital = np.gradient(phi_22[:peak22Idx], domain[:peak22Idx])
             initIdx = len(freq_orbital)-np.argmin((np.diff(freq_orbital)>np.zeros(len(freq_orbital)-1))[::-1])-1
 
         Amp_22 = Amp_22[initIdx:peak22Idx]
         phi_22 = phi_22[initIdx:peak22Idx]
         domain = domain[initIdx:peak22Idx]
-        v_domain = np.power(np.abs(np.gradient(phi_22)/np.gradient(domain))/2,1./3.)
+        v_domain = np.power(np.abs(np.gradient(phi_22, domain))/2,1./3.)
         if(np.min(np.diff(v_domain))<0):
             raise ValueError('frequency is not monotonic over the entire'
                 ' considered here')
@@ -1144,7 +1144,7 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
 
             # now recompute omega22 with the dense data, but retain only data
             # upto the peak to avoid the noisy part
-            omega22 = np.gradient(phi_22)/np.gradient(timesM_tmp)
+            omega22 = np.gradient(phi_22, timesM_tmp)
 
             #omega22 = omega22[timesM_tmp <= timesM_tmp[np.argmax(Amp_22)]]
 
