@@ -1152,7 +1152,7 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
             # If timesM are already given, we don't need to truncate data
             if dtM is not None:
                 if fM_low != 0:
-                    startIdx = np.argmin(np.abs(omega22 - omega_low)) - 1
+                    startIdx = max(np.argmin(np.abs(omega22 - omega_low)) - 1,0)
                 else:
                     # If fM_low is 0, we use the entire waveform
                     startIdx = 0
