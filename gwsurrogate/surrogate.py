@@ -1977,7 +1977,7 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         # hard_lim -> raise error when outside lims
         # Format is [qMax, chiMax].
         soft_param_lims = [4.01, 0.801]
-        hard_param_lims = [6.01, 1]
+        hard_param_lims = [5.01, 1]
         super(NRSur7dq4, self).__init__(self.__class__.__name__, \
             domain_type, keywords, soft_param_lims, hard_param_lims)
 
