@@ -986,6 +986,9 @@ Returns:
         if precessing_opts is None:
             precessing_opts = {}
 
+        #FIXME
+        if fM_low != 0:
+            raise ValueError('Only fM_low=0 is allowed for this model.')
 
         init_phase = phi_ref
         init_quat = precessing_opts.pop('init_quat', None)

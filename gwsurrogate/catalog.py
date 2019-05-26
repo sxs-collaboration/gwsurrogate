@@ -96,6 +96,15 @@ _surrogate_world['NRHybSur3dq8'] = \
   (5,5)]. The m<0 modes are deduced from the m>0 modes.''',
   '''https://arxiv.org/abs/1812.07865''')
 
+_surrogate_world['NRSur7dq4'] = \
+  surrogate_info(\
+  'https://www.dropbox.com/s/zs055aus7wmx0mq/NRSur7dq4.h5',
+  '''Surrogate model for precessing binary black holes with mass ratios q<=4
+  and spin magnitudes <=0.8. This model is presented in Varma et al. 2019,
+  arxiv:1905.09300. All ell<=4 modes are included. The spin and frame dynamics
+  are also modeled.''',
+  '''https://arxiv.org/abs/1905.09300''')
+
 
 def download_path():
   """return the default path for downloaded surrogates"""
