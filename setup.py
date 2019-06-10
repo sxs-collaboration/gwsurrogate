@@ -30,7 +30,7 @@ else:
 extmod = Extension('gwsurrogate.spline_interp_Cwrapper._spline_interp',
                    include_dirs = IncDirs,
                    libraries = ['gsl'],
-                   extra_compile_args = ['-std=c99'])
+                   extra_compile_args = ['-std=c99'],
                    library_dirs = LibDirs,
                    sources = ['gwsurrogate/spline_interp_Cwrapper/_spline_interp.c'])
 extmods.append(extmod)
