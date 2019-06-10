@@ -30,6 +30,7 @@ else:
 extmod = Extension('gwsurrogate.spline_interp_Cwrapper._spline_interp',
                    include_dirs = IncDirs,
                    libraries = ['gsl'],
+                   extra_compile_args = ['-std=c99'])
                    library_dirs = LibDirs,
                    sources = ['gwsurrogate/spline_interp_Cwrapper/_spline_interp.c'])
 extmods.append(extmod)
@@ -40,7 +41,7 @@ extmod =  Extension('gwsurrogate.precessing_utils._utils',
                     sources=['gwsurrogate/precessing_utils/src/precessing_utils.c'],
                     include_dirs = ['gwsurrogate/precessing_utils/include', numpy.get_include()],
                     language='c',
-                    extra_compile_args = ['-fPIC', '-O3'])
+                    extra_compile_args = ['-std=c99','-fPIC', '-O3'])
 extmods.append(extmod)
 
 # Extract code version from surrogate.py

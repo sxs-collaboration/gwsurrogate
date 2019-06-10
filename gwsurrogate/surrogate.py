@@ -5,7 +5,7 @@ from __future__ import division # for python 2
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@umassd.edu, crgalley@tapir.caltech.edu"
 __status__    = "testing"
-__author__    = "Scott Field, Jonathan Blackman, Chad Galley, Vijay Varma"
+__author__    = "Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma"
 __version__ = "0.9.5"
 __license__ = """
 Permission is hereby granted, free of charge, to any person obtaining a copy
