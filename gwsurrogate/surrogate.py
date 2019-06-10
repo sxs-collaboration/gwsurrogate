@@ -5,8 +5,8 @@ from __future__ import division # for python 2
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@umassd.edu, crgalley@tapir.caltech.edu"
 __status__    = "testing"
-__author__    = "Scott Field, Chad Galley, Vijay Varma, Kevin Barkett"
-
+__author__    = "Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma, Kevin Barkett"
+__version__ = "0.9.5"
 __license__ = """
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -2135,8 +2135,8 @@ class LoadSurrogate(object):
             surrogate_h5file = '%s/%s.h5'%(catalog.download_path(), \
                 surrogate_name)
             if not os.path.isfile(surrogate_h5file):
-                raise Exception("Surrogate data not found. Do"
-                    " gwsurrogate.catalog.pull('%s')"%surrogate_name)
+                print("Surrogate data not found for %s. Downloading now."%surrogate_name)
+                catalog.pull(surrogate_name)
 
         if surrogate_name not in SURROGATE_CLASSES.keys():
             raise Exception('Invalid surrogate : %s'%surrogate_name)

@@ -11,7 +11,8 @@ void spline_interp(long data_size, long out_size, \
     gsl_spline_init(spline, data_x, data_y, data_size);
 
     // evaluate
-    for (int ii=0; ii < out_size; ii++) {
+    int ii;
+    for (ii=0; ii < out_size; ii++) {
         out_y[ii] = gsl_spline_eval (spline, out_x[ii], acc);
     }
 
