@@ -155,7 +155,7 @@ def _get_fit_settings():
     """
     q_fit_offset = -0.9857019407834238
     q_fit_slope = 1.4298059216576398
-    q_max_bfOrder = 4
+    q_max_bfOrder = 3
     chi_max_bfOrder = 2
     return q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder
 
@@ -986,9 +986,12 @@ Returns:
         if precessing_opts is None:
             precessing_opts = {}
 
-        #FIXME
         if fM_low != 0:
-            raise ValueError('Only fM_low=0 is allowed for this model.')
+            raise ValueError('Only f_low=0 is allowed for this model. The ' \
+                'only function of f_low is to truncate the lower ' \
+                'frequencies, since this surrogate is already short, this ' \
+                'is not needed. Instead, use f_ref to set the reference ' \
+                'epoch at which the frame and spins are defined.')
 
         init_phase = phi_ref
         init_quat = precessing_opts.pop('init_quat', None)
@@ -1048,7 +1051,7 @@ Returns:
                 h_coorb)
 
         if timesM is not None:
-            if timesM[-1] > self.t_coorb[-1]:
+            if timesM[-1] > self.t_coorb[-1] + 0.01:
                 raise Exception("'times' includes times larger than the"
                     " maximum time value in domain.")
             if timesM[0] < self.t_coorb[0]:
@@ -1064,7 +1067,7 @@ Returns:
             ## Interpolate onto uniform domain if needed
             do_interp = True
             if dtM is not None:
-                # FIXME #FIXME use fM_low
+                #NOTE t0 will need to change if f_low != 0 is allowed
                 t0 = self.t_coorb[0]
                 tf = self.t_coorb[-1]
                 num_times = int(np.ceil((tf - t0)/dtM));
