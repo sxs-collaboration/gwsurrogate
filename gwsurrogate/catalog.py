@@ -98,7 +98,7 @@ _surrogate_world['NRHybSur3dq8'] = \
 
 _surrogate_world['NRSur7dq4'] = \
   surrogate_info(\
-  'https://www.dropbox.com/s/zs055aus7wmx0mq/NRSur7dq4.h5',
+  'https://www.dropbox.com/s/lqlw0wkafnkrqxv/NRSur7dq4.h5',
   '''Surrogate model for precessing binary black holes with mass ratios q<=4
   and spin magnitudes <=0.8. This model is presented in Varma et al. 2019,
   arxiv:1905.09300. All ell<=4 modes are included. The spin and frame dynamics
