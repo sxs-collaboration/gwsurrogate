@@ -997,7 +997,7 @@ Returns:
         init_quat = precessing_opts.pop('init_quat', None)
         return_dynamics = precessing_opts.pop('return_dynamics', False)
         use_lalsimulation_conventions \
-            = precessing_opts.pop('use_lalsimulation_conventions', False)
+            = precessing_opts.pop('use_lalsimulation_conventions', True)
         self._check_unused_opts(precessing_opts)
 
         if ellMax is None:
@@ -1008,11 +1008,13 @@ Returns:
         q, chiA0, chiB0 = x
 
         if use_lalsimulation_conventions:
-            # rotate_spin rotates in the -z direction
+            # If use_lalsimulation_conventions is True, the spin components are
+            # given in the Lalsimulation source frame (see See Harald Pfeiffer,
+            # T18002260-v1 for a diagram). The surrogate frame has the same z
+            # but has its x along the line of ascending nodes, so we must
+            # rotate the (x, y) spin components by init_phase.
             chiA0 = rotate_spin(chiA0, -1 * init_phase)
             chiB0 = rotate_spin(chiB0, -1 * init_phase)
-            if phi is not None:
-                phi += 0.5 * np.pi      #FIXME
 
 
         chiA_norm = np.sqrt(np.sum(chiA0**2))
