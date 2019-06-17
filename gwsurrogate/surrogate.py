@@ -1541,8 +1541,17 @@ class SurrogateEvaluator(object):
                 Hertz if units = 'mks'.
                 If 0, the entire waveform is returned.
                 Default: None, must be specified by user.
+
+                NOTE: For some models like NRSur7dq4, only f_low=0 is allowed.
+                The role of f_low is only to truncate the lower frequencies
+                before returning the waveform. Since this model is already
+                very short, this truncation is not required. On the other hand,
+                f_ref is used to set the reference epoch, and can be freely
+                specified.
+
                 WARNING: Using f_low=0 with a small dt (like 0.1M) can lead to
-                very expensive evaluation for hybridized surrogates.
+                very expensive evaluation for hybridized surrogates like
+                NRHybSur3dq8.
 
     f_ref:      Frequency used to set the reference epoch at which the
                 reference frame is defined and the spins are specified.
@@ -1954,7 +1963,7 @@ This model includes the following spin-weighted spherical harmonic modes:
 2<=ell<=4, -ell<=m<=ell.
 
 The parameter space of validity is:
-q \in [1, 5], and |chi1|,|chi2| \in [-1, 1], with generic directions.
+q \in [1, 6], and |chi1|,|chi2| \in [-1, 1], with generic directions.
 where q is the mass ratio and chi1/chi2 are the spin vectors of the
 heavier/lighter BH, respectively.
 
