@@ -1109,9 +1109,10 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
                 ' considered here')
 
         if timesM is not None:
-            if timesM[-1] > domain[-1]:
-                raise Exception("'times' includes times larger than the"
-                    " maximum time value in domain.")
+            # This check is performed after the tidal terms computed
+            #if timesM[-1] > domain[-1]:
+            #    raise Exception("'times' includes times larger than the"
+            #        " maximum time value in domain.")
             if timesM[0] < domain[0]:
                 raise Exception("'times' starts before start of domain. Try"
                     " increasing initial value of times or reducing f_low.")
@@ -1120,7 +1121,6 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
         # in order to compute an accurate orbital frequency for the PN equations
         # then interpolated to the desired times afterwards
 
-        return_times = True
         if dtM is None and timesM is None:
             raise ValueError("For this model, must specify either the 'dtM' or"
                 " 'timesM' option")
@@ -1135,12 +1135,14 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
                 num_times = int(np.ceil((tf - t0)/dtM));
                 timesM_tmp = t0 + dtM*np.arange(num_times)
             else:
-                return_times = False
-                if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
+                # Because the spliced waveform is shifted so the final time
+                # is the peak of the final waveform, we must ensure the check
+                # here is performed similarly
+                if timesM[0] < (domain[0]-domain[-1]) or timesM[-1] > 0:
                     raise Exception('Trying to evaluate at times outside the'
                         ' domain.')
                 min_dt = np.min(np.diff(timesM))
-                t0 = timesM[0] - min_dt
+                t0 = domain[0] #timesM[0] - min_dt
                 tf = domain[-1]
                 num_times = int(np.ceil((tf - t0)/min_dt));
                 timesM_tmp = t0 + min_dt*np.arange(num_times)
@@ -1256,6 +1258,7 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
             timesM_tmp = timesM_tmp[:find]
             break
 
+        timesM_tmp -= timesM_tmp[-1]
         phi_22 = phi_22[:find] + 2.*(dp_tid[:find] - dp_tid[0])
 
         # Reinterpolate to the final time grid
@@ -1264,10 +1267,15 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
             tf = timesM_tmp[-1]
             num_times = int(np.ceil((tf - t0)/dtM));
             timesM = t0 + dtM*np.arange(num_times)
+            timesM -= timesM[-1] # Ensure peak amplitude at t=0
         else:
             if timesM[-1] > timesM_tmp[-1]:
                 raise Exception("'times' includes times larger than the"
                     " maximum time value in domain after splicing. (Remember"
+                    " that tidal effects cause the binary to merger earlier)")
+            if timesM[0] < timesM_tmp[0]:
+                raise Exception("'times' includes times smaller than the"
+                    " initial time value in domain after splicing. (Remember"
                     " that tidal effects cause the binary to merger earlier)")
 
         # Find the 'v' corresponding to the final time array, then perform the
