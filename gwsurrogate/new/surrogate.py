@@ -1158,7 +1158,7 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
             # If timesM are already given, we don't need to truncate data
             if dtM is not None:
                 if fM_low != 0:
-                    startIdx = max(np.argmin(np.abs(omega22 - omega_low)) - 1,0)
+                    startIdx = max(np.argmin(np.abs(omega22 - omega_low)) - 4,0)
                 else:
                     raise ValueError("The option of setting 'fM_low' to 0"
                             " is turned off for this model; must specifiy a"
@@ -1242,6 +1242,20 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
             find = len(timesM_tmp)
 
         timesM_tmp = timesM_tmp[:find]
+
+        # There is a small region of parameter space where the interpolation
+        # behaves poorly at very late times due to oddly shaped steps, so we
+        # need to check the final handful of steps for that and truncate as
+        # needed to avoid interpolation failures
+        numcheck = 500
+        factorLimit = 2.
+        tdiff = np.diff(timesM_tmp[-numcheck-1:])
+        for i in range(len(tdiff)-1):
+          if ((tdiff[i]>tdiff[i+1]*factorLimit) or (tdiff[i]<tdiff[i+1]/factorLimit)):
+            find = len(timesM_tmp)-numcheck+i-1
+            timesM_tmp = timesM_tmp[:find]
+            break
+
         phi_22 = phi_22[:find] + 2.*(dp_tid[:find] - dp_tid[0])
 
         # Reinterpolate to the final time grid
