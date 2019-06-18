@@ -370,14 +370,20 @@ q: The mass ratio
 chiA0: The chiA vector at the reference time, given in the coprecessing frame
 chiB0: The chiB vector at the reference time, given in the coprecessing frame
 init_quat: The quaternion giving the rotation to the coprecessing frame at the
-           reference time. By default, this will be the identity quaternion,
-           indicating the coprecessing frame is aligned with the inertial frame.
-init_orbphase: The orbital phase in the coprecessing frame at the reference time
-t_ref: The reference (dimensionless) time, where the peak amplitude occurs at t=0.
-       Default: The initial time, t_0/M = -4500.
+        reference time. By default, this will be the identity quaternion,
+        indicating the coprecessing frame is aligned with the inertial frame.
+init_orbphase: The orbital phase in the coprecessing frame at the reference
+        time.
+t_ref: The reference (dimensionless) time, where the peak amplitude occurs at
+        t=0.
 omega_ref: The dimensionless orbital angular frequency used to determine t_ref,
-       which is the time derivative of the orbital phase in the coprecessing frame.
-       Specify at most one of t_ref, omega_ref.
+        which is the time derivative of the orbital phase in the coprecessing
+        frame.
+        Specify at most one of t_ref, omega_ref.
+use_lalsimulation_conventions: If True, interprets the spin directions and
+            init_orbphase using lalsimulation conventions. Specifically, before
+            evaluating the surrogate, the spins will be rotated about the
+            z-axis by init_phase. Default: True.
 
 Returns:
 ==================
@@ -795,17 +801,21 @@ filename: The hdf5 file containing the surrogate data."
 Evaluates only the dynamics surrogate.
 q: The mass ratio mA/mB, with 1 <= q <= 2.
 chiA0, chiB0: The dimensionless black hole spins, given in the
-              coprecessing frame at the reference time
+            coprecessing frame at the reference time
 init_phase: The orbital phase $\\varphi(t_ref)$ at the reference time
 init_quat: The unit quaternion representing the coprecessing frame at the
-           reference time.
-           If None, the coprecessing frame and inertial frames will be
-           aligned, and the spins can be given in the inertial frame.
-t_ref: The reference (dimensionless) time, where the peak amplitude occurs at t=0.
-       Default: The initial time, t_0/M = -4500.
+            reference time.
+            If None, the coprecessing frame and inertial frames will be
+            aligned, and the spins can be given in the inertial frame.
+t_ref: The reference (dimensionless) time, where the peak amplitude occurs
+            at t=0.
 omega_ref: The orbital angular frequency in the coprecessing frame, used to
-           determine t_ref.
-       Specify at most one of t_ref, fM_ref.
+            determine t_ref.
+            Specify at most one of t_ref, fM_ref.
+use_lalsimulation_conventions: If True, interprets the spin directions and
+            init_orbphase using lalsimulation conventions. Specifically, before
+            evaluating the surrogate, the spins will be rotated about the
+            z-axis by init_phase. Default: True.
 
 Returns:
 q_copr: The quaternion representing the coprecessing frame with shape (4, L)
@@ -904,8 +914,8 @@ See the __call__ docstring for other parameters.
         return t_ref
 
     def _check_unused_opts(self, precessing_opts):
-        """ Call this at the end of call module to check if all the 
-        precessing_opts have been used. Assumes precessing_opts were 
+        """ Call this at the end of call module to check if all the
+        precessing_opts have been used. Assumes precessing_opts were
         extracted using pop.
         """
         if len(precessing_opts.keys()) != 0:
@@ -914,76 +924,62 @@ See the __call__ docstring for other parameters.
                 unused += "'%s', "%k
             if unused[-2:] == ", ":     # get rid of trailing comma
                 unused = unused[:-2]
-            raise Exception('Unused keys in precessing_opts: %s'%unused) 
+            raise Exception('Unused keys in precessing_opts: %s'%unused)
 
 
     def __call__(self, x, phi_ref=None, fM_low=None, fM_ref=None, dtM=None,
             timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
-            precessing_opts=None, tidal_opts=None, par_dict=None,
-            return_dynamics=False):
+            precessing_opts=None, tidal_opts=None, par_dict=None):
         """
 Evaluates a precessing surrogate model.
 
 Arguments:
-    q: The mass ratio mA/mB, with 1 <= q <=2
-    chiA0, chiB0:   The initial dimensionless spins given in the coprecessing
-                    frame. They should be length 3 lists or numpy arrays.
-                    These are $\\vec{\chi_{1,2}^\mathrm{copr}(t_0)$ in THE PAPER.
-                    Their norms should be np.sqrt(chi0**2) <= 0.8
-    init_phase:     The initial orbital phase in the coprecessing frame.
-                    This is $\\varphi(t_0)$ in THE PAPER.
-    init_quat:      The initial unit quaternion (length 4 list or numpy array)
+    x:  Parameters, x = q, chiA0, chiB0. Where,
+        q: The mass ratio mA/mB, where A (B) refers to the heavier BH.
+        chiA0, chiB0:  The initial dimensionless spins given in the
+                coprecessing frame. They should be length 3 lists or numpy
+                arrays.  These are $\\vec{\chi_{1,2}^\mathrm{copr}(t_0)$ in
+                THE PAPER.
+    phi_ref:    The orbital phase in the coprecessing frame at the reference
+                frequency fM_ref.
+    fM_low:     Initial frequency in dimensionless units. Currently only
+                fM_low = 0 is allowed, in which case the full surrogate is
+                returned.
+    fM_ref:     Reference frequency in dimensionless units, at which the
+                reference frame and spins are defined.
+    dtM:        Time step in dimensionless units.
+    timesM:     Dimensionless times at which the output should be sampled.
+                Give at most one of dtM and timesM. If neither is given
+                returns the results sampled at self.t_coorb.
+    dfM, freqsM: These should be None, as we only have time domain models so
+                far.
+    mode_list:  This should be None, use ellMax instead.
+    ell
+    ellMax:     The maximum ell modes to use. The NRSur7dq4 surrogate model
+                contains modes up to L=4. Using ellMax=2 or ellMax=3 reduces
+                the evaluation time.
+    precessing_opts:
+                A dictionary containing optional parameters for a precessing
+                surrogate model. Default: None.
+                Allowed keys are:
+                init_quat: The initial unit quaternion (length 4 vector)
                     giving the rotation from the coprecessing frame to the
-                    inertial frame.
-                    This is $\hat{q}(t_0)$ in THE PAPER.
-                    If None (default), uses the identity, in which case the spins
-                    in the coprecessing frame are equal to the spins in the
-                    inertial frame.
-    return_spins:   flag to return the inertial frame time-dependent spins,
-                    $\\vec{\chi_{1,2}(t)$.
-    t:              The times at which the output should be sampled.
-                    The output is interpolated from self.t_coorb using cubic
-                    splines. If t=None, returns the results at self.t_coorb.
-    theta, phi:     Either specify one or neither. If given, sums up the
-                    waveform modes for a gravitational wave propagation
-                    direction of (theta, phi) on a sphere centered on the
-                    source, where theta is the polar angle and phi is the
-                    azimuthal angle.
-                    If not given, returns a dictionary of waveform modes h_dict
-                    with (ell, m) keys such that (for example) the (2, 2) mode
-                    is h_dict[2, 2].
-    ellMax:           The maximum ell modes to use.
-                    The NRSur7dq2 surrogate model contains modes up to L=4.
-                    Using ellMax=2 or ellMax=3 reduces the evaluation time.
-    t_ref:
-    fM_ref:
-    t_ref:          The reference (dimensionless) time, where the peak amplitude
-                    occurs at t=0.
-                    Default: The initial time, t_0/M = -4500.
-    fM_ref:          A gravitational wave frequency used to determine t_ref,
-                    taken to be $\omega / pi$ where $\omega$ is the angular
-                    orbital frequency in the coprecessing frame.
-                    Specify at most one of t_ref, fM_ref.
-    use_lalsimulation_conventions: If True, interprets the spin directions and phi
-                    using lalsimulation conventions. Specifically, before evaluating
-                    the surrogate, the spins will be rotated about the z-axis by
-                    init_phase, and pi/2 will be added to phi if it is given.
-                    This agrees with lalsimulation's ChooseTDWaveform but not
-                    ChooseTDModes; set this to false to agree with ChooseTDModes.
-                    This is as of June 2018.
+                    inertial frame at the reference epoch.
+                    Default: None, in which case the spins in the coprecessing
+                    frame are equal to the spins in the inertial frame.
+                return_dynamics:
+                    Return the frame dynamics and spin evolution along with
+                    the waveform. Default: False.
+                Example: precessing_opts = {
+                                    'init_quat': [1,0,0,0],
+                                    'return_dynamics': True
+                                    }
+    tidal_opts: Should be None for this model.
+    par_dict: Should be None for this model.
+
 
 Returns:
-    h (with return_spins=False)
-  or
-    h, chiA, chiB (with return_spins=True)
-
-    h: If theta and phi are specified, h is a complex 1d array sampled at times
-       t (or self.t_coorb if t=None).
-       Otherwise, h is a dictionary with length-2 integer tuples (ell, m) keys,
-       and complex 1d arrays giving the (ell, m) mode as values.
-    chiA, chiB: The inertial frame spins with shape (N, 3), where N=len(t)
-                (or len(self.t_coorb) if t=None).
-
+    domain, h, dynamics.
         """
 
         if dfM is not None:
