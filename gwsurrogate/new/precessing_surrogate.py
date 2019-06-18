@@ -359,7 +359,8 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
         return t_ref
 
     def __call__(self, q, chiA0, chiB0, init_quat=None, init_orbphase=0.0,
-                 t_ref=None, omega_ref=None):
+                 t_ref=None, omega_ref=None,
+                 use_lalsimulation_conventions=True):
         """
 Computes the modeled NR dynamics given the initial conditions.
 
@@ -391,6 +392,14 @@ L = len(self.t), and these returned arrays are sampled at self.t
         if t_ref is not None and omega_ref is not None:
             raise Exception("Specify at most one of t_ref, omega_ref.")
 
+        if use_lalsimulation_conventions:
+            # If use_lalsimulation_conventions is True, the spin components are
+            # given in the Lalsimulation source frame (see See Harald Pfeiffer,
+            # T18002260-v1 for a diagram). The surrogate frame has the same z
+            # but has its x along the line of ascending nodes, so we must
+            # rotate the (x, y) spin components by init_orbphase.
+            chiA0 = rotate_spin(chiA0, -1 * init_orbphase)
+            chiB0 = rotate_spin(chiB0, -1 * init_orbphase)
 
         normA = np.sqrt(np.sum(chiA0**2))
         normB = np.sqrt(np.sum(chiB0**2))
@@ -780,7 +789,8 @@ filename: The hdf5 file containing the surrogate data."
         self.t_f = self.t_coorb[-1]
 
     def get_dynamics(self, q, chiA0, chiB0, init_phase=0.0, init_quat=None,
-                     t_ref=None, omega_ref=None):
+                     t_ref=None, omega_ref=None,
+                     use_lalsimulation_conventions=True):
         """
 Evaluates only the dynamics surrogate.
 q: The mass ratio mA/mB, with 1 <= q <= 2.
@@ -806,7 +816,8 @@ chiB: The time-dependent chiB with shape (L, 3)
 These are sampled on self.tds which has length L.
         """
         return self.dynamics_sur(q, chiA0, chiB0, init_orbphase=init_phase,
-                 init_quat=init_quat, t_ref=t_ref, omega_ref=omega_ref)
+                 init_quat=init_quat, t_ref=t_ref, omega_ref=omega_ref,
+                 use_lalsimulation_conventions=use_lalsimulation_conventions)
 
     def get_coorb_waveform(self, q, chiA_coorb, chiB_coorb, ellMax=4):
         """
@@ -837,7 +848,8 @@ See the __call__ docstring for other parameters.
         # Get freqs vs time
         quat, orbphase, chiA_copr, chiB_copr = self.get_dynamics(
                 q, chiA0, chiB0, init_phase=init_phase, init_quat=init_quat,
-                t_ref=t_ref, omega_ref=omega_ref)
+                t_ref=t_ref, omega_ref=omega_ref,
+                use_lalsimulation_conventions=use_lalsimulation_conventions)
 
         omega = np.gradient(orbphase, self.tds)
         freqs = omega / np.pi
@@ -1007,16 +1019,6 @@ Returns:
 
         q, chiA0, chiB0 = x
 
-        if use_lalsimulation_conventions:
-            # If use_lalsimulation_conventions is True, the spin components are
-            # given in the Lalsimulation source frame (see See Harald Pfeiffer,
-            # T18002260-v1 for a diagram). The surrogate frame has the same z
-            # but has its x along the line of ascending nodes, so we must
-            # rotate the (x, y) spin components by init_phase.
-            chiA0 = rotate_spin(chiA0, -1 * init_phase)
-            chiB0 = rotate_spin(chiB0, -1 * init_phase)
-
-
         chiA_norm = np.sqrt(np.sum(chiA0**2))
         chiB_norm = np.sqrt(np.sum(chiB0**2))
 
@@ -1030,7 +1032,8 @@ Returns:
 
         quat, orbphase, chiA_copr, chiB_copr = self.get_dynamics(
                 q, chiA0, chiB0, init_phase=init_phase, init_quat=init_quat,
-                t_ref=None, omega_ref=omega_ref)
+                t_ref=None, omega_ref=omega_ref,
+                use_lalsimulation_conventions=use_lalsimulation_conventions)
 
         # Interpolate to the coorbital time grid, and transform to coorb frame.
         # Interpolate first since coorbital spins oscillate faster than
