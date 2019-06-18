@@ -1044,8 +1044,9 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
             step dtM if given. This is done in the coorbital frame since
             the waveform is slowly varying in that frame.
 
-            If fM_low is given, only part of the waveform where frequency of
-            the (2, 2) mode is greater than fM_low is retained.
+            If fM_low must be specified. The option of fM_low == 0 has been
+            turned off for this model because of its excessive computational
+            cost to evaluate
 
             if do_not_align = False:
                 Aligns the 22 mode phase to be 2*phi_ref at fM_ref. This means
@@ -1089,10 +1090,15 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
             if initIdx < 0:
                 initIdx = 0
         else:
-            # If fM_low is 0, we use the entire waveform where frequency is
-            # monotonic
-            freq_orbital = np.gradient(phi_22[:peak22Idx], domain[:peak22Idx])
-            initIdx = len(freq_orbital)-np.argmin((np.diff(freq_orbital)>np.zeros(len(freq_orbital)-1))[::-1])-1
+            raise ValueError("The option of setting 'fM_low' to 0 is turned off"
+                    " for this model; must specifiy a non-zero 'fM_low'")
+            ## If fM_low is 0, we use the entire waveform where frequency is
+            ## monotonic, uncomment if want to allow this option
+            #freq_orbital = np.gradient(phi_22[:peak22Idx], domain[:peak22Idx])
+            #if np.min(np.diff(freq_orbital))<=0:
+            #  initIdx = len(freq_orbital)-np.argmin((np.diff(freq_orbital)>np.zeros(len(freq_orbital)-1))[::-1])-1
+            #else:
+            #  initIdx = 0
 
         Amp_22 = Amp_22[initIdx:peak22Idx]
         phi_22 = phi_22[initIdx:peak22Idx]
@@ -1154,8 +1160,20 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
                 if fM_low != 0:
                     startIdx = max(np.argmin(np.abs(omega22 - omega_low)) - 1,0)
                 else:
-                    # If fM_low is 0, we use the entire waveform
-                    startIdx = 0
+                    raise ValueError("The option of setting 'fM_low' to 0"
+                            " is turned off for this model; must specifiy a"
+                            " non-zero 'fM_low'")
+                    ## If fM_low is 0, we use the entire waveform that is monotonic
+                    #startIdx = 0
+                    #if np.min(np.diff(omega22))<=0:
+                    #  startIdx = len(omega22)-np.argmin((np.diff(omega22)>np.zeros(len(omega22)-1))[::-1])-1
+                    ## Because the splicing changes the frequencies slightly, to
+                    ## ensure we have wiggle room for interpolation later, buffer
+                    ## the altered initial frequency of the spliced waveform so
+                    ## it is not less than the initial frequency of v_domain
+                    #gap = int((domain[5]-domain[0])/(timesM_tmp[1]-timesM_tmp[0]))
+                    #if startIdx<gap:
+                    #  startIdx=gap
 
                 Amp_22 = Amp_22[startIdx:]
                 phi_22 = phi_22[startIdx:]
