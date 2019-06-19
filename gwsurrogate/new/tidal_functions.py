@@ -117,6 +117,12 @@ def EffectiveDeformabilityFromDynamicalTides(orbital_freq,omega_fmode,ell_mode,q
 
   if(ell_mode not in [2,3]):
     raise ValueError("ERROR: 'ell_mode' only implemented for ell=2 or ell=3!")
+  
+  # If the input to the universal relations is too small (lambda2<1), then the
+  #   fits can return unphysical negative resonance frequencies, in such cases
+  #   just assume there is no significant resonance
+  if(omega_fmode<=0):
+    return np.ones(len(orbital_freq))
 
   # resonanace => freq_ratio == 1
   freq_ratio = omega_fmode / ell_mode / orbital_freq

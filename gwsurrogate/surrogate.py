@@ -1958,16 +1958,11 @@ This model includes the following spin-weighted spherical harmonic modes:
 The m<0 modes are deduced from the m>0 modes.
 
 The parameter space of validity is:
-q \in [1, 10] and chi1z/chi2z \in [-1, 1] and lambda1/lambda2 \in [0,10000],
+q \in [1, 8] and chi1z/chi2z \in [-.7, .7] and lambda1/lambda2 \in [0,10000],
 where q is the mass ratio and chi1z/chi2z are the spins of the heavier/lighter
 BH, respectively, in the direction of orbital angular momentum, and lambda1/
 lambda2 are the dimensionless quadrupolar tidal deformabilities of the
 heavier/lighter object, respectively.
-
-The surrogate has been trained in the range
-q \in [1, 8] and chi1z/chi2z \in [-0.8, 0.8], but produces reasonable waveforms
-in the above range and has been tested against existing NR waveforms in that
-range.
 
 See the __call__ method on how to evaluate waveforms.
 In the __call__ method, x must have format x = [q, chi1z, chi2z].
@@ -1983,8 +1978,8 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         # soft_lims -> raise warning when outside lims
         # hard_lim -> raise error when outside lims
         # Format is [qMax, chiMax].
-        soft_param_lims = [8.01, 0.801]
-        hard_param_lims = [10.01, 1]
+        soft_param_lims = [8.01, 0.701]
+        hard_param_lims = [8.01, 0.701]
         super(NRHybSur3dq8Tidal, self).__init__(self.__class__.__name__, \
             domain_type, keywords, soft_param_lims, hard_param_lims)
 
