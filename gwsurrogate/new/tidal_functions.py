@@ -192,7 +192,7 @@ def Beta22_1(X):
    Output
      double, coeff for 1PN tidal correction to h_22 mode """ 
 
-   return (-202.+560.*X-340.*X*X+45.*X*X*X)/42./(3.-2.*X)
+  return (-202.+560.*X-340.*X*X+45.*X*X*X)/42./(3.-2.*X)
 
 def StrainTidalEnhancementFactor(lll,mmm,qqq,lambdaA,lambdaB,v):
   """ Strain enhancement by mode for the quadrupole (ell=2) love number
