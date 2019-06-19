@@ -36,9 +36,11 @@ from scipy.special import fresnel
 ################## NS Universal Relations
 
 def UniversalRelationLambda2ToOmega2(lambda2):
-  # arXiv:1408.3789 eqn 3.5 with coeffs from Table I
-  # Input  -- ell=2 dimensionless tidal deformability lambda2 = 2/3*k2*C^5
-  # Output -- M_NS * omega2, the dimensionless frequency
+  """ arXiv:1408.3789 eqn 3.5 with coeffs from Table I
+
+   Input  -- ell=2 dimensionless tidal deformability lambda2 = 2/3*k2*C^5
+   Output -- M_NS * omega2, the dimensionless frequency """
+
   if(lambda2<0):
     raise ValueError("ERROR: lambda2 value must be positive!")
   eta = np.log(lambda2)
@@ -47,9 +49,11 @@ def UniversalRelationLambda2ToOmega2(lambda2):
   return omega2
 
 def UniversalRelationLambda3ToOmega3(lambda3):
-  # arXiv:1408.3789 eqn 3.5 with coeffs from Table I
-  # Input  -- ell=3 dimensionless tidal deformability lambda3 = 2/15*k3*C^7
-  # Output -- M_NS * omega3, the dimensionless frequency
+  """ arXiv:1408.3789 eqn 3.5 with coeffs from Table I
+
+   Input  -- ell=3 dimensionless tidal deformability lambda3 = 2/15*k3*C^7
+   Output -- M_NS * omega3, the dimensionless frequency """
+
   if(lambda3<0):
     raise ValueError("ERROR: lambda3 value must be positive!")
   eta = np.log(lambda3)
@@ -58,9 +62,11 @@ def UniversalRelationLambda3ToOmega3(lambda3):
   return omega3
 
 def UniversalRelationLambda2ToLambda3(lambda2):
-  # arXiv:1311.0872 eqn 60 with coeffs from Table I
-  # Input  -- ell=2 dimensionless tidal deformability lambda2 = 2/3*k2*C^5
-  # Output -- ell=3 dimensionless tidal deformability lambda3 = 2/15*k3*C^7
+  """ arXiv:1311.0872 eqn 60 with coeffs from Table I
+
+   Input  -- ell=2 dimensionless tidal deformability lambda2 = 2/3*k2*C^5
+   Output -- ell=3 dimensionless tidal deformability lambda3 = 2/15*k3*C^7 """
+
   if(lambda2<0):
     raise ValueError("ERROR: lambda2 value must be positive!")
   eta = np.log(lambda2)
@@ -69,10 +75,12 @@ def UniversalRelationLambda2ToLambda3(lambda2):
   return lambda3
 
 def UniversalRelationLambda2ToAqm(lambda2):
-  # arXiv:1303.1528 eqn 54 with coeffs from Table I
-  # Input  -- ell=2 dimensionless tidal deformability lambda2 = 2/3*k2*C^5
-  # Output -- dimensionless rotationally-induced quadrupole moment (eqn 40)
-  #   Aqm = -Q/(M^3 chi^2)
+  """ arXiv:1303.1528 eqn 54 with coeffs from Table I
+
+   Input  -- ell=2 dimensionless tidal deformability lambda2 = 2/3*k2*C^5
+   Output -- dimensionless rotationally-induced quadrupole moment (eqn 40)
+             Aqm = -Q/(M^3 chi^2) """
+
   if(lambda2<0):
     raise ValueError("ERROR: lambda2 value must be positive!")
   eta = np.log(lambda2)
@@ -81,9 +89,10 @@ def UniversalRelationLambda2ToAqm(lambda2):
   return Aqm
 
 def UniversalRelationLambda2ToI(lambda2):
-  # arXiv:1303.1528 eqn 54 with coeffs from Table I
-  # Input  -- ell=2 dimensionless tidal deformability lambda2 = 2/3*k2*C^5
-  # Output -- dimensionless moment of inertia (eqn 26); I = \bar{I}*M^3
+  """arXiv:1303.1528 eqn 54 with coeffs from Table I
+   Input  -- ell=2 dimensionless tidal deformability lambda2 = 2/3*k2*C^5
+   Output -- dimensionless moment of inertia (eqn 26); I = \bar{I}*M^3"""
+
   if(lambda2<0):
     raise ValueError("ERROR: lambda2 value must be positive!")
   eta = np.log(lambda2)
@@ -94,17 +103,17 @@ def UniversalRelationLambda2ToI(lambda2):
 ################## Tidal deformability functions
 
 def EffectiveDeformabilityFromDynamicalTides(orbital_freq,omega_fmode,ell_mode,q):
-  # arxiv:1608.01907, eqn 6.51
-  # Computes the effective
-  # Inputs:
-  #   orbital_freq -- orbital frequency of the binary
-  #   omega_fmode  -- f-mode dimensionless angular frequency of the ell-polar
-  #                   mode of the deformed object
-  #   ell_mode     -- ell-polar deformability (2 = quadrupolar; 3 = octopolar)
-  #   q            -- mass ratio
-  # Outputs:
-  #   The effective amplification of the ell-polar tidal deformability as a
-  #   function of the oribital frequency
+  """arxiv:1608.01907, eqn 6.51
+
+   Inputs:
+     orbital_freq -- orbital frequency of the binary
+     omega_fmode  -- f-mode dimensionless angular frequency of the ell-polar
+                     mode of the deformed object
+     ell_mode     -- ell-polar deformability (2 = quadrupolar; 3 = octopolar)
+     q            -- mass ratio
+   Outputs:
+     The effective amplification of the ell-polar tidal deformability as a
+     function of the oribital frequency """
 
   if(ell_mode not in [2,3]):
     raise ValueError("ERROR: 'ell_mode' only implemented for ell=2 or ell=3!")
@@ -145,11 +154,11 @@ def EffectiveDeformabilityFromDynamicalTides(orbital_freq,omega_fmode,ell_mode,q
     return (3.+5.*betaDTOverA)/8.
 
 def EffectiveDissipativeDynamicalTides(orbitalFreq,effDefA,omegafModeA,XA):
-  # arXiv:1702.02053, eqn 15
-  # NOTE: there is an error in the paper that is correct in the XLALSim code!!
-  # This returns the effective correction to the ell=2 (quadrupole)
-  # deformability which used to compute the strain correction due to tidal
-  # effects
+  """ arXiv:1702.02053, eqn 15
+   NOTE: there is an error in the paper that is correct in the XLALSim code!!
+   This returns the effective correction to the ell=2 (quadrupole)
+   deformability which used to compute the strain correction due to tidal
+   effects """
 
   # NOTE: in the paper the input mass fraction is of the companion object, not
   # the object being deformed
@@ -170,26 +179,27 @@ def EffectiveDissipativeDynamicalTides(orbitalFreq,effDefA,omegafModeA,XA):
 
 
 def Beta22_1(X):
-  # Coefficient for the 1PN tidal correction to h_22 mode
-  # Defined in arXiv:1203.4352, eqn A15
-  # Input
-  #   X -- mass fraction of object being tidally deformed
-  # Output
-  #   double, coeff for 1PN tidal correction to h_22 mode
-  return (-202.+560.*X-340.*X*X+45.*X*X*X)/42./(3.-2.*X)
+  """ Coefficient for the 1PN tidal correction to h_22 mode
+   Defined in arXiv:1203.4352, eqn A15
+   Input
+     X -- mass fraction of object being tidally deformed
+   Output
+     double, coeff for 1PN tidal correction to h_22 mode """ 
+
+   return (-202.+560.*X-340.*X*X+45.*X*X*X)/42./(3.-2.*X)
 
 def StrainTidalEnhancementFactor(lll,mmm,qqq,lambdaA,lambdaB,v):
-  # Strain enhancement by mode for the quadrupole (ell=2) love number
-  # Static correction is arXiv:1203.4352, eqn A14-A17
-  # Effective dynamical tide correction is in arXiv:1702.02053, eqn 15
+  """ Strain enhancement by mode for the quadrupole (ell=2) love number
+   Static correction is arXiv:1203.4352, eqn A14-A17
+   Effective dynamical tide correction is in arXiv:1702.02053, eqn 15
 
-  # Because the strain correction is just an amplitude correction (specifically
-  #   an amplification because the tidal effects enhance the GW radiation), just
-  #   need to return the amplitude of the correction and ignore the phase of the
-  #   mode
+   Because the strain correction is just an amplitude correction (specifically
+     an amplification because the tidal effects enhance the GW radiation), just
+     need to return the amplitude of the correction and ignore the phase of the
+     mode
 
-  # If using effective tidal deformability from dynamic tides, must be included
-  #   into lambdaA,lambdaB before passing them into this function
+   If using effective tidal deformability from dynamic tides, must be included
+     into lambdaA,lambdaB before passing them into this function """
 
   # mass fractions
   XA = qqq/(1.+qqq)
@@ -249,27 +259,37 @@ def StrainTidalEnhancementFactor(lll,mmm,qqq,lambdaA,lambdaB,v):
 
 ################## TaylorT2 PN Tidal Coefficients
 
-# T2 Timing Terms
+## T2 Timing Terms ##
 
 def PNT2QM_Tv4(XA,chiA):
-  # XA = mass fraction of object
-  # chiA = dimensionless spin of object
+  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+
+   XA = mass fraction of object
+   chiA = dimensionless spin of object """
+
   return -10.*XA*XA*chiA*chiA
 
 def PNT2Tidal_Tv10(XA):
-  # XA = mass fraction of object
+  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+   XA = mass fraction of object """
+
   return 288-264*XA
 
 def PNT2Tidal_Tv12(XA):
-  # XA = mass fraction of object
+  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+   XA = mass fraction of object """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   return (3179)/(4)-(919*XA)/(4)-(1143*XATo2nd)/(2) + 65*XATo3rd
 
 def PNT2Tidal_Tv13(XA,chiA=0,chiB=0):
-  # XA = mass fraction of object
-  # chiA = aligned spin-orbit component of object
-  # chiB = aligned spin-orbit component of companion object
+  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+
+   XA = mass fraction of object
+   chiA = aligned spin-orbit component of object
+   chiB = aligned spin-orbit component of companion object """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   return -576*np.pi +(2496*np.pi*XA)/(5)+(324*XA+12*XATo2nd \
@@ -277,12 +297,15 @@ def PNT2Tidal_Tv13(XA,chiA=0,chiB=0):
     - (1096*XATo3rd)/(5))*chiB
 
 def PNT2Tidal_Tv14(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,alpha2PNT=0):
-  # XA = mass fraction of object
-  # chiA = aligned spin-orbit component of object
-  # chiB = aligned spin-orbit component of companion object
-  # AqmA = dimensionless spin-induced quadrupole moment of object
-  # AqmB = dimensionless spin-induced quadrupole moment of companion object
-  # alpha2PNT = 2PN Quadrupole Tidal Flux coefficient
+  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+
+   XA = mass fraction of object
+   chiA = aligned spin-orbit component of object
+   chiB = aligned spin-orbit component of companion object
+   AqmA = dimensionless spin-induced quadrupole moment of object
+   AqmB = dimensionless spin-induced quadrupole moment of companion object
+   alpha2PNT = 2PN Quadrupole Tidal Flux coefficient """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   XATo4th = XATo3rd*XA
@@ -296,9 +319,12 @@ def PNT2Tidal_Tv14(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,alpha2PNT=0):
     + AqmB*(-312+880*XA-824*XATo2nd+256*XATo3rd))*chiB*chiB
 
 def PNT2Tidal_Tv15(XA,chiA=0,chiB=0):
-  # XA = mass fraction of object
-  # chiA = aligned spin-orbit component of object
-  # chiB = aligned spin-orbit component of companion object
+  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+
+   XA = mass fraction of object
+   chiA = aligned spin-orbit component of object
+   chiB = aligned spin-orbit component of companion object """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   XATo4th = XATo3rd*XA
@@ -310,14 +336,20 @@ def PNT2Tidal_Tv15(XA,chiA=0,chiB=0):
     - (713938*XATo3rd)/(147)+(12977*XATo4th)/(7) - (2574*XATo5th)/(7))*chiB
 
 def PNT2TidalOcto_Tv14(XA,beta0PNT=0):
-  # XA = mass fraction of object
-  # beta0PNT = 0PN Octopole Tidal Flux coefficient
+  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+
+   XA = mass fraction of object
+   beta0PNT = 0PN Octopole Tidal Flux coefficient """
+
   return (4)/(3)*(520+beta0PNT)-(2080*XA)/(3)
 
 def PNT2TidalOcto_Tv16(XA,beta0PNT=0,beta1PNT=0):
-  # XA = mass fraction of object
-  # beta0PNT = 0PN Octopole Tidal Flux coefficient
-  # beta1PNT = 1PN Octopole Tidal Flux coefficient
+  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+
+   XA = mass fraction of object
+   beta0PNT = 0PN Octopole Tidal Flux coefficient
+   beta1PNT = 1PN Octopole Tidal Flux coefficient """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   XATo4th = XATo3rd*XA
@@ -326,10 +358,13 @@ def PNT2TidalOcto_Tv16(XA,beta0PNT=0,beta1PNT=0):
     + (17*beta0PNT)/(3))*XA-(17/6)*(1825+2*beta0PNT)*XATo2nd+(325*XATo3rd)/(6)
 
 def PNT2TidalOcto_Tv17(XA,chiA=0,chiB=0,beta0PNT=0):
-  # XA = mass fraction of object
-  # chiA = aligned spin-orbit component of object
-  # chiB = aligned spin-orbit component of companion object
-  # beta0PNT = 0PN Octopole Tidal Flux coefficient
+  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+
+   XA = mass fraction of object
+   chiA = aligned spin-orbit component of object
+   chiB = aligned spin-orbit component of companion object
+   beta0PNT = 0PN Octopole Tidal Flux coefficient """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   return -(64)/(9)*(260+beta0PNT)*np.pi + (16640*np.pi*XA)/(9) \
@@ -340,14 +375,17 @@ def PNT2TidalOcto_Tv17(XA,chiA=0,chiB=0,beta0PNT=0):
 
 def PNT2TidalOcto_Tv18(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,beta0PNT=0,beta1PNT=0, \
         beta2PNT=0):
-  # XA = mass fraction of object
-  # chiA = aligned spin-orbit component of object
-  # chiB = aligned spin-orbit component of companion object
-  # AqmA = dimensionless spin-induced quadrupole moment of object
-  # AqmB = dimensionless spin-induced quadrupole moment of companion object
-  # beta0PNT = 0PN Octopole Tidal Flux coefficient
-  # beta1PNT = 1PN Octopole Tidal Flux coefficient
-  # beta2PNT = 2PN Octopole Tidal Flux coefficient
+  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+
+   XA = mass fraction of object
+   chiA = aligned spin-orbit component of object
+   chiB = aligned spin-orbit component of companion object
+   AqmA = dimensionless spin-induced quadrupole moment of object
+   AqmB = dimensionless spin-induced quadrupole moment of companion object
+   beta0PNT = 0PN Octopole Tidal Flux coefficient
+   beta1PNT = 1PN Octopole Tidal Flux coefficient
+   beta2PNT = 2PN Octopole Tidal Flux coefficient """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   XATo4th = XATo3rd*XA
@@ -368,11 +406,14 @@ def PNT2TidalOcto_Tv18(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,beta0PNT=0,beta1PNT=0, \
     - (4/5)*(3120+7*beta0PNT)*XATo2nd + 832*XATo3rd))*chiB*chiB
 
 def PNT2TidalOcto_Tv19(XA,chiA=0,chiB=0,beta0PNT=0,beta1PNT=0):
-  # XA = mass fraction of object
-  # chiA = aligned spin-orbit component of object
-  # chiB = aligned spin-orbit component of companion object
-  # beta0PNT = 0PN Octopole Tidal Flux coefficient
-  # beta1PNT = 1PN Octopole Tidal Flux coefficient
+  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+
+   XA = mass fraction of object
+   chiA = aligned spin-orbit component of object
+   chiB = aligned spin-orbit component of companion object
+   beta0PNT = 0PN Octopole Tidal Flux coefficient
+   beta1PNT = 1PN Octopole Tidal Flux coefficient """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   XATo4th = XATo3rd*XA
@@ -390,27 +431,39 @@ def PNT2TidalOcto_Tv19(XA,chiA=0,chiB=0,beta0PNT=0,beta1PNT=0):
     + ((-272870)/(231)+(563*beta0PNT)/(11))*XATo3rd \
     - (5)/(99)*(-68399+254*beta0PNT)*XATo4th-(156910*XATo5th)/(99))*chiB
 
-# T2 Phasing Terms
+## T2 Phasing Terms ##
 
 def PNT2QM_Pv4(XA,chiA):
-  # XA = mass fraction of object
-  # chiA = dimensionless spin of object
+  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+
+   XA = mass fraction of object
+   chiA = dimensionless spin of object """
+
   return -25.*XA*XA*chiA*chiA
 
 def PNT2Tidal_Pv10(XA):
-  # XA = mass fraction of object
+  """ TaylorT2 PN Tidal Coefficients, Phasing Terms.
+
+   XA = mass fraction of object """
+
   return 72-66*XA
 
 def PNT2Tidal_Pv12(XA):
-  # XA = mass fraction of object
+  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+
+   XA = mass fraction of object """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   return (15895)/(56)-(4595*XA)/(56) - (5715*XATo2nd)/(28)+(325*XATo3rd)/(14)
 
 def PNT2Tidal_Pv13(XA,chiA=0,chiB=0):
-  # XA = mass fraction of object
-  # chiA = aligned spin-orbit component of object
-  # chiB = aligned spin-orbit component of companion object
+  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+
+   XA = mass fraction of object
+   chiA = aligned spin-orbit component of object
+   chiB = aligned spin-orbit component of companion object """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   return -225*np.pi +195*np.pi*XA + ((2025*XA)/(16)+(75*XATo2nd)/(16) \
@@ -418,12 +471,15 @@ def PNT2Tidal_Pv13(XA,chiA=0,chiB=0):
     - (685*XATo3rd)/(8))*chiB
 
 def PNT2Tidal_Pv14(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,alpha2PNT=0):
-  # XA = mass fraction of object
-  # chiA = aligned spin-orbit component of object
-  # chiB = aligned spin-orbit component of companion object
-  # AqmA = dimensionless spin-induced quadrupole moment of object
-  # AqmB = dimensionless spin-induced quadrupole moment of companion object
-  # alpha2PNT = 2PN Quadrupole Tidal Flux coefficient
+  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+
+   XA = mass fraction of object
+   chiA = aligned spin-orbit component of object
+   chiB = aligned spin-orbit component of companion object
+   AqmA = dimensionless spin-induced quadrupole moment of object
+   AqmB = dimensionless spin-induced quadrupole moment of companion object
+   alpha2PNT = 2PN Quadrupole Tidal Flux coefficient """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   XATo4th = XATo3rd*XA
@@ -437,9 +493,12 @@ def PNT2Tidal_Pv14(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,alpha2PNT=0):
     + AqmB*(-130+(1100*XA)/(3)-(1030*XATo2nd)/(3)+(320*XATo3rd)/(3)))*chiB*chiB
 
 def PNT2Tidal_Pv15(XA,chiA=0,chiB=0):
-  # XA = mass fraction of object
-  # chiA = aligned spin-orbit component of object
-  # chiB = aligned spin-orbit component of companion object
+  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+
+   XA = mass fraction of object
+   chiA = aligned spin-orbit component of object
+   chiB = aligned spin-orbit component of companion object """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   XATo4th = XATo3rd*XA
@@ -451,14 +510,20 @@ def PNT2Tidal_Pv15(XA,chiA=0,chiB=0):
     - (356969*XATo3rd)/(168)+(12977*XATo4th)/(16) - (1287*XATo5th)/(8))*chiB
 
 def PNT2TidalOcto_Pv14(XA,beta0PNT=0):
-  # XA = mass fraction of object
-  # beta0PNT = 0PN Octopole Tidal Flux coefficient
+  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+
+   XA = mass fraction of object
+   beta0PNT = 0PN Octopole Tidal Flux coefficient """
+
   return (5)/(9)*(520+beta0PNT)-(2600*XA)/(9)
 
 def PNT2TidalOcto_Pv16(XA,beta0PNT=0,beta1PNT=0):
-  # XA = mass fraction of object
-  # beta0PNT = 0PN Octopole Tidal Flux coefficient
-  # beta1PNT = 1PN Octopole Tidal Flux coefficient
+  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+
+   XA = mass fraction of object
+   beta0PNT = 0PN Octopole Tidal Flux coefficient
+   beta1PNT = 1PN Octopole Tidal Flux coefficient """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   XATo4th = XATo3rd*XA
@@ -468,10 +533,13 @@ def PNT2TidalOcto_Pv16(XA,beta0PNT=0,beta1PNT=0):
     - (85)/(66)*(1825+2*beta0PNT)*XATo2nd + (1625*XATo3rd)/(66)
 
 def PNT2TidalOcto_Pv17(XA,chiA=0,chiB=0,beta0PNT=0):
-  # XA = mass fraction of object
-  # chiA = aligned spin-orbit component of object
-  # chiB = aligned spin-orbit component of companion object
-  # beta0PNT = 0PN Octopole Tidal Flux coefficient
+  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+
+   XA = mass fraction of object
+   chiA = aligned spin-orbit component of object
+   chiB = aligned spin-orbit component of companion object
+   beta0PNT = 0PN Octopole Tidal Flux coefficient """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   return -(10)/(3)*(260+beta0PNT)*np.pi + (2600*np.pi*XA)/(3) \
@@ -482,14 +550,17 @@ def PNT2TidalOcto_Pv17(XA,chiA=0,chiB=0,beta0PNT=0):
 
 def PNT2TidalOcto_Pv18(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,beta0PNT=0,beta1PNT=0, \
         beta2PNT=0):
-  # XA = mass fraction of object
-  # chiA = aligned spin-orbit component of object
-  # chiB = aligned spin-orbit component of companion object
-  # AqmA = dimensionless spin-induced quadrupole moment of object
-  # AqmB = dimensionless spin-induced quadrupole moment of companion object
-  # beta0PNT = 0PN Octopole Tidal Flux coefficient
-  # beta1PNT = 1PN Octopole Tidal Flux coefficient
-  # beta2PNT = 2PN Octopole Tidal Flux coefficient
+  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+
+   XA = mass fraction of object
+   chiA = aligned spin-orbit component of object
+   chiB = aligned spin-orbit component of companion object
+   AqmA = dimensionless spin-induced quadrupole moment of object
+   AqmB = dimensionless spin-induced quadrupole moment of companion object
+   beta0PNT = 0PN Octopole Tidal Flux coefficient
+   beta1PNT = 1PN Octopole Tidal Flux coefficient
+   beta2PNT = 2PN Octopole Tidal Flux coefficient """
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   XATo4th = XATo3rd*XA
@@ -510,11 +581,14 @@ def PNT2TidalOcto_Pv18(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,beta0PNT=0,beta1PNT=0, \
     + (-1200-(35*beta0PNT)/(13))*XATo2nd + 400*XATo3rd))*chiB*chiB
 
 def PNT2TidalOcto_Pv19(XA,chiA=0,chiB=0,beta0PNT=0,beta1PNT=0):
-  # XA = mass fraction of object
-  # chiA = aligned spin-orbit component of object
-  # chiB = aligned spin-orbit component of companion object
-  # beta0PNT = 0PN Octopole Tidal Flux coefficient
-  # beta1PNT = 1PN Octopole Tidal Flux coefficient
+  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+
+   XA = mass fraction of object
+   chiA = aligned spin-orbit component of object
+   chiB = aligned spin-orbit component of companion object
+   beta0PNT = 0PN Octopole Tidal Flux coefficient
+   beta1PNT = 1PN Octopole Tidal Flux coefficient"""
+
   XATo2nd = XA*XA
   XATo3rd = XATo2nd*XA
   XATo4th = XATo3rd*XA
@@ -536,33 +610,34 @@ def PNT2TidalOcto_Pv19(XA,chiA=0,chiB=0,beta0PNT=0,beta1PNT=0):
 
 def PNT2Tidal(v, q, lambda2A, lambda3A, AqmA, chizA, lambda2B, lambda3B, AqmB, \
         chizB, order=5):
-  # T2 Tidal corrections time and orbital phase of the binary's evolution
-  # Inputs:
-  #   v        -- PN expansion parameter, v = x^(1/2) = (M*Omega)^(1/3)
-  #   q        -- mass ratio, defined as larger mass over smaller mass, MA/MB
-  #   lambda2A -- ell=2 dimensionless tidal defomability of larger object
-  #   lambda3A -- ell=3 dimensionless tidal defomability of larger object
-  #   AqmA     -- dimensionless rotationally-induced quadrupole moment of
-  #               larger object
-  #   chizA    -- spin component aligned with orbital angular momentum of larger
-  #               object
-  #   lambda2B -- ell=2 dimensionless tidal defomability of smaller object
-  #   lambda3B -- ell=3 dimensionless tidal defomability of smaller object
-  #   AqmB     -- dimensionless rotationally-induced quadrupole moment of
-  #               smaller object
-  #   chizB    -- spin component aligned with orbital angular momentum of
-  #               smaller object
-  #   PNOrder  -- order of the PN tidal expansion beyond leading order, must be
-  #               one of (0,2,3,4,5)
-  #
-  # Outputs:
-  #   dt_tid -- correction to the dimensionless time due to the tidal
-  #             deformability as a function of the PN expansion parameter
-  #   dp_tid -- correction to the dimensionless orbital phase due to the tidal
-  #             deformability as a function of the PN expansion parameter
-  #
-  # NOTE: this code can utilize both static tides (the lambdas are input as
-  #   a double) or dynamical tides (an array with length same as times array)
+  """ T2 Tidal corrections time and orbital phase of the binary's evolution.
+
+   Inputs:
+     v        -- PN expansion parameter, v = x^(1/2) = (M*Omega)^(1/3)
+     q        -- mass ratio, defined as larger mass over smaller mass, MA/MB
+     lambda2A -- ell=2 dimensionless tidal defomability of larger object
+     lambda3A -- ell=3 dimensionless tidal defomability of larger object
+     AqmA     -- dimensionless rotationally-induced quadrupole moment of
+                 larger object
+     chizA    -- spin component aligned with orbital angular momentum of larger
+                 object
+     lambda2B -- ell=2 dimensionless tidal defomability of smaller object
+     lambda3B -- ell=3 dimensionless tidal defomability of smaller object
+     AqmB     -- dimensionless rotationally-induced quadrupole moment of
+                 smaller object
+     chizB    -- spin component aligned with orbital angular momentum of
+                 smaller object
+     PNOrder  -- order of the PN tidal expansion beyond leading order, must be
+                 one of (0,2,3,4,5)
+  
+   Outputs:
+     dt_tid -- correction to the dimensionless time due to the tidal
+               deformability as a function of the PN expansion parameter
+     dp_tid -- correction to the dimensionless orbital phase due to the tidal
+               deformability as a function of the PN expansion parameter
+  
+   NOTE: this code can utilize both static tides (the lambdas are input as
+     a double) or dynamical tides (an array with length same as times array)"""
 
   # Sanity check the input
   # Either lambda2AB is an array for dynamical tides, or is a single double for
