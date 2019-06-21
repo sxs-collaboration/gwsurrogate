@@ -268,7 +268,7 @@ def StrainTidalEnhancementFactor(lll,mmm,qqq,lambdaA,lambdaB,v):
 ## T2 Timing Terms ##
 
 def PNT2QM_Tv4(XA,chiA):
-  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+  """ TaylorT2 2PN Quadrupole Moment Coefficient, v^4 Timing Term. 
 
    XA = mass fraction of object
    chiA = dimensionless spin of object """
@@ -276,13 +276,13 @@ def PNT2QM_Tv4(XA,chiA):
   return -10.*XA*XA*chiA*chiA
 
 def PNT2Tidal_Tv10(XA):
-  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+  """ TaylorT2 0PN Quadrupolar Tidal Coefficient, v^10 Timing Term. 
    XA = mass fraction of object """
 
   return 288-264*XA
 
 def PNT2Tidal_Tv12(XA):
-  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+  """ TaylorT2 1PN Quadrupolar Tidal Coefficient, v^12 Timing Term. 
    XA = mass fraction of object """
 
   XATo2nd = XA*XA
@@ -290,7 +290,7 @@ def PNT2Tidal_Tv12(XA):
   return (3179)/(4)-(919*XA)/(4)-(1143*XATo2nd)/(2) + 65*XATo3rd
 
 def PNT2Tidal_Tv13(XA,chiA=0,chiB=0):
-  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+  """ TaylorT2 1.5PN Quadrupolar Tidal Coefficient, v^13 Timing Term. 
 
    XA = mass fraction of object
    chiA = aligned spin-orbit component of object
@@ -303,7 +303,7 @@ def PNT2Tidal_Tv13(XA,chiA=0,chiB=0):
     - (1096*XATo3rd)/(5))*chiB
 
 def PNT2Tidal_Tv14(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,alpha2PNT=0):
-  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+  """ TaylorT2 2PN Quadrupolar Tidal Coefficient, v^14 Timing Term. 
 
    XA = mass fraction of object
    chiA = aligned spin-orbit component of object
@@ -325,7 +325,7 @@ def PNT2Tidal_Tv14(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,alpha2PNT=0):
     + AqmB*(-312+880*XA-824*XATo2nd+256*XATo3rd))*chiB*chiB
 
 def PNT2Tidal_Tv15(XA,chiA=0,chiB=0):
-  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+  """ TaylorT2 2.5PN Quadrupolar Tidal Coefficient, v^15 Timing Term. 
 
    XA = mass fraction of object
    chiA = aligned spin-orbit component of object
@@ -342,7 +342,7 @@ def PNT2Tidal_Tv15(XA,chiA=0,chiB=0):
     - (713938*XATo3rd)/(147)+(12977*XATo4th)/(7) - (2574*XATo5th)/(7))*chiB
 
 def PNT2TidalOcto_Tv14(XA,beta0PNT=0):
-  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+  """ TaylorT2 0PN Octopolar Tidal Coefficient, v^14 Timing Term. 
 
    XA = mass fraction of object
    beta0PNT = 0PN Octopole Tidal Flux coefficient """
@@ -350,7 +350,7 @@ def PNT2TidalOcto_Tv14(XA,beta0PNT=0):
   return (4)/(3)*(520+beta0PNT)-(2080*XA)/(3)
 
 def PNT2TidalOcto_Tv16(XA,beta0PNT=0,beta1PNT=0):
-  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+  """ TaylorT2 1PN Octopolar Tidal Coefficient, v^16 Timing Term. 
 
    XA = mass fraction of object
    beta0PNT = 0PN Octopole Tidal Flux coefficient
@@ -364,7 +364,7 @@ def PNT2TidalOcto_Tv16(XA,beta0PNT=0,beta1PNT=0):
     + (17*beta0PNT)/(3))*XA-(17/6)*(1825+2*beta0PNT)*XATo2nd+(325*XATo3rd)/(6)
 
 def PNT2TidalOcto_Tv17(XA,chiA=0,chiB=0,beta0PNT=0):
-  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+  """ TaylorT2 1.5PN Octopolar Tidal Coefficient, v^17 Timing Term. 
 
    XA = mass fraction of object
    chiA = aligned spin-orbit component of object
@@ -381,7 +381,7 @@ def PNT2TidalOcto_Tv17(XA,chiA=0,chiB=0,beta0PNT=0):
 
 def PNT2TidalOcto_Tv18(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,beta0PNT=0,beta1PNT=0, \
         beta2PNT=0):
-  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+  """ TaylorT2 2PN Octopolar Tidal Coefficient, v^18 Timing Term. 
 
    XA = mass fraction of object
    chiA = aligned spin-orbit component of object
@@ -412,7 +412,7 @@ def PNT2TidalOcto_Tv18(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,beta0PNT=0,beta1PNT=0, \
     - (4/5)*(3120+7*beta0PNT)*XATo2nd + 832*XATo3rd))*chiB*chiB
 
 def PNT2TidalOcto_Tv19(XA,chiA=0,chiB=0,beta0PNT=0,beta1PNT=0):
-  """ TaylorT2 PN Tidal Coefficients, Timing Terms. 
+  """ TaylorT2 2.5PN Octopolar Tidal Coefficient, v^19 Timing Term. 
 
    XA = mass fraction of object
    chiA = aligned spin-orbit component of object
@@ -440,7 +440,7 @@ def PNT2TidalOcto_Tv19(XA,chiA=0,chiB=0,beta0PNT=0,beta1PNT=0):
 ## T2 Phasing Terms ##
 
 def PNT2QM_Pv4(XA,chiA):
-  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+  """ TaylorT2 2PN Quadrupole Moment Coefficient, v^4 Phasing Term. 
 
    XA = mass fraction of object
    chiA = dimensionless spin of object """
@@ -448,14 +448,14 @@ def PNT2QM_Pv4(XA,chiA):
   return -25.*XA*XA*chiA*chiA
 
 def PNT2Tidal_Pv10(XA):
-  """ TaylorT2 PN Tidal Coefficients, Phasing Terms.
+  """ TaylorT2 0PN Quadrupolar Tidal Coefficient, v^10 Phasing Term.
 
    XA = mass fraction of object """
 
   return 72-66*XA
 
 def PNT2Tidal_Pv12(XA):
-  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+  """ TaylorT2 1PN Quadrupolar Tidal Coefficient, v^12 Phasing Term. 
 
    XA = mass fraction of object """
 
@@ -464,7 +464,7 @@ def PNT2Tidal_Pv12(XA):
   return (15895)/(56)-(4595*XA)/(56) - (5715*XATo2nd)/(28)+(325*XATo3rd)/(14)
 
 def PNT2Tidal_Pv13(XA,chiA=0,chiB=0):
-  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+  """ TaylorT2 1.5PN Quadrupolar Tidal Coefficient, v^13 Phasing Term. 
 
    XA = mass fraction of object
    chiA = aligned spin-orbit component of object
@@ -477,7 +477,7 @@ def PNT2Tidal_Pv13(XA,chiA=0,chiB=0):
     - (685*XATo3rd)/(8))*chiB
 
 def PNT2Tidal_Pv14(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,alpha2PNT=0):
-  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+  """ TaylorT2 2PN Quadrupolar Tidal Coefficient, v^14 Phasing Term. 
 
    XA = mass fraction of object
    chiA = aligned spin-orbit component of object
@@ -499,7 +499,7 @@ def PNT2Tidal_Pv14(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,alpha2PNT=0):
     + AqmB*(-130+(1100*XA)/(3)-(1030*XATo2nd)/(3)+(320*XATo3rd)/(3)))*chiB*chiB
 
 def PNT2Tidal_Pv15(XA,chiA=0,chiB=0):
-  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+  """ TaylorT2 2.5PN Quadrupolar Tidal Coefficient, v^15 Phasing Term. 
 
    XA = mass fraction of object
    chiA = aligned spin-orbit component of object
@@ -516,7 +516,7 @@ def PNT2Tidal_Pv15(XA,chiA=0,chiB=0):
     - (356969*XATo3rd)/(168)+(12977*XATo4th)/(16) - (1287*XATo5th)/(8))*chiB
 
 def PNT2TidalOcto_Pv14(XA,beta0PNT=0):
-  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+  """ TaylorT2 0PN Octopolar Tidal Coefficient, v^14 Phasing Term. 
 
    XA = mass fraction of object
    beta0PNT = 0PN Octopole Tidal Flux coefficient """
@@ -524,7 +524,7 @@ def PNT2TidalOcto_Pv14(XA,beta0PNT=0):
   return (5)/(9)*(520+beta0PNT)-(2600*XA)/(9)
 
 def PNT2TidalOcto_Pv16(XA,beta0PNT=0,beta1PNT=0):
-  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+  """ TaylorT2 1PN Octopolar Tidal Coefficient, v^16 Phasing Term. 
 
    XA = mass fraction of object
    beta0PNT = 0PN Octopole Tidal Flux coefficient
@@ -539,7 +539,7 @@ def PNT2TidalOcto_Pv16(XA,beta0PNT=0,beta1PNT=0):
     - (85)/(66)*(1825+2*beta0PNT)*XATo2nd + (1625*XATo3rd)/(66)
 
 def PNT2TidalOcto_Pv17(XA,chiA=0,chiB=0,beta0PNT=0):
-  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+  """ TaylorT2 1.5PN Octopolar Tidal Coefficient, v^17 Phasing Term. 
 
    XA = mass fraction of object
    chiA = aligned spin-orbit component of object
@@ -556,7 +556,7 @@ def PNT2TidalOcto_Pv17(XA,chiA=0,chiB=0,beta0PNT=0):
 
 def PNT2TidalOcto_Pv18(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,beta0PNT=0,beta1PNT=0, \
         beta2PNT=0):
-  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+  """ TaylorT2 2PN Octopolar Tidal Coefficient, v^18 Phasing Term. 
 
    XA = mass fraction of object
    chiA = aligned spin-orbit component of object
@@ -587,7 +587,7 @@ def PNT2TidalOcto_Pv18(XA,chiA=0,chiB=0,AqmA=0,AqmB=0,beta0PNT=0,beta1PNT=0, \
     + (-1200-(35*beta0PNT)/(13))*XATo2nd + 400*XATo3rd))*chiB*chiB
 
 def PNT2TidalOcto_Pv19(XA,chiA=0,chiB=0,beta0PNT=0,beta1PNT=0):
-  """ TaylorT2 PN Tidal Coefficients, Phasing Terms. 
+  """ TaylorT2 2.5PN Octopolar Tidal Coefficient, v^19 Phasing Term. 
 
    XA = mass fraction of object
    chiA = aligned spin-orbit component of object
