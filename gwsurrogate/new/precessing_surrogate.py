@@ -6,11 +6,10 @@ from numerical relativity simulations of binary black hole mergers.
 import os
 import numpy as np
 import h5py
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from gwsurrogate.precessing_utils import _utils
 import warnings
 from gwtools.harmonics import sYlm
-from gwsurrogate import spline_interp_Cwrapper
+from gwsurrogate.new.surrogate import _splinterp_Cwrapper
 
 
 ###############################################################################
@@ -312,7 +311,10 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
             for i in range(4)])
 
         ts = self.t[imin:imin+4]
-        dydt = np.array([spline(ts, x)(t) for x in dydts.T])
+
+        dydt = np.array([_splinterp_Cwrapper(np.array([t]), ts, x)[0] \
+                for x in dydts.T])
+
         return dydt
 
     def get_omega(self, i0, q, y):
@@ -359,7 +361,7 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
         return t_ref
 
     def __call__(self, q, chiA0, chiB0, init_quat=None, init_orbphase=0.0,
-                 t_ref=None, omega_ref=None,
+                 t_ref=None, omega_ref=None, omega_low=None,
                  use_lalsimulation_conventions=True):
         """
 Computes the modeled NR dynamics given the initial conditions.
@@ -380,6 +382,9 @@ omega_ref: The dimensionless orbital angular frequency used to determine t_ref,
         which is the time derivative of the orbital phase in the coprecessing
         frame.
         Specify at most one of t_ref, omega_ref.
+omega_low: The dimensionless orbital angular frequency used to determine t_low,
+        the start time of the waveform data. If None, uses the full surrogate
+        data.
 use_lalsimulation_conventions: If True, interprets the spin directions and
             init_orbphase using lalsimulation conventions. Specifically, before
             evaluating the surrogate, the spins will be rotated about the
@@ -391,6 +396,7 @@ q_copr: The quaternion representing the coprecessing frame with shape (4, L)
 orbphase: The orbital phase in the coprecessing frame with shape (L, )
 chiA: The time-dependent chiA in the coprecessing frame with shape (L, 3)
 chiB: The time-dependent chiB in the coprecessing frame with shape (L, 3)
+t_low: The time corresponding to omega_low.
 
 L = len(self.t), and these returned arrays are sampled at self.t
         """
@@ -413,9 +419,23 @@ L = len(self.t), and these returned arrays are sampled at self.t
         if maxNorm > 1.001:
             raise Exception("Got a spin magnitude of %s > 1.0"%(maxNorm))
 
+        # Get reference time
         if omega_ref is not None:
             t_ref = self._get_t_from_omega(omega_ref, q, chiA0, chiB0, \
                     init_orbphase, init_quat)
+
+        # Get start time
+        if omega_low is not None:
+            # If omega_low and omega_ref are the same, no need to
+            # recompute t_low
+            if abs(omega_low == omega_ref) < 1e-10:
+                t_low = t_ref
+            else:
+                t_low = self._get_t_from_omega(omega_low, q, chiA0, chiB0, \
+                        init_orbphase, init_quat)
+        else:
+            t_low = None
+
 
         y_of_t, i0 = self._initialize(q, chiA0, chiB0, init_quat,
                 init_orbphase, t_ref, normA, normB)
@@ -465,7 +485,7 @@ L = len(self.t), and these returned arrays are sampled at self.t
         chiA_copr = y_of_t[:, 5:8]
         chiB_copr = y_of_t[:, 8:]
 
-        return quat, orbphase, chiA_copr, chiB_copr
+        return quat, orbphase, chiA_copr, chiB_copr, t_low
 
     def _initialize(self, q, chiA0, chiB0, init_quat, init_orbphase, t_ref,
             normA, normB):
@@ -753,8 +773,9 @@ def inertial_waveform_modes(t, orbphase, quat, h_coorb):
     h_inertial = rotateWaveform(qfull, h_coorb)
     return h_inertial
 
-def splinterp_many(t_in, t_out, many_things):
-    return np.array([spline(t_in, thing)(t_out) for thing in many_things])
+def splinterp_many(t_out, t_in, many_things):
+    return np.array([_splinterp_Cwrapper(t_out, t_in, thing) \
+            for thing in many_things])
 
 def mode_sum(h_modes, ellMax, theta, phi):
     coefs = []
@@ -794,124 +815,6 @@ filename: The hdf5 file containing the surrogate data."
         self.t_0 = self.t_coorb[0]
         self.t_f = self.t_coorb[-1]
 
-    def get_dynamics(self, q, chiA0, chiB0, init_phase=0.0, init_quat=None,
-                     t_ref=None, omega_ref=None,
-                     use_lalsimulation_conventions=True):
-        """
-Evaluates only the dynamics surrogate.
-q: The mass ratio mA/mB, with 1 <= q <= 2.
-chiA0, chiB0: The dimensionless black hole spins, given in the
-            coprecessing frame at the reference time
-init_phase: The orbital phase $\\varphi(t_ref)$ at the reference time
-init_quat: The unit quaternion representing the coprecessing frame at the
-            reference time.
-            If None, the coprecessing frame and inertial frames will be
-            aligned, and the spins can be given in the inertial frame.
-t_ref: The reference (dimensionless) time, where the peak amplitude occurs
-            at t=0.
-omega_ref: The orbital angular frequency in the coprecessing frame, used to
-            determine t_ref.
-            Specify at most one of t_ref, fM_ref.
-use_lalsimulation_conventions: If True, interprets the spin directions and
-            init_orbphase using lalsimulation conventions. Specifically, before
-            evaluating the surrogate, the spins will be rotated about the
-            z-axis by init_phase. Default: True.
-
-Returns:
-q_copr: The quaternion representing the coprecessing frame with shape (4, L)
-orbphase: The orbital phase in the coprecessing frame with shape (L, )
-chiA: The time-dependent chiA with shape (L, 3)
-chiB: The time-dependent chiB with shape (L, 3)
-
-These are sampled on self.tds which has length L.
-        """
-        return self.dynamics_sur(q, chiA0, chiB0, init_orbphase=init_phase,
-                 init_quat=init_quat, t_ref=t_ref, omega_ref=omega_ref,
-                 use_lalsimulation_conventions=use_lalsimulation_conventions)
-
-    def get_coorb_waveform(self, q, chiA_coorb, chiB_coorb, ellMax=4):
-        """
-Evaluates the coorbital waveform surrogate.
-q: The mass ratio mA/mB, with 1 <= q <=2.
-chiA_coorb, chiB_coorb: The spins in the coorbital frame, with shape (N, 3)
-    where N = len(self.t_coorb).
-ellMax: The maximum ell mode to evaluate.
-
-Returns a 2d array with shape (n_modes, N) where the modes are ordered:
-    (2, -2), ..., (2, 2), (3, -3), ...
-with n_modes = 5, 12, or 21 for ellMax = 2, 3, or 4 respectively
-        """
-        return self.coorb_sur(q, chiA_coorb, chiB_coorb, ellMax=ellMax)
-
-    def get_time_from_freq(self, freq, q, chiA0, chiB0, init_phase=0.0,
-        init_quat=None, t_ref=None, fM_ref=None):
-        """
-Obtain the time at which a particular gravitational wave frequency occurs.
-freq: The gravitational wave frequency.
-See the __call__ docstring for other parameters.
-        """
-        # Determine omega_ref if needed
-        omega_ref = None
-        if fM_ref is not None:
-            omega_ref = fM_ref * np.pi
-
-        # Get freqs vs time
-        quat, orbphase, chiA_copr, chiB_copr = self.get_dynamics(
-                q, chiA0, chiB0, init_phase=init_phase, init_quat=init_quat,
-                t_ref=t_ref, omega_ref=omega_ref,
-                use_lalsimulation_conventions=use_lalsimulation_conventions)
-
-        omega = np.gradient(orbphase, self.tds)
-        freqs = omega / np.pi
-
-        # Find the first time where freqs >= freq, and interpolate to find the time
-        if freqs[0] > freq:
-            raise Exception("Frequency %s too low: initial frequency is %s"%(
-                    freq, freq[0]))
-        if np.max(freqs) < freq:
-            raise Exception("Frequency %s too high: maximum frequency is %s"%(
-                    freq, np.max(freqs)))
-        i0 = np.where(freqs >= freq)[0][0]
-        t0 = np.interp(freq, freqs, self.tds)
-
-        return t0
-
-
-    def _get_omega(self, q, chiA0, chiB0, init_orbphase, init_quat):
-
-        if omega_ref > 0.201:
-            raise Exception("Got omega_ref = %0.4f > 0.2, too "
-                    "large!"%(omega_ref))
-
-        y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
-                np.append(chiA0, chiB0))
-
-        if init_quat is not None:
-            y0[:4] = init_quat
-
-        omega0 = self.get_omega(0, q, y0)
-        if omega_ref < omega0:
-            raise Exception("Got omega_ref = %0.4f < %0.4f = omega_0, "
-                    "too small!"%(omega_ref, omega0))
-
-        # i0=0 is a lower bound, find the first index where omega > omega_ref
-        imax=1
-        omega_max = self.get_omega(imax, q, y0)
-        omega_min = omega0
-        while omega_max <= omega_ref:
-            imax += 1
-            omega_min = omega_max
-            omega_max = self.get_omega(imax, q, y0)
-
-        # Interpolate
-        t_ref = (self.t[imax-1] * (omega_max - omega_ref)
-            + self.t[imax] * (omega_ref - omega_min))/(omega_max - omega_min)
-
-        if t_ref < self.t[0] or t_ref > self.t[-1]:
-            raise Exception("Somehow, t_ref ended up being outside of "
-                    "the time domain limits!")
-
-        return t_ref
 
     def _check_unused_opts(self, precessing_opts):
         """ Call this at the end of call module to check if all the
@@ -994,12 +897,6 @@ Returns:
         if precessing_opts is None:
             precessing_opts = {}
 
-        if fM_low != 0:
-            raise ValueError('Only f_low=0 is allowed for this model. The ' \
-                'only function of f_low is to truncate the lower ' \
-                'frequencies, since this surrogate is already short, this ' \
-                'is not needed. Instead, use f_ref to set the reference ' \
-                'epoch at which the frame and spins are defined.')
 
         init_phase = phi_ref
         init_quat = precessing_opts.pop('init_quat', None)
@@ -1018,7 +915,6 @@ Returns:
         chiA_norm = np.sqrt(np.sum(chiA0**2))
         chiB_norm = np.sqrt(np.sum(chiB0**2))
 
-        ## Get dynamics
 
         # Get dimensionless omega_ref
         if fM_ref is None or fM_ref == 0:
@@ -1026,26 +922,43 @@ Returns:
         else:
             omega_ref = fM_ref * np.pi
 
-        quat, orbphase, chiA_copr, chiB_copr = self.get_dynamics(
-                q, chiA0, chiB0, init_phase=init_phase, init_quat=init_quat,
-                t_ref=None, omega_ref=omega_ref,
-                use_lalsimulation_conventions=use_lalsimulation_conventions)
+        # Get dimensionless omega_low
+        if fM_low is None or fM_low == 0:
+            omega_low = None
+        else:
+            omega_low = fM_low * np.pi
+
+        ## Get dynamics
+        quat_dyn, orbphase_dyn, chiA_copr_dyn, chiB_copr_dyn, t0 \
+            = self.dynamics_sur(q, chiA0, chiB0, init_orbphase=init_phase, \
+            init_quat=init_quat, t_ref=None, omega_ref=omega_ref, \
+            omega_low=omega_low, \
+            use_lalsimulation_conventions=use_lalsimulation_conventions)
+
+        ## chiA0 and chiB0 get transformed in self.dynamics_sur if
+        ## use_lalsimulation_conventions is True. To avoid accidental usage
+        ## without this transformation, we set chiA0 and chiB0 to None here.
+        chiA0 = None
+        chiB0 = None
 
         # Interpolate to the coorbital time grid, and transform to coorb frame.
         # Interpolate first since coorbital spins oscillate faster than
         # coprecessing spins
-        chiA_copr = splinterp_many(self.tds, self.t_coorb, chiA_copr.T).T
-        chiB_copr = splinterp_many(self.tds, self.t_coorb, chiB_copr.T).T
+        chiA_copr = splinterp_many(self.t_coorb, self.tds, chiA_copr_dyn.T).T
+        chiB_copr = splinterp_many(self.t_coorb, self.tds, chiB_copr_dyn.T).T
         chiA_copr = normalize_spin(chiA_copr, chiA_norm)
         chiB_copr = normalize_spin(chiB_copr, chiB_norm)
-        orbphase = spline(self.tds, orbphase)(self.t_coorb)
-        quat = splinterp_many(self.tds, self.t_coorb, quat)
+        orbphase = _splinterp_Cwrapper(self.t_coorb, self.tds, orbphase_dyn)
+
+        quat = splinterp_many(self.t_coorb, self.tds, quat_dyn)
         quat = quat/np.sqrt(np.sum(abs(quat)**2, 0))
         chiA_coorb, chiB_coorb = coorb_spins_from_copr_spins(
                 chiA_copr, chiB_copr, orbphase)
 
+
         # Evaluate coorbital waveform surrogate
-        h_coorb = self.get_coorb_waveform(q, chiA_coorb, chiB_coorb, ellMax=ellMax)
+        h_coorb = self.coorb_sur(q, chiA_coorb, chiB_coorb, \
+                ellMax=ellMax)
 
         # Transform the sparsely sampled waveform
         h_inertial = inertial_waveform_modes(self.t_coorb, orbphase, quat,
@@ -1068,8 +981,10 @@ Returns:
             ## Interpolate onto uniform domain if needed
             do_interp = True
             if dtM is not None:
-                #NOTE t0 will need to change if f_low != 0 is allowed
-                t0 = self.t_coorb[0]
+                # If omega_low=0 or None, t0 would have been set to None,
+                # in which case we use the full surrogate length
+                if t0 is None:
+                    t0 = self.t_coorb[0]
                 tf = self.t_coorb[-1]
                 num_times = int(np.ceil((tf - t0)/dtM));
                 timesM = t0 + dtM*np.arange(num_times)
@@ -1078,8 +993,8 @@ Returns:
 
 
         if do_interp:
-            hre = splinterp_many(self.t_coorb, timesM, np.real(h_inertial))
-            him = splinterp_many(self.t_coorb, timesM, np.imag(h_inertial))
+            hre = splinterp_many(timesM, self.t_coorb, np.real(h_inertial))
+            him = splinterp_many(timesM, self.t_coorb, np.imag(h_inertial))
             h_inertial = hre + 1.j*him
 
         # Make mode dict
@@ -1092,28 +1007,29 @@ Returns:
 
         #  Transform and interpolate spins if needed
         if return_dynamics:
-            chiA_inertial = transformTimeDependentVector(quat, chiA_copr.T).T
-            chiB_inertial = transformTimeDependentVector(quat, chiB_copr.T).T
+
             if do_interp:
-                chiA_inertial = splinterp_many(self.t_coorb, timesM,
-                        chiA_inertial.T).T
+                ## Interpolate from self.tds to timesM because that is what
+                ## is done in the LAL code.
+                chiA_copr = splinterp_many(timesM, self.tds, chiA_copr_dyn.T).T
+                chiB_copr = splinterp_many(timesM, self.tds, chiB_copr_dyn.T).T
+                chiA_copr = normalize_spin(chiA_copr, chiA_norm)
+                chiB_copr = normalize_spin(chiB_copr, chiB_norm)
 
-                chiB_inertial = splinterp_many(self.t_coorb, timesM,
-                        chiB_inertial.T).T
+                orbphase = _splinterp_Cwrapper(timesM, self.tds, orbphase_dyn)
 
-                chiA_inertial = normalize_spin(chiA_inertial, chiA_norm)
-                chiB_inertial = normalize_spin(chiB_inertial, chiB_norm)
-
-                orbphase = spline(self.t_coorb, orbphase)(timesM)
-                quat = splinterp_many(self.t_coorb, timesM, quat)
+                quat = splinterp_many(timesM, self.tds, quat_dyn)
                 quat = quat/np.sqrt(np.sum(abs(quat)**2, 0))
 
-                dynamics = {
-                    'chiA': chiA_inertial,
-                    'chiB': chiB_inertial,
-                    'q_copr': quat,
-                    'orbphase': orbphase,
-                    }
+            chiA_inertial = transformTimeDependentVector(quat, chiA_copr.T).T
+            chiB_inertial = transformTimeDependentVector(quat, chiB_copr.T).T
+
+            dynamics = {
+                'chiA': chiA_inertial,
+                'chiB': chiB_inertial,
+                'q_copr': quat,
+                'orbphase': orbphase,
+                }
         else:
             dynamics = None
 
