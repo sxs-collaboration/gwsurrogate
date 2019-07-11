@@ -1964,6 +1964,13 @@ BH, respectively, in the direction of orbital angular momentum, and lambda1/
 lambda2 are the dimensionless quadrupolar tidal deformabilities of the
 heavier/lighter object, respectively.
 
+The .7 spin restriction is both a theoretical and practical decision. 
+(i) A .7 spin is an estimate for the breakup speed for NS.
+(ii) While the model doesn't allow greater spins if one object is a BH,
+that could be allowed. However, with greater spins, the model exhibits
+problematic behavior in the waveform at late times as the spin-tidal
+crossterms grow significant. This is future work.
+
 See the __call__ method on how to evaluate waveforms.
 In the __call__ method, x must have format x = [q, chi1z, chi2z].
     """
