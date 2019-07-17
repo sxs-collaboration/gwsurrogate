@@ -2116,15 +2116,37 @@ class LoadSurrogate(object):
     """
 
     #NOTE: __init__ is never called for LoadSurrogate
-    def __new__(self, surrogate_name):
-        if (surrogate_name=="NRHybSur3dq8Tidal"):
-            # Special case for tidal model since it uses a NRHybSur3dq8 as
-            # the base for the BBH part of the waveform
-            surrogate_h5file = '%s/NRHybSur3dq8.h5'%(catalog.download_path())
-            if not os.path.isfile(surrogate_h5file):
-                raise Exception("Surrogate data not found. Do"
-                    " gwsurrogate.catalog.pull(NRHybSur3dq8)")
-            return NRHybSur3dq8Tidal(surrogate_h5file)
+    def __new__(self, surrogate_name, surrogate_name_spliced=None):
+        """ Returns a SurrogateEvaluator derived object based on name.
+
+        INPUT
+        =====
+        SURROGATE_NAME: A string with either a surrogate's name (one of the
+                        keys in SURROGATE_CLASSES dictionary) or the absolute
+                        path to the surrogate's hdf5 file. 
+
+                        If h5 file is given, the surrogate's name is inferred
+                        from the path.
+
+                        If the surrogate's name is directly given, the
+                        default surrogate download path is used to grab the
+                        hdf5 file. 
+
+        SURROGATE_NAME_SPLICED: Certain models, like NRHybSur3dq8Tidal, modify
+                                (or splice) an underlying model, in this case
+                                NRHybSur3dq8. The same hdf5 file is used for both
+                                models, which means one cannot directly load
+                                the NRHybSur3dq8Tidal model from an hdf5 file 
+                                path. 
+
+                                If you wish to load a spliced model from its h5
+                                file, provide (i) the hdf5 file path as its
+                                surrogate name and (ii) the model name (e.g.
+                                NRHybSur3dq8Tidal) as SURROGATE_NAME_SPLICED."""
+
+
+        # the "output" of this if-block is surrogate_h5file and surrogate_name
+        # to be used for "SURROGATE_CLASSES[surrogate_name](surrogate_h5file)"
         if surrogate_name.endswith('.h5'):
             # If h5 file is given, use that directly. But get the
             # surrogate_name used to pick from SURROGATE_CLASSES from the
@@ -2132,13 +2154,29 @@ class LoadSurrogate(object):
             surrogate_h5file = surrogate_name
             surrogate_name = os.path.basename(surrogate_h5file)
             surrogate_name = surrogate_name.split('.h5')[0]
+
+
+            # check that value of SURROGATE_NAME_SPLICED is valid
+            if surrogate_name_spliced is not None:
+              assert(surrogate_name_spliced in ["NRHybSur3dq8Tidal"])
+              surrogate_name = surrogate_name_spliced
         else:
             # If not, look for surrogate data in surrogate download_path
-            surrogate_h5file = '%s/%s.h5'%(catalog.download_path(), \
-                surrogate_name)
-            if not os.path.isfile(surrogate_h5file):
-                print("Surrogate data not found for %s. Downloading now."%surrogate_name)
-                catalog.pull(surrogate_name)
+
+            if (surrogate_name=="NRHybSur3dq8Tidal"):
+                # Special case for tidal model since it uses a NRHybSur3dq8 as
+                # the base for the BBH part of the waveform
+                surrogate_h5file = '%s/NRHybSur3dq8.h5'%(catalog.download_path())
+                if not os.path.isfile(surrogate_h5file):
+                    raise Exception("Surrogate data not found. Do"
+                        " gwsurrogate.catalog.pull(NRHybSur3dq8)")
+                #return NRHybSur3dq8Tidal(surrogate_h5file)
+            else:
+                surrogate_h5file = '%s/%s.h5'%(catalog.download_path(), \
+                    surrogate_name)
+                if not os.path.isfile(surrogate_h5file):
+                    print("Surrogate data not found for %s. Downloading now."%surrogate_name)
+                    catalog.pull(surrogate_name)
 
         if surrogate_name not in SURROGATE_CLASSES.keys():
             raise Exception('Invalid surrogate : %s'%surrogate_name)
