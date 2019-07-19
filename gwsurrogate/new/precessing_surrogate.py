@@ -1,6 +1,13 @@
 """
 A module for evaluating precessing surrogate models of gravitational waves
 from numerical relativity simulations of binary black hole mergers.
+
+
+NOTE: Currently, this code only works for the NRSur7dq4 model. Yet most
+of the routines are general purpose. The function _get_fit_settings
+provides settings for NRSur7dq4. A few other places may have hard-coded values.
+
+NOTE: Many of these functions are borrowed from the NR7dq2 python package.
 """
 
 import os
@@ -151,6 +158,9 @@ def _get_fit_settings():
      These are to rescale the mass ratio fit range
      from [-0.01, np.log(4+0.01)] to [-1, 1]. The chi fits are already in
      this range.
+
+
+     Values defined here are model-specific. These values are for NRSur7dq4.
     """
     q_fit_offset = -0.9857019407834238
     q_fit_slope = 1.4298059216576398
@@ -328,7 +338,7 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
 
         if omega_ref > 0.201:
             raise Exception("Got omega_ref = %0.4f > 0.2, too "
-                    "large!"%(omega_ref))
+                    "large for the NRSur7dq4 model!"%(omega_ref))
 
         y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
                 np.append(chiA0, chiB0))
