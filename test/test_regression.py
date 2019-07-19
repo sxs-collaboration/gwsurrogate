@@ -147,6 +147,12 @@ np.savez('data_notebook_basics_lesson4.npz',times=times,b_5=b_5,e_5=e_5,h_5=h_5,
 #def test_notebook_basics_lesson5():
 #
 #  assert(False) #TODO: code me (download surrogates need to be rebuilt)
+
+def test_tPNT2Tidal():
+  out = gws.new.tidal_functions.PNT2Tidal(1.e-2, 2.0, 100., 1000. , .3, -.7, 100., 1000., .2, .5)
+  assert( np.abs(out[0] + 15351562.5216222 )/ 15351562.5216222 < 1.e-12)
+  assert( np.abs(out[1] + 61.40625000865016 )/ 61.40625000865016 < 1.e-12)
+
  
 if __name__ == '__main__':
   print("Running test 1...")
