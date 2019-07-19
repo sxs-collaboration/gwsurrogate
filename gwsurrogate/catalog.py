@@ -6,7 +6,7 @@ from __future__ import division # for python 2
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@umassd.edu, crgalley@tapir.caltech.edu"
 __status__    = "testing"
-__author__    = "Jonathan Blackman, Scott Field, Chad Galley"
+__author__    = "Jonathan Blackman, Scott Field, Chad Galley, Kevin Barkett"
 
 __license__ = """
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -95,6 +95,18 @@ _surrogate_world['NRHybSur3dq8'] = \
   [(2,2), (2,1), (2,0), (3,3), (3,2), (3,1), (3,0), (4,4), (4,3), (4,2) and
   (5,5)]. The m<0 modes are deduced from the m>0 modes.''',
   '''https://arxiv.org/abs/1812.07865''')
+
+_surrogate_world['NRHybSur3dq8Tidal'] = \
+  surrogate_info(\
+  'https://zenodo.org/record/2549618/files/NRHybSur3dq8.h5',
+  '''Surrogate model 'NRHybSur3dq8' modified by splicing in PN tidal
+  approximants for aligned-spin binary neutron stars/black hole-neutron star
+  systems with mass ratio q<=8 and spin magnitudes <=.7. The model is spliced
+  using the TaylorT2 expansion and spans the entire LIGO frequency band. This
+  model is presented in Barkett et al. 2019, arxiv:xxxx.xxxxx #FIXME. Available
+  modes are [(2,2), (2,1), (2,0), (3,3), (3,2), (3,1), (3,0), (4,4), (4,3),
+  (4,2) and (5,5)]. The m<0 modes are deduced from the m>0 modes.''',
+  '''https://arxiv.org/abs/xxxx.xxxxx #FIXME''')
 
 
 def download_path():

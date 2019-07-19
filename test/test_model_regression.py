@@ -7,12 +7,15 @@ Each model should test the following at a small handful of parameter values:
 * summation of all modes
 * each of the two above, for dimensionless and physical waveforms
 
-Before running this script (as a test), generate regression data
+Running this script as a regression test (with pytest) will download
+regression data from Dropbox. 
+
+Regression data should NOT be generated locally unless a new regression
+file is being created to upload to Dropbox. In this case do
 
 >>> python test_model_regression.py
 
 from the folder test.
-
 
 
 NOTE: waveform regression data is saved with single precision In order to,
@@ -42,7 +45,32 @@ rtol = 1.e-11
 surrogate_old_interface = ["SpEC_q1_10_NoSpin","EOBNRv2_tutorial","EOBNRv2","SpEC_q1_10_NoSpin_linear"]
 
 # news loader class
-surrogate_loader_interface = ["NRHybSur3dq8"]
+surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal"]
+
+# Most models are randomly sampled, but in some cases its useful to provide 
+# test points to activate specific code branches. This is done by mapping 
+# a model (named in the surrogate catalog) to a function that will return 
+# 3 unique paramter points.
+#
+# Each sampler should return a list [q, chiAz, chiBz] and a dictionary tidOpts
+model_sampler = {}
+
+def NRHybSur3dq8Tidal_samples(i):
+  """ sample points for the NRHybSur3dq8Tidal model
+  the ith sample point to evaluate the model at
+  samples are returned as [q, chiAz, chiBz], tidOpts """
+
+  assert i in [0,1,2]
+
+  if i==0:
+    return [1.2, .1, .1], {'Lambda1': 1000.0, 'Lambda2': 4000.0}
+  elif i==1:
+    return [1.2, .4, -.4], {'Lambda1': 0.0, 'Lambda2': 9000.0}
+  elif i==2:
+    return [1.2, .0, .0], {'Lambda1': 0.0, 'Lambda2': 0.0}
+
+model_sampler["NRHybSur3dq8Tidal"] = NRHybSur3dq8Tidal_samples
+
 
 def test_model_regression(generate_regression_data=False):
   """ If generate_regression_data = True, this script will generate 
@@ -76,6 +104,7 @@ def test_model_regression(generate_regression_data=False):
                #"SpEC_q1_10_NoSpin",
                #"EOBNRv2_tutorial",
                #"NRHybSur3dq8"
+               #"NRHybSur3dq8Tidal"
                ]
 
   # Common directory where all surrogates are assumed to be located
@@ -113,7 +142,6 @@ def test_model_regression(generate_regression_data=False):
     except KeyError:
       print("model %s cannot be removed"%i)
 
-
   fp = h5py.File(h5_file,"w")
 
   # for each model, select three random points to evaluate at
@@ -128,7 +156,8 @@ def test_model_regression(generate_regression_data=False):
       p_mins = sur.param_space.min_vals()
       p_maxs = sur.param_space.max_vals()
     elif model in surrogate_loader_interface:
-      sur = gws.LoadSurrogate(datafile)
+      # sur = gws.LoadSurrogate(datafile) # tidal and aligned models use the same h5 file (so wrong one loaded) 
+      sur = gws.LoadSurrogate(model)
       p_mins = sur._sur_dimless.param_space.min_vals()
       p_maxs = sur._sur_dimless.param_space.max_vals()
     else:
@@ -144,34 +173,53 @@ def test_model_regression(generate_regression_data=False):
     param_samples = []
     if generate_regression_data: # pick new points to compute regression data at
       for i in range(3):  # sample parameter space 3 times 
-        param_sample = []
-        for j in range(len(p_mins)):
-          xj_min = p_mins[j]
-          xj_max = p_maxs[j]
-          tmp = float(np.random.uniform(xj_min, xj_max,size=1))
-          param_sample.append(tmp)
-        param_samples.append(param_sample)
-    else: # pull regression points from regression data file
+        if model in list(model_sampler.keys()):
+          custom_sampler = model_sampler[model]
+          x, tidOpts = custom_sampler(i) # [q, chiAz, chiBz], tidOpts
+        else: # default sampler for spin-aligned BBH models
+          x = [] # [q, chiAz, chiBz]
+          for j in range(len(p_mins)):
+            xj_min = p_mins[j]
+            xj_max = p_maxs[j]
+            tmp = float(np.random.uniform(xj_min, xj_max,size=1))
+            x.append(tmp)
+          tidOpts = None
+        param_samples.append([x, tidOpts])
+    else: # get point at which to compute comparison waveform data
       for i in range(3):
-        print(model+"/parameter%i/parameter"%i)
-        param_samples.append( list(fp_regression[model+"/parameter%i/parameter"%i][:]) )
+        if model in list(model_sampler.keys()): # use sample points if provided 
+          custom_sampler = model_sampler[model]
+          x, tidOpts = custom_sampler(i) # [q, chiAz, chiBz], tidOpts
+        else: # pull regression points from regression data file; none-tidal models only
+          print(model+"/parameter%i/parameter"%i)
+          x = []
+          x.append( list(fp_regression[model+"/parameter%i/parameter"%i][:]) ) # [q, chiAz, chiBz]
+          x = list(fp_regression[model+"/parameter%i/parameter"%i][:]) # [q, chiAz, chiBz]
+          tidOpts = None
+        param_samples.append([x, tidOpts])
 
     param_samples_tested.append(param_samples)
 
     model_grp = fp.create_group(model)
     for i, ps in enumerate(param_samples):
+      x = ps[0]
+      tidOpts = ps[1]
       if model in surrogate_old_interface:
-        ps_float = ps[0] # TODO: generalize interface 
+        ps_float = x[0] # TODO: generalize interface 
         modes, t, hp, hc = sur(q=ps_float,mode_sum=False,fake_neg_modes=True)
       else:
         if model in surrogate_loader_interface:
-          print(ps)
-          q = ps[0]
-          chiA = np.array([0, 0, ps[1]])
-          chiB = np.array([0, 0, ps[2]])
-          t, h, dyanmics = sur(q, chiA, chiB, f_low=0.0)
+          q = x[0]
+          chiA = np.array([0, 0, x[1]])
+          chiB = np.array([0, 0, x[2]])
+          try:
+            t, h, dyanmics = sur(q, chiA, chiB, f_low=0.0, tidal_opts=tidOpts)
+          except ValueError: # some models do not allow for f_low=0.0 and require a time step
+             # step size, Units of M
+             # initial frequency, Units of cycles/M
+            t, h, dyanmics = sur(q, chiA, chiB, dt = 0.25, f_low=3.e-3, tidal_opts=tidOpts) 
         else:
-          h= sur(ps)
+          h= sur(x)
         try:
           h_np = [h[mode] for mode in sur.mode_list]
         except AttributeError: # for new interface
@@ -181,7 +229,7 @@ def test_model_regression(generate_regression_data=False):
         hp = np.real(h_np)
         hc = np.imag(h_np)
       samplei = model_grp.create_group("parameter"+str(i))
-      samplei.create_dataset("parameter",data=ps)
+      samplei.create_dataset("parameter",data=x)
       samplei.create_dataset("hp", data=hp, dtype='float32')
       samplei.create_dataset("hc", data=hc, dtype='float32')
   fp.close()

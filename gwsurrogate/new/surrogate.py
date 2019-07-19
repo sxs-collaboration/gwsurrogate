@@ -5,7 +5,7 @@ from __future__ import division  # for py2
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@astro.cornell.edu, crgalley@tapir.caltech.edu"
 __status__    = "testing"
-__author__    = "Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma"
+__author__    = "Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma, Kevin Barkett"
 
 __license__ = """
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -44,6 +44,11 @@ from .saveH5Object import H5ObjectDict
 from .nodeFunction import NodeFunction
 from .spline_evaluation import TensorSplineGrid, fast_complex_tensor_spline_eval
 from gwsurrogate import spline_interp_Cwrapper
+from .tidal_functions import UniversalRelationLambda2ToI, \
+    UniversalRelationLambda2ToOmega2, UniversalRelationLambda2ToLambda3, \
+    UniversalRelationLambda3ToOmega3, UniversalRelationLambda2ToAqm, \
+    EffectiveDeformabilityFromDynamicalTides, PNT2Tidal, \
+    EffectiveDissipativeDynamicalTides, StrainTidalEnhancementFactor
 
 PARAM_NUDGE_TOL = 1.e-12 # Default relative tolerance for nudging edge cases
 
@@ -1007,6 +1012,467 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
         return self._coorbital_to_inertial_frame(h_coorb, h_22, \
             mode_list, dtM, timesM, fM_low, fM_ref, phi_ref, do_not_align)
+
+class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate):
+    """
+    A surrogate for coorbital frame multimodal waveforms, where each waveform
+    data piece has its own surrogate.
+
+    The waveform data pieces are:
+    Amplitude and phase of the (2,2) mode.
+    Real and imaginary parts of coorbital frame waveform for other modes.
+
+    This generates tidal inspiral waveforms by taking the surrogate output tuned
+    to BBH results and incorporates the PN tidal corrections according to the
+    tidal splicing method
+
+    NOTE: This returns the waveform only during the inspiral portion of the
+    binary's evolution, where the PN expansion is still valid; additional work
+    will need to be done in order to complete the merger/ringdown portion of the
+    waveform
+
+    NOTE: The waveform is output with the time set so that t=0 corresponds to
+    the peak of the waveform for the BBH waveform from the underlying surrogate,
+    and NOT the peak of the tidally spliced waveform
+    """
+
+    def _coorbital_to_inertial_frame(self, h_coorb, h_22, mode_list, dtM,
+        timesM, fM_low, fM_ref, phi_ref, do_not_align, x):
+        """ Transforms a dict from Coorbital frame to inertial frame.
+
+            The surrogate data is sparsely sampled, so upsamples to time
+            step dtM if given. This is done in the coorbital frame since
+            the waveform is slowly varying in that frame.
+
+            If fM_low must be specified. The option of fM_low == 0 has been
+            turned off for this model because of its excessive computational
+            cost to evaluate
+
+            if do_not_align = False:
+                Aligns the 22 mode phase to be 2*phi_ref at fM_ref. This means
+                that at this reference frequency, the heavier BH is roughly on
+                the +ve x axis and the lighter BH is on the -ve x axis.
+            do_not_align should be True only when converting from pySurrogate
+            format to gwsurrogate format as we may want to do some checks that
+            the waveform has not been modified
+        """
+
+        Amp_22 = h_22[0]['amp']
+        phi_22 = h_22[0]['phase']
+        domain = np.copy(self.domain)
+
+        # Get omega22_sparse, the angular frequency of the 22 mode, from the
+        # sparse surrogate domain.
+        # Use np.gradient
+        omega22_sparse = np.gradient(phi_22, domain)
+
+        # t=0 is at the waveform peak for the surrogate
+        peak22Idx = np.argmin(np.abs(domain))
+        omega22_peak = omega22_sparse[peak22Idx]
+        # We ignore the part after the peak.  This way we avoid the noisy part
+        # at late times, which can randomly be at frequency = fM_low.
+        omega22_sparse = omega22_sparse[domain <= domain[peak22Idx]]
+
+        # Get initIdx such that the initial (2, 2) mode frequency ~ fM_low.
+        # We will make this more precise below.
+        if fM_low != 0:
+            omega_low = 2*np.pi*fM_low
+            if omega_low < omega22_sparse[0]:
+                raise ValueError('f_low is lower than the minimum allowed'
+                    ' frequency')
+            if omega_low > omega22_peak:
+                raise ValueError('f_low is higher than the peak frequency')
+
+            # Choose 5 indices less, to ensure omega_low is included
+            initIdx = self._search_omega(omega22_sparse, omega_low) - 5
+            # But if initIdx < 0, we are at the start of the surrogate data
+            # so just choose 0
+            if initIdx < 0:
+                initIdx = 0
+        else:
+            raise ValueError("The option of setting 'fM_low' to 0 is turned off"
+                    " for this model; must specifiy a non-zero 'fM_low'")
+            ## If fM_low is 0, we use the entire waveform where frequency is
+            ## monotonic, uncomment if want to allow this option
+            #freq_orbital = np.gradient(phi_22[:peak22Idx], domain[:peak22Idx])
+            #if np.min(np.diff(freq_orbital))<=0:
+            #  initIdx = len(freq_orbital)-np.argmin((np.diff(freq_orbital)>np.zeros(len(freq_orbital)-1))[::-1])-1
+            #else:
+            #  initIdx = 0
+
+        Amp_22 = Amp_22[initIdx:peak22Idx]
+        phi_22 = phi_22[initIdx:peak22Idx]
+        domain = domain[initIdx:peak22Idx]
+        v_domain = np.power(np.abs(np.gradient(phi_22, domain))/2,1./3.)
+        if(np.min(np.diff(v_domain))<0):
+            raise ValueError('frequency is not monotonic over the entire'
+                ' considered here')
+
+        if timesM is not None:
+            # This check is performed after the tidal terms computed
+            #if timesM[-1] > domain[-1]:
+            #    raise Exception("'times' includes times larger than the"
+            #        " maximum time value in domain.")
+            if timesM[0] < domain[0]:
+                raise Exception("'times' starts before start of domain. Try"
+                    " increasing initial value of times or reducing f_low.")
+
+        # For tidal splicing, always want to interpolate first to a dense domain
+        # in order to compute an accurate orbital frequency for the PN equations
+        # then interpolated to the desired times afterwards
+
+        if dtM is None and timesM is None:
+            raise ValueError("For this model, must specify either the 'dtM' or"
+                " 'timesM' option")
+        else:
+            ## Interpolate onto uniform domain
+            ## WARNING -- if the the time points are not sampled densely enough
+            ## here, there is a potential for error due to inaccurate orbital
+            ## freq being used for the PN tidal equations
+            if dtM is not None:
+                t0 = domain[0]
+                tf = domain[-1]
+                num_times = int(np.ceil((tf - t0)/dtM));
+                timesM_tmp = t0 + dtM*np.arange(num_times)
+            else:
+                # Because the spliced waveform is shifted so the final time
+                # is the peak of the final waveform, we must ensure the check
+                # here is performed similarly
+                if timesM[0] < (domain[0]-domain[-1]) or timesM[-1] > 0:
+                    raise Exception('Trying to evaluate at times outside the'
+                        ' domain.')
+                min_dt = np.min(np.diff(timesM))
+                t0 = domain[0] #timesM[0] - min_dt
+                tf = domain[-1]
+                num_times = int(np.ceil((tf - t0)/min_dt));
+                timesM_tmp = t0 + min_dt*np.arange(num_times)
+
+            Amp_22 = _splinterp_Cwrapper(timesM_tmp, domain, Amp_22)
+            phi_22 = _splinterp_Cwrapper(timesM_tmp, domain, phi_22)
+
+            # now recompute omega22 with the dense data, but retain only data
+            # upto the peak to avoid the noisy part
+            omega22 = np.gradient(phi_22, timesM_tmp)
+
+            #omega22 = omega22[timesM_tmp <= timesM_tmp[np.argmax(Amp_22)]]
+
+            # Truncate data so that only freqs above omega_low are retained
+            # If timesM are already given, we don't need to truncate data
+            if dtM is not None:
+                if fM_low != 0:
+                    startIdx = max(np.argmin(np.abs(omega22 - omega_low)) - 4,0)
+                else:
+                    raise ValueError("The option of setting 'fM_low' to 0"
+                            " is turned off for this model; must specifiy a"
+                            " non-zero 'fM_low'")
+                    ## If fM_low is 0, we use the entire waveform that is monotonic
+                    #startIdx = 0
+                    #if np.min(np.diff(omega22))<=0:
+                    #  startIdx = len(omega22)-np.argmin((np.diff(omega22)>np.zeros(len(omega22)-1))[::-1])-1
+                    ## Because the splicing changes the frequencies slightly, to
+                    ## ensure we have wiggle room for interpolation later, buffer
+                    ## the altered initial frequency of the spliced waveform so
+                    ## it is not less than the initial frequency of v_domain
+                    #gap = int((domain[5]-domain[0])/(timesM_tmp[1]-timesM_tmp[0]))
+                    #if startIdx<gap:
+                    #  startIdx=gap
+
+                Amp_22 = Amp_22[startIdx:]
+                phi_22 = phi_22[startIdx:]
+                omega22 = omega22[startIdx:]
+                timesM_tmp = timesM_tmp[startIdx:]
+
+        freq_orbital = np.abs(omega22)/2
+        v = np.power(freq_orbital,1./3.)
+
+        # Setup all of the tidal parameters
+        # Use universal relations to compute parameters beyond the quad love num
+        # NOTE: omega2AB and omega3AB are stored as M*omega{2,3}{A,B}, to use the
+        #   dimensionless value set the total mass of the system and that the
+        #   universal relations return M{A,B}*omega{2,3}{A,B}
+        # Aqm is the dimensionless quadrupole moment, however for splicing the 2PN BBH
+        #   (v^4) term, the qm of a BBH must be subtracted off (Aqm_BH = 1; see
+        #   arXiv:gr-qc/9709032 just below eqn 8), which will be done in the tidal
+        #   function itself
+        # If the NS is spinning, the effective driving frequency that the NS sees,
+        #   from its own reference frame, is shifted according to the NS spin by the
+        #   dimensionless rotation = M omega_spin =  (M / m_NS) * chi_NS / \bar{I}
+        # WARNING: This effect has been turned off (omega_spin = 0) for NS anti-
+        #   aligned spins, b/c the resonance peak is shifted to early enough in the
+        #   inspiral that the approximation being used to model it might be breaking
+        #   down by the end of the late inspiral (only supposed to be good up until
+        #   shortly after resonance)
+        qqq = x[0]; chiAz = x[1]; chiBz = x[2]; lambda2A = x[3]; lambda2B = x[4]
+        XA = qqq/(1.+qqq); XB = 1.-XA
+        omega2A = lambda3A = omega3A = AqmA = 0.
+        omega2B = lambda3B = omega3B = AqmB = 0.
+        omegaSpinA = omegaSpinB = 0.
+        ell2Adyn = ell2Adiss = ell2Bdyn = ell2Bdiss = np.zeros(len(timesM_tmp))
+        ell3Adyn = ell3Bdyn = np.zeros(len(timesM_tmp))
+        if(lambda2A>0):
+            IbarA     = UniversalRelationLambda2ToI(lambda2A)
+            omegaSpinA = max(chiAz,0) / IbarA / XA
+            omega2A   = UniversalRelationLambda2ToOmega2(lambda2A)/XA
+            lambda3A  = UniversalRelationLambda2ToLambda3(lambda2A)
+            omega3A   = UniversalRelationLambda3ToOmega3(lambda3A)/XA
+            AqmA      = UniversalRelationLambda2ToAqm(lambda2A)
+            ell2Adyn  = EffectiveDeformabilityFromDynamicalTides \
+                        (np.abs(freq_orbital-omegaSpinA),omega2A,2,qqq)
+            ell3Adyn  = EffectiveDeformabilityFromDynamicalTides \
+                        (np.abs(freq_orbital-omegaSpinA),omega3A,3,qqq)
+        if(lambda2B>0):
+            IbarB     = UniversalRelationLambda2ToI(lambda2B)
+            omegaSpinB = max(chiBz,0) / IbarB / XB
+            omega2B   = UniversalRelationLambda2ToOmega2(lambda2B)/XB
+            lambda3B  = UniversalRelationLambda2ToLambda3(lambda2B)
+            omega3B   = UniversalRelationLambda3ToOmega3(lambda3B)/XB
+            AqmB      = UniversalRelationLambda2ToAqm(lambda2B)
+            ell2Bdyn  = EffectiveDeformabilityFromDynamicalTides \
+                        (np.abs(freq_orbital-omegaSpinB),omega2B,2,qqq)
+            ell3Bdyn  = EffectiveDeformabilityFromDynamicalTides \
+                        (np.abs(freq_orbital-omegaSpinB),omega3B,3,qqq)
+
+        dt_tid, dp_tid = PNT2Tidal(v, qqq, lambda2A*ell2Adyn, \
+                lambda3A*ell3Adyn, AqmA, chiAz, lambda2B*ell2Bdyn, \
+                lambda3B*ell3Bdyn, AqmB, chiBz, order=5)
+
+        timesM_tmp += dt_tid - dt_tid[0]
+
+        # Limit the waveform to the last time in the array that is increasing
+        find = np.argmin(np.diff(timesM_tmp)>0)
+        if(find == 0):
+            find = len(timesM_tmp)
+
+        timesM_tmp = timesM_tmp[:find]
+
+        # There is a small region of parameter space where the interpolation
+        # behaves poorly at very late times due to oddly shaped steps, so we
+        # need to check the final handful of steps for that and truncate as
+        # needed to avoid interpolation failures
+        numcheck = 500
+        factorLimit = 2.
+        tdiff = np.diff(timesM_tmp[-numcheck-1:])
+        for i in range(len(tdiff)-1):
+          if ((tdiff[i]>tdiff[i+1]*factorLimit) or (tdiff[i]<tdiff[i+1]/factorLimit)):
+            find = len(timesM_tmp)-numcheck+i-1
+            timesM_tmp = timesM_tmp[:find]
+            break
+
+        timesM_tmp -= timesM_tmp[-1]
+        phi_22 = phi_22[:find] + 2.*(dp_tid[:find] - dp_tid[0])
+
+        # Reinterpolate to the final time grid
+        if dtM is not None:
+            t0 = timesM_tmp[0]
+            tf = timesM_tmp[-1]
+            num_times = int(np.ceil((tf - t0)/dtM));
+            timesM = t0 + dtM*np.arange(num_times)
+            timesM -= timesM[-1] # Ensure peak amplitude at t=0
+        else:
+            if timesM[-1] > timesM_tmp[-1]:
+                raise Exception("'times' includes times larger than the"
+                    " maximum time value in domain after splicing. (Remember"
+                    " that tidal effects cause the binary to merger earlier)")
+            if timesM[0] < timesM_tmp[0]:
+                raise Exception("'times' includes times smaller than the"
+                    " initial time value in domain after splicing. (Remember"
+                    " that tidal effects cause the binary to merger earlier)")
+
+        # Find the 'v' corresponding to the final time array, then perform the
+        # interpolation in the 'v' domain as that is where most of the PN
+        # quantities are defined
+        v_uniform = _splinterp_Cwrapper(timesM, timesM_tmp, v[:find])
+
+        Amp_22 = _splinterp_Cwrapper(v_uniform, v[:find], Amp_22[:find])
+        phi_22 = _splinterp_Cwrapper(v_uniform, v[:find], phi_22)
+        freq_orbital = np.power(v_uniform,3.)
+
+        # Dynamical Tidal deformability stuff on final array for strain
+        # amplitudes
+        ell2Adyn = ell2Adiss = ell2Bdyn = ell2Bdiss = np.zeros(len(timesM))
+        if(lambda2A>0):
+          ell2Adyn  = EffectiveDeformabilityFromDynamicalTides \
+                      (np.abs(freq_orbital-omegaSpinA),omega2A,2,qqq)
+          ell2Adiss = EffectiveDissipativeDynamicalTides \
+                      (np.abs(freq_orbital-omegaSpinA),ell2Adyn,omega2A,XA)
+        if(lambda2B>0):
+          ell2Bdyn  = EffectiveDeformabilityFromDynamicalTides \
+                      (np.abs(freq_orbital-omegaSpinB),omega2B,2,qqq)
+          ell2Bdiss = EffectiveDissipativeDynamicalTides \
+                      (np.abs(freq_orbital-omegaSpinB),ell2Bdyn,omega2B,XB)
+
+        # Get reference index where waveform needs to be aligned.
+        if (abs(fM_ref-fM_low) < 1e-13) and (dtM is not None):
+            # This means that the data is already truncated at fM_low,
+            # so we just need the first index for fM_ref=fM_low
+            refIdx = 0
+        else:
+            omega_ref = 2*np.pi*fM_ref
+            if omega_ref > omega22_peak:
+                raise ValueError('f_ref is higher than the peak frequency')
+
+            refIdx = np.argmin(np.abs(2.*freq_orbital - omega_ref))
+
+
+        # do_not_align should be True only when converting from pySurrogate
+        # format to gwsurrogate format as we may want to do some checks that
+        # the waveform has not been modified
+        if not do_not_align:
+            # Set orbital phase to phi_ref refIdx. Note that the Coorbital
+            # frame data is not affected by this constant phase shift.
+
+            # The orbital phase is obtained as phi_22/2, so this leaves a pi
+            # ambiguity.  But the surrogate data is already aligned such that
+            # the heavier BH is on the +ve x-axis at t=-1000M. See Sec.VI.A.4
+            # of arxiv:1812.07865, the resolves the pi ambiguity. This means
+            # that the after the realignment, the orbital phase at reference
+            # frequency is phiRef, or the heavier BH is at azimuthal angle =
+            # phiRef from the +ve x-axis.
+            phi_22 += -phi_22[refIdx] + 2*phi_ref
+
+
+        h_dict = {}
+        for mode in mode_list:
+            if mode == tuple([2, 2]):
+                h_dict[mode] = (Amp_22+StrainTidalEnhancementFactor(2,2, \
+                      qqq,(lambda2A*ell2Adiss),(lambda2B*ell2Bdiss),v_uniform)) \
+                      * np.exp(-1j*phi_22)
+            else:
+                l,m = mode
+                h_coorb_lm = 0
+                if 're' in h_coorb[mode][0].keys():
+                    h_coorb_lm += h_coorb[mode][0]['re'] + 1j * 0
+                if 'im' in h_coorb[mode][0].keys():
+                    h_coorb_lm += 1j*h_coorb[mode][0]['im']
+
+                h_coorb_lm = h_coorb_lm[initIdx:peak22Idx]
+
+                h_coorb_lm = _splinterp_Cwrapper(v_uniform,v_domain,h_coorb_lm)
+
+                h_coorb_lm_amp = np.abs(h_coorb_lm)
+                h_coorb_lm_phase = np.unwrap(np.angle(h_coorb_lm))
+                h_coorb_lm_tid = StrainTidalEnhancementFactor(l,m,qqq, \
+                        (lambda2A*ell2Adiss),(lambda2B*ell2Bdiss),v_uniform)
+                h_dict[mode] = (h_coorb_lm_amp + h_coorb_lm_tid) \
+                        * np.exp((-1j*m/2.)*phi_22+1j*h_coorb_lm_phase)
+
+        return timesM, h_dict, None     # None is for dynamics
+
+    def __call__(self, x, phi_ref=0, fM_low=None, fM_ref=None, dtM=None,
+        timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
+        precessing_opts=None, tidal_opts=None, par_dict=None,
+        do_not_align=False):
+        """
+    Return dimensionless surrogate modes.
+    Arguments:
+    x :             The intrinsic parameters EXCLUDING total Mass (see
+                    self.param_space)
+
+    phi_ref :       Orbital phase at reference epoch. Default: 0.
+
+    fM_low :        Initial frequency of (2,2) mode in units of cycles/M.
+                    If 0, will use the entire data of the surrogate.
+                    Default None.
+
+    fM_ref:         Frequency used to set the reference epoch at which
+                    the reference frame is defined and the spins are specified.
+                    See below for definition of the reference frame.
+                    Default: None.
+
+                    For time domain models, f_ref is used to determine a t_ref,
+                    such that the frequency of the (2, 2) mode equals f_ref at
+                    t=t_ref.
+
+    dtM :           Uniform time step to use, in units of M. If None, the
+                    returned time array will be the array used in the
+                    construction of the surrogate, which can be nonuniformly
+                    sampled.
+                    Default None.
+
+    timesM:         Time samples to evaluate the waveform at. Use either dtM or
+                    timesM, not both.
+
+    dfM :           This should always be None as for now we are assuming
+                    a time domain model.
+
+    freqsM:         Frequency samples to evaluate the waveform at. Use either
+                    dfM or freqsM, not both.
+
+    ellMax:         Maximum ell index for modes to include. All available m
+                    indicies for each ell will be included automatically.
+                    Default: None, in which case all available modes wll be
+                    included.
+
+    mode_list :     A list of (ell, m) modes to be evaluated.
+                    Default None, which evaluates all avilable modes.
+                    Will deduce the m<0 modes from m>0 modes.
+
+    par_dict:       This should always be None for this model.
+
+    do_not_align:   Ignore fM_ref and do not align the waveform. This should be
+                    True only when converting from pySurrogate format to
+                    gwsurrogate format as we may want to do some checks that
+                    the waveform has not been modified.
+
+    Returns
+    timesM, h, dynamics:
+        timesM : time array in units of M.
+        h : A dictionary of waveform modes sampled at timesM with
+            (ell, m) keys.
+        dynamics: None, since this is a nonprecessing model.
+
+
+    IMPORTANT NOTES:
+    ===============
+
+    The reference frame is defined as follows:
+        The +ve z-axis is along the orbital angular momentum at the reference
+        epoch. The orbital phase at the reference epoch is phi_ref. This means
+        that the separation vector from the lighter BH to the heavier BH is at
+        an azimuthal angle phi_ref from the +ve x-axis, in the orbital plane at
+        the reference epoch. The y-axis completes the right-handed triad. The
+        reference epoch is set using fM_ref.
+        """
+
+        if par_dict is not None:
+            raise ValueError('Expected par_dict to be None.')
+        if dfM is not None:
+            raise ValueError('Expected dfM to be None for a Time domain model')
+        if freqsM is not None:
+            raise ValueError('Expected freqsM to be None for a Time domain'
+                ' model')
+
+        if mode_list is None:
+            mode_list = self.mode_list
+        if ellMax is not None:
+            if ellMax > np.max(np.array(self.mode_list).T[0]):
+                raise ValueError('ellMax is greater than max allowed ell.')
+            include_modes = np.array(self.mode_list).T[0] <= ellMax
+            mode_list = [self.mode_list[idx]
+                    for idx in range(len(self.mode_list))
+                    if include_modes[idx]]
+
+        # The last to parameters are the tidal parameters and are not a part of
+        # the base surrogate model
+        x_sur = x[:-2]
+
+        # always evaluate the (2,2) mode, the other modes neeed this
+        # for transformation from coorbital to inertial frame
+
+        # At this stage the phase of the (2,2) mode is the residual after
+        # removing the TaylorT3 part (see. Eq.44 of arxiv.1812.07865)
+        h_22 = self._eval_sur(x_sur, tuple([2, 2]))
+
+        # Get the TaylorT3 part and add to get the actual phase
+        self._set_TaylorT3_factor()
+        h_22[0]['phase'] += self._TaylorT3_phase_22(x_sur)
+
+        h_coorb = {k: self._eval_sur(x_sur, k) for k in mode_list \
+                        if k != tuple([2,2])}
+
+        return self._coorbital_to_inertial_frame(h_coorb, h_22, \
+            mode_list, dtM, timesM, fM_low, fM_ref, phi_ref, do_not_align, x)
+
 
 
 class SpEC_nonspinning_q10_surrogate(MultiModalSurrogate):

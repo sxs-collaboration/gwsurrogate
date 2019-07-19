@@ -5,7 +5,7 @@ from __future__ import division # for python 2
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@umassd.edu, crgalley@tapir.caltech.edu"
 __status__    = "testing"
-__author__    = "Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma"
+__author__    = "Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma, Kevin Barkett"
 __version__ = "0.9.5"
 __license__ = """
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1451,7 +1451,7 @@ class SurrogateEvaluator(object):
 
 
         if self.keywords['Tidal']:
-            if (('Lambda1' not in tidal_opts.keys())
+            if (tidal_opts is None) or (('Lambda1' not in tidal_opts.keys())
                     or ('Lambda2' not in tidal_opts.keys())):
                 raise Exception('Tidal parameters Lambda1 and Lambda2 should '
                         'be passed through tidal_opts for this model.')
@@ -1942,6 +1942,93 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         return x
 
 
+class NRHybSur3dq8Tidal(SurrogateEvaluator):
+    """
+A class for the NRHybSur3dq8Tidal model presented in Barkett et al.,
+arxiv:xxxx.xxxx #FIXME.
+
+Generates inspiralling gravitational waveforms corresponding to binary neutron
+stars/black hole-neutron star systems. This model is based on the aligned-spin
+BBH surrogate model of Varma et al. 2018, arxiv:1812.07865. Analytic TaylorT2
+PN tidal expressions are then utilized to modify the orbital evolution and
+waveform modes.
+
+This model includes the following spin-weighted spherical harmonic modes:
+(2,2), (2,1), (2,0), (3,3), (3,2), (3,1), (3,0), (4,4) (4,3), (4,2) and (5,5).
+The m<0 modes are deduced from the m>0 modes.
+
+The parameter space of validity is:
+q \in [1, 8] and chi1z/chi2z \in [-.7, .7] and lambda1/lambda2 \in [0,10000],
+where q is the mass ratio and chi1z/chi2z are the spins of the heavier/lighter
+BH, respectively, in the direction of orbital angular momentum, and lambda1/
+lambda2 are the dimensionless quadrupolar tidal deformabilities of the
+heavier/lighter object, respectively.
+
+The .7 spin restriction is both a theoretical and practical decision. 
+(i) A .7 spin is an estimate for the breakup speed for NS.
+(ii) While the model doesn't allow greater spins if one object is a BH,
+that could be allowed. However, with greater spins, the model exhibits
+problematic behavior in the waveform at late times as the spin-tidal
+crossterms grow significant. This is future work.
+
+See the __call__ method on how to evaluate waveforms.
+In the __call__ method, x must have format x = [q, chi1z, chi2z].
+    """
+
+    def __init__(self, h5filename):
+        self.h5filename = h5filename
+        domain_type = 'Time'
+        keywords = {
+            'Tidal': True,
+            'Hybridized': True,
+            }
+        # soft_lims -> raise warning when outside lims
+        # hard_lim -> raise error when outside lims
+        # Format is [qMax, chiMax].
+        soft_param_lims = [8.01, 0.701]
+        hard_param_lims = [8.01, 0.701]
+        super(NRHybSur3dq8Tidal, self).__init__(self.__class__.__name__, \
+            domain_type, keywords, soft_param_lims, hard_param_lims)
+
+    def _load_dimless_surrogate(self):
+        """
+        This function, which must be overriden for each derived class of
+        SurrogateEvaluator, handles the loading of the dimensionless surrogate.
+        This should return the loaded surrogate.
+        The loaded surrogate should have a __call__ function that returns the
+        dimensionless time/frequency array and dimensionless waveform modes.
+        The return value of this functions will be stored as
+        self._sur_dimless()
+        The __call__ function of self._sur_dimless() should take all inputs
+        passed to self._sur_dimless() in the __call__ function of this class.
+        """
+        sur = new_surrogate.AlignedSpinCoOrbitalFrameSurrogateTidal()
+        sur.load(self.h5filename)
+        return sur
+
+    def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,
+            tidal_opts, par_dict):
+        """
+        This function, which must be overriden for each derived class of
+        SurrogateEvaluator, puts all intrinsic parameters of the surrogate
+        into a single array.
+        For example, for NRHybSur3dq8: x = [q, chiAz, chiBz].
+        """
+        if par_dict is not None:
+            raise ValueError('Expected par_dict to be None.')
+        Lambda1 = tidal_opts['Lambda1']
+        Lambda2 = tidal_opts['Lambda2']
+        if Lambda1 < 0 or Lambda1 > 10000:
+            raise Exception('Lambda1=%.3f is outside the valid range ' \
+                '[0,10000]'%Lambda1)
+        if Lambda2 < 0 or Lambda2 > 10000:
+            raise Exception('Lambda2=%.3f is outside the valid range ' \
+                '[0,10000]'%Lambda2)
+
+        x = [q, chiA0[2], chiB0[2], Lambda1, Lambda2]
+        return x
+
+
 class NRSur7dq4(SurrogateEvaluator):
     """
 A class for the NRSur7dq4 surrogate model presented in Varma et al. 2019,
@@ -2015,6 +2102,7 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
 ####       the default cases suitable for most people
 SURROGATE_CLASSES = {
     "NRHybSur3dq8": NRHybSur3dq8,
+    "NRHybSur3dq8Tidal": NRHybSur3dq8Tidal,
 #    "NRSur7dq4": NRSur7dq4,
 #    "SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5":EvaluateSurrogate # model SpEC_q1_10_NoSpin
         }
@@ -2028,7 +2116,37 @@ class LoadSurrogate(object):
     """
 
     #NOTE: __init__ is never called for LoadSurrogate
-    def __new__(self, surrogate_name):
+    def __new__(self, surrogate_name, surrogate_name_spliced=None):
+        """ Returns a SurrogateEvaluator derived object based on name.
+
+        INPUT
+        =====
+        SURROGATE_NAME: A string with either a surrogate's name (one of the
+                        keys in SURROGATE_CLASSES dictionary) or the absolute
+                        path to the surrogate's hdf5 file. 
+
+                        If h5 file is given, the surrogate's name is inferred
+                        from the path.
+
+                        If the surrogate's name is directly given, the
+                        default surrogate download path is used to grab the
+                        hdf5 file. 
+
+        SURROGATE_NAME_SPLICED: Certain models, like NRHybSur3dq8Tidal, modify
+                                (or splice) an underlying model, in this case
+                                NRHybSur3dq8. The same hdf5 file is used for both
+                                models, which means one cannot directly load
+                                the NRHybSur3dq8Tidal model from an hdf5 file 
+                                path. 
+
+                                If you wish to load a spliced model from its h5
+                                file, provide (i) the hdf5 file path as its
+                                surrogate name and (ii) the model name (e.g.
+                                NRHybSur3dq8Tidal) as SURROGATE_NAME_SPLICED."""
+
+
+        # the "output" of this if-block is surrogate_h5file and surrogate_name
+        # to be used for "SURROGATE_CLASSES[surrogate_name](surrogate_h5file)"
         if surrogate_name.endswith('.h5'):
             # If h5 file is given, use that directly. But get the
             # surrogate_name used to pick from SURROGATE_CLASSES from the
@@ -2036,13 +2154,29 @@ class LoadSurrogate(object):
             surrogate_h5file = surrogate_name
             surrogate_name = os.path.basename(surrogate_h5file)
             surrogate_name = surrogate_name.split('.h5')[0]
+
+
+            # check that value of SURROGATE_NAME_SPLICED is valid
+            if surrogate_name_spliced is not None:
+              assert(surrogate_name_spliced in ["NRHybSur3dq8Tidal"])
+              surrogate_name = surrogate_name_spliced
         else:
             # If not, look for surrogate data in surrogate download_path
-            surrogate_h5file = '%s/%s.h5'%(catalog.download_path(), \
-                surrogate_name)
-            if not os.path.isfile(surrogate_h5file):
-                print("Surrogate data not found for %s. Downloading now."%surrogate_name)
-                catalog.pull(surrogate_name)
+
+            if (surrogate_name=="NRHybSur3dq8Tidal"):
+                # Special case for tidal model since it uses a NRHybSur3dq8 as
+                # the base for the BBH part of the waveform
+                surrogate_h5file = '%s/NRHybSur3dq8.h5'%(catalog.download_path())
+                if not os.path.isfile(surrogate_h5file):
+                    raise Exception("Surrogate data not found. Do"
+                        " gwsurrogate.catalog.pull(NRHybSur3dq8)")
+                #return NRHybSur3dq8Tidal(surrogate_h5file)
+            else:
+                surrogate_h5file = '%s/%s.h5'%(catalog.download_path(), \
+                    surrogate_name)
+                if not os.path.isfile(surrogate_h5file):
+                    print("Surrogate data not found for %s. Downloading now."%surrogate_name)
+                    catalog.pull(surrogate_name)
 
         if surrogate_name not in SURROGATE_CLASSES.keys():
             raise Exception('Invalid surrogate : %s'%surrogate_name)
