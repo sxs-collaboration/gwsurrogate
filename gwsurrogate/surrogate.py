@@ -1622,9 +1622,17 @@ class SurrogateEvaluator(object):
                 return_dynamics:
                     Return the frame dynamics and spin evolution along with
                     the waveform. Default: False.
+                use_lalsimulation_conventions:
+                    If True, interprets the spin directions and init_orbphase
+                    using lalsimulation conventions. Specifically, before
+                    evaluating the surrogate, the spins will be rotated about
+                    the z-axis by init_phase. Default: True (see 
+                    DynamicsSurrogate, which is the only place this option is
+                    used).
                 Example: precessing_opts = {
                                     'init_quat': [1,0,0,0],
-                                    'return_dynamics': True
+                                    'return_dynamics': True,
+                                    'use_lalsimulation_conventions': True
                                     }
 
     tidal_opts:
