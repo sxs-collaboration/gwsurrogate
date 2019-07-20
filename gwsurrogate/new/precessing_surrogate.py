@@ -715,14 +715,18 @@ class CoorbitalWaveformSurrogate:
         self.t = h5file['t_coorb'].value
 
         self.data = {}
+        self.mode_list = []
         for ell in range(2, self.ellMax+1):
             # m=0 is different
+            self.mode_list.append( (ell,0) )
             for reim in ['real', 'imag']:
                 group = h5file['hCoorb_%s_0_%s'%(ell, reim)]
                 self.data['%s_0_%s'%(ell, reim)] \
                         = _extract_component_data(group)
 
             for m in range(1, ell+1):
+                self.mode_list.append( (ell,m) )
+                self.mode_list.append( (ell,-m) )
                 for reim in ['Re', 'Im']:
                     for pm in ['+', '-']:
                         group = h5file['hCoorb_%s_%s_%s%s'%(ell, m, reim, pm)]
@@ -825,6 +829,8 @@ filename: The hdf5 file containing the surrogate data."
         self.t_0 = self.t_coorb[0]
         self.t_f = self.t_coorb[-1]
 
+        self.mode_list = self.coorb_sur.mode_list
+
 
     def _check_unused_opts(self, precessing_opts):
         """ Call this at the end of call module to check if all the
@@ -867,7 +873,6 @@ Arguments:
     dfM, freqsM: These should be None, as we only have time domain models so
                 far.
     mode_list:  This should be None, use ellMax instead.
-    ell
     ellMax:     The maximum ell modes to use. The NRSur7dq4 surrogate model
                 contains modes up to L=4. Using ellMax=2 or ellMax=3 reduces
                 the evaluation time.
