@@ -2068,7 +2068,7 @@ waveforms in the above range and has been tested against existing
 NR waveforms in that range.
 
 See the __call__ method on how to evaluate waveforms.
-In the __call__ method, x must have format x = [q, chi1z, chi2z].
+In the __call__ method, x must have format x = [q, chi1, chi2].
     """
 
     def __init__(self, h5filename):
