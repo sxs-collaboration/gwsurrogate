@@ -86,21 +86,21 @@ def NRSur7dq4_samples(i):
   if i==0:
     chiA = [-0.2, 0.4, 0.1]
     chiB = [-0.5, 0.2, -0.4]
-    precessing_opts = {'init_quat': [1,0,0,0],
+    precessing_opts = {'quat_ref': [1,0,0,0],
                        'return_dynamics': True,
                        'use_lalsimulation_conventions': True}
     return [2., chiA, chiB], None, precessing_opts
   elif i==1:
     chiA = [-0.2, 0.4, 0.1]
     chiB = [-0.5, 0.2, -0.4]
-    precessing_opts = {'init_quat': [1,0,0,0],
+    precessing_opts = {'quat_ref': [1,0,0,0],
                        'return_dynamics': True,
                        'use_lalsimulation_conventions': False}
     return [3., chiA, chiB], None, precessing_opts
   elif i==2:
     chiA = [-0.2, 0.4, 0.1]
     chiB = [-0.5, 0.2, -0.4]
-    precessing_opts = {'init_quat': [1,0,0,0],
+    precessing_opts = {'quat_ref': [1,0,0,0],
                        'return_dynamics': True,
                        'use_lalsimulation_conventions': True}
     return [5., chiA, chiB], None, precessing_opts
