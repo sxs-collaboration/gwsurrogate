@@ -108,13 +108,11 @@ instructions, see the basics.ipynb Jupyter notebook.
 
 If you have downloaded the entire project as a tar.gz file, its a good idea
 to run some regression tests. Note that if you are running the model regression
-tests, regression data must be generated locally on your machine.
+tests, regression data can either be generated locally on your machine or
+will automatically download.
 
 
 ```
->>> cd test                          # move into the folder test
->>> python test_model_regression.py  # create model regression data
->>> cd ..                            # move back to the top-level folder
 >>> pytest                           # run all tests
 >>> pytest -v -s                     # run all tests with high verbosity
 ```
@@ -122,7 +120,7 @@ tests, regression data must be generated locally on your machine.
 # NSF Support #
 
 This package is based upon work supported by the National Science Foundation 
-under PHY-1316424 and PHY-1208861.
+under PHY-1316424, PHY-1208861, and PHY-1806665.
 
 Any opinions, findings, and conclusions or recommendations expressed in 
 gwsurrogate are those of the authors and do not necessarily reflect the 

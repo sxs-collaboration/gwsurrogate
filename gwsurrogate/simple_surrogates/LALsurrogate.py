@@ -1,3 +1,9 @@
+""" This code as intended to be used to match the LAL API for calling
+waveforms. Its far from finished and unlikely to be useful for 
+new surrogate models.
+
+Keep around for now, but consider deleting (7/2019))."""
+
 
 from __future__ import division # for python 2
 
