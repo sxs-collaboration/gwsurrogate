@@ -27,37 +27,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-# adding "_" prefix to potentially unfamiliar module names
-# so they won't show up in gws' tab completion
-import numpy as np
-from scipy.interpolate import splrep as _splrep
-from scipy.interpolate import splev as _splev
+# adding "_" prefix to module names so they won't show up in gws tab completion
+import numpy as _np
 from gwtools.harmonics import sYlm as _sYlm
-from gwtools import plot_pretty as _plot_pretty
-from gwtools import gwtools as _gwtools # from the package gwtools, import the module gwtools (gwtools.py)....
+from gwtools import gwtools as _gwtools
 from gwtools import gwutils as _gwutils
-from .parametric_funcs import function_dict as my_funcs
-from gwsurrogate.new.surrogate import ParamDim, ParamSpace
-
-import warnings
-import os
+from gwsurrogate.new.surrogate import _ParamDim, _ParamSpace
 
 from .new import surrogate as new_surrogate
 from .new import precessing_surrogate
 from . import catalog
 from .simple_surrogates.surrogate import EvaluateSingleModeSurrogate, EvaluateSurrogate
-
-try:
-  import matplotlib.pyplot as plt
-except:
-  print("Cannot load matplotlib.")
-
-try:
-  import h5py
-  h5py_enabled = True
-except ImportError:
-  h5py_enabled = False
-
 
 class SurrogateEvaluator(object):
     """
@@ -178,17 +158,20 @@ class SurrogateEvaluator(object):
 
             Also some sanity checks for precessing and tidal models.
         """
+
+        import warnings
+
         ## Allow violations within this value.
         # Sometimes, chi can be 1+1e-16 due to machine precision limitations,
         # this will ignore such cases
         grace = 1e-14
 
-        chiAmag = np.linalg.norm(chiA0)
-        chiBmag = np.linalg.norm(chiB0)
+        chiAmag = _np.linalg.norm(chiA0)
+        chiBmag = _np.linalg.norm(chiB0)
 
         if not self.keywords['Precessing']:
-            if (np.linalg.norm(chiA0[:2]) > grace
-                    or np.linalg.norm(chiB0[:2]) > grace):
+            if (_np.linalg.norm(chiA0[:2]) > grace
+                    or _np.linalg.norm(chiB0[:2]) > grace):
                 raise Exception('Got precessing spins for a nonprecessing '
                     'model')
 
@@ -486,8 +469,8 @@ class SurrogateEvaluator(object):
         the LAL frame diagram.
         """
 
-        chiA0 = np.array(chiA0)
-        chiB0 = np.array(chiB0)
+        chiA0 = _np.array(chiA0)
+        chiB0 = _np.array(chiB0)
 
         # Sanity checks
         if not skip_param_checks:
@@ -599,7 +582,7 @@ class SurrogateEvaluator(object):
             fake_neg_modes = not self.keywords['Precessing']
 
             # Follows the LAL convention (see help text)
-            h = self._mode_sum(h, inclination, np.pi/2,
+            h = self._mode_sum(h, inclination, _np.pi/2,
                     fake_neg_modes=fake_neg_modes)
 
         # Rescale domain to physical units
@@ -613,11 +596,11 @@ class SurrogateEvaluator(object):
         # Assuming times/freqs were specified, so they must be the same
         # when returning
         if (times is not None):
-            if not np.array_equal(domain, times):
+            if not _np.array_equal(domain, times):
                 raise Exception("times were given as input but returned "
                     "domain somehow does not match.")
         if (freqs is not None):
-            if not np.array_equal(domain, freqs):
+            if not _np.array_equal(domain, freqs):
                 raise Exception("freqs were given as input but returned "
                     "domain somehow does not match.")
 
@@ -908,6 +891,8 @@ class LoadSurrogate(object):
                                 surrogate name and (ii) the model name (e.g.
                                 NRHybSur3dq8Tidal) as SURROGATE_NAME_SPLICED."""
 
+
+        import os
 
         # the "output" of this if-block is surrogate_h5file and surrogate_name
         # to be used for "SURROGATE_CLASSES[surrogate_name](surrogate_h5file)"
