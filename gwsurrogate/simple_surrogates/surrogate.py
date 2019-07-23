@@ -1,21 +1,11 @@
 """ Gravitational Wave Surrogate classes for text and hdf5 files.
 
-These clases are generic in that they can load many different surrogate
-hdf5 files as long as they are in the correct format (see SurrogateIO).
+These classes are generic in that they can load many different surrogate
+data files as long as they are in the correct format (see SurrogateIO).
 
-These classes are soley used for 1D surrogate models of a certain type. 
-Namely, they are built "mode-by-mode" usinge direct modeling of each mode
-with simple techniques. Higher dimensional surrogate used more complicated
-modelig and cannot be put into this form. 
-
-EvaluateSingleModeSurrogate: Given an hdf5 or text-based surrogate model, this
-class can be used to load a single mode from that file. 
-
-EvaluateSurrogate: Given an hdf5 or text-based surrogate model, this can be
-used to load all modes from that file
-
-CompareSingleModeSurrogate: compare to surrogate object loaded with either
-of the above
+These classes are solely used for 1D surrogate models of a certain type. 
+Namely, they are built "mode-by-mode" using direct modeling of each mode
+with simple techniques.
 
 Current models that can be loaded this way include 
 * "SpEC_q1_10_NoSpin"
@@ -24,10 +14,18 @@ Current models that can be loaded this way include
 * "SpEC_q1_10_NoSpin_linear"
 
 These models can also be used with the generic surrogate API LoadSurrogate. 
-However, the EvaluateSurrogate class makes availble certain lower-level
-data objects that might be useful for some purpoes. 
+However, the EvaluateSurrogate class makes available certain lower-level
+data objects that might be useful for some purposes. 
 
-"""
+EvaluateSingleModeSurrogate: Given an hdf5 or text-based surrogate model, this
+class can be used to load a single mode from that file. 
+
+EvaluateSurrogate: Given an hdf5 or text-based surrogate model, this can be
+used to load all modes from that file.
+
+CompareSingleModeSurrogate: compare to surrogate object loaded with either
+of the above"""
+
 from __future__ import division # for python 2
 
 __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
@@ -1258,6 +1256,14 @@ class EvaluateSurrogate():
  
     return single_mode_dict
 
+
+
+class SurrogateEvaluatorWrapper(object):
+  """Evaluate multi-mode surrogates. This class provides a light-weight
+  wrapper around EvaluateSurrogate such that the __call__ function's
+  signature is the one expected by SurrogateEvaluator."""
+
+  pass #TODO: Write Me!
 
 ####################################################
 # TODO: loop over all data defined in IO class
