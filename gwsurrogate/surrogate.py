@@ -32,11 +32,15 @@ import numpy as _np
 from gwtools.harmonics import sYlm as _sYlm
 from gwtools import gwtools as _gwtools
 from gwtools import gwutils as _gwutils
-from gwsurrogate.new.surrogate import _ParamDim, _ParamSpace
+from gwsurrogate.new.surrogate import ParamDim as _ParamDim
+from gwsurrogate.new.surrogate import ParamSpace as _ParamSpace
 
-from .new import surrogate as new_surrogate
-from .new import precessing_surrogate
+
 from . import catalog
+
+from .new import surrogate as _new_surrogate
+from .new import precessing_surrogate as _precessing_surrogate
+#from .simple_surrogates import surrogate as simple_surrogate
 from .simple_surrogates.surrogate import EvaluateSingleModeSurrogate, EvaluateSurrogate
 
 class SurrogateEvaluator(object):
@@ -671,7 +675,7 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         The __call__ function of self._sur_dimless() should take all inputs
         passed to self._sur_dimless() in the __call__ function of this class.
         """
-        sur = new_surrogate.AlignedSpinCoOrbitalFrameSurrogate()
+        sur = _new_surrogate.AlignedSpinCoOrbitalFrameSurrogate()
         sur.load(self.h5filename)
         return sur
 
@@ -749,7 +753,7 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
         The __call__ function of self._sur_dimless() should take all inputs
         passed to self._sur_dimless() in the __call__ function of this class.
         """
-        sur = new_surrogate.AlignedSpinCoOrbitalFrameSurrogateTidal()
+        sur = _new_surrogate.AlignedSpinCoOrbitalFrameSurrogateTidal()
         sur.load(self.h5filename)
         return sur
 
@@ -828,7 +832,7 @@ In the __call__ method, x must have format x = [q, chi1, chi2].
         passed to self._sur_dimless() in the __call__ function of this class.
         See NRHybSur3dq8 for an example.
         """
-        sur = precessing_surrogate.PrecessingSurrogate(self.h5filename)
+        sur = _precessing_surrogate.PrecessingSurrogate(self.h5filename)
         return sur
 
     def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,

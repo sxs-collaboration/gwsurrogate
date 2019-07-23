@@ -70,13 +70,13 @@ of interest.
 
 """
 
-from . import surrogate
-__author__ = surrogate.__author__
-__email__ = surrogate.__email__
-__copyright__ = surrogate.__copyright__
-__license__ = surrogate.__license__
-__version__ = surrogate.__version__
-__doc__ = surrogate.__doc__
+from . import surrogate as _surrogate
+__author__ = _surrogate.__author__
+__email__ = _surrogate.__email__
+__copyright__ = _surrogate.__copyright__
+__license__ = _surrogate.__license__
+__version__ = _surrogate.__version__
+__doc__ = _surrogate.__doc__
 
 from .surrogate import *
 from . import catalog
