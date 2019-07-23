@@ -30,8 +30,8 @@ THE SOFTWARE.
 import numpy as np
 import os as os
 import h5py
-from .parametric_funcs import function_dict as my_funcs
-from .new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
+from ..parametric_funcs import function_dict as my_funcs
+from ..new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
 import collections
 
 surrogate_description = """* Description of tags:
@@ -844,4 +844,28 @@ class TextSurrogateWrite(SurrogateBaseIO):
       np.savetxt(fname,X,fmt=fmt)
 
 
+##############################################
+class ExportSurrogate(H5Surrogate, TextSurrogateWrite):
+  """Export single-mode surrogate"""
+  
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def __init__(self, path):
+    
+    # export HDF5 or Text surrogate data depending on input file extension
+    ext = path.split('.')[-1]
+    if ext == 'hdf5' or ext == 'h5':
+      _H5Surrogate.__init__(self, file=path, mode='w')
+    else:
+      raise ValueError('use TextSurrogateWrite instead')
 
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def write_waveform(t, hp, hc, filename='output',ext='bin'):
+  """handy helper to save waveform. write waveform to text or numpy
+     binary file"""
+
+  if( ext == 'txt'):
+    np.savetxt(filename, [t, hp, hc])
+  elif( ext == 'bin'):
+    np.save(filename, [t, hp, hc])
+  else:
+    raise ValueError('not a valid file extension')
