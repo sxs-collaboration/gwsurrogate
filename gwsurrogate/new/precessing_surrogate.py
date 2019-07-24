@@ -1,16 +1,22 @@
 """
 A module for evaluating precessing surrogate models of gravitational waves
 from numerical relativity simulations of binary black hole mergers.
+
+
+NOTE: Currently, this code only works for the NRSur7dq4 model. Yet most
+of the routines are general purpose. The function _get_fit_settings
+provides settings for NRSur7dq4. A few other places may have hard-coded values.
+
+NOTE: Many of these functions are borrowed from the NR7dq2 python package.
 """
 
 import os
 import numpy as np
 import h5py
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from gwsurrogate.precessing_utils import _utils
 import warnings
 from gwtools.harmonics import sYlm
-from gwsurrogate import spline_interp_Cwrapper
+from gwsurrogate.new.surrogate import _splinterp_Cwrapper
 
 
 ###############################################################################
@@ -152,10 +158,13 @@ def _get_fit_settings():
      These are to rescale the mass ratio fit range
      from [-0.01, np.log(4+0.01)] to [-1, 1]. The chi fits are already in
      this range.
+
+
+     Values defined here are model-specific. These values are for NRSur7dq4.
     """
     q_fit_offset = -0.9857019407834238
     q_fit_slope = 1.4298059216576398
-    q_max_bfOrder = 4
+    q_max_bfOrder = 3
     chi_max_bfOrder = 2
     return q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder
 
@@ -312,7 +321,10 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
             for i in range(4)])
 
         ts = self.t[imin:imin+4]
-        dydt = np.array([spline(ts, x)(t) for x in dydts.T])
+
+        dydt = np.array([_splinterp_Cwrapper(np.array([t]), ts, x)[0] \
+                for x in dydts.T])
+
         return dydt
 
     def get_omega(self, i0, q, y):
@@ -321,16 +333,18 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
         omega = _eval_scalar_fit(self.fit_data[i0]['omega'], fit_params)
         return omega
 
-    def _get_t_ref(self, omega_ref, q, chiA0, chiB0, init_orbphase, init_quat):
+    def _get_t_from_omega(self, omega_ref, q, chiA0, chiB0, phi_ref,
+            quat_ref):
+
         if omega_ref > 0.201:
             raise Exception("Got omega_ref = %0.4f > 0.2, too "
-                    "large!"%(omega_ref))
+                    "large for the NRSur7dq4 model!"%(omega_ref))
 
-        y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
+        y0 = np.append(np.array([1., 0., 0., 0., phi_ref]),
                 np.append(chiA0, chiB0))
 
-        if init_quat is not None:
-            y0[:4] = init_quat
+        if quat_ref is not None:
+            y0[:4] = quat_ref
 
         omega0 = self.get_omega(0, q, y0)
         if omega_ref < omega0:
@@ -356,32 +370,59 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
 
         return t_ref
 
-    def __call__(self, q, chiA0, chiB0, init_quat=None, init_orbphase=0.0,
-                 t_ref=None, omega_ref=None):
+    def __call__(self, q, chiA0, chiB0, use_lalsimulation_conventions, \
+            quat_ref=None, phi_ref=0.0, t_ref=None, omega_ref=None, \
+            omega_low=None):
         """
 Computes the modeled NR dynamics given the initial conditions.
 
 Arguments:
 =================
 q: The mass ratio
-chiA0: The chiA vector at the reference time, given in the coprecessing frame
-chiB0: The chiB vector at the reference time, given in the coprecessing frame
-init_quat: The quaternion giving the rotation to the coprecessing frame at the
-           reference time. By default, this will be the identity quaternion,
-           indicating the coprecessing frame is aligned with the inertial frame.
-init_orbphase: The orbital phase in the coprecessing frame at the reference time
-t_ref: The reference (dimensionless) time, where the peak amplitude occurs at t=0.
-       Default: The initial time, t_0/M = -4500.
+chiA0: The chiA vector at the reference time.
+chiB0: The chiB vector at the reference time.
+use_lalsimulation_conventions:
+    If True, interprets the above spins using lalsimulation conventions.
+        where
+            \chi_z = \chi \cdot \hat{L}, where L is the orbital angular
+                momentum vector at the epoch.
+            \chi_x = \chi \cdot \hat{n}, where n = body2 -> body1 is the
+                separation vector at the epoch. body1 is the heavier body.
+            \chi_y = \chi \cdot \hat{L \cross n}.
+            These spin components are frame-independent as they are
+            defined using vector inner products. This is equivalent to
+            specifying the spins in the coorbital frame used in the
+            surrogate papers.
+
+    Else, interprets the above spins using the surrogate conventions,
+        where chiA0 = copresssing frame spins at the reference time.
+        Same for chiB0.
+
+    Specifically, if True, before evaluating the surrogate, the spins will be
+    rotated about the z-axis by phi_ref.
+
+quat_ref: The quaternion giving the rotation to the coprecessing frame at the
+        reference time. By default, this will be the identity quaternion,
+        indicating the coprecessing frame is aligned with the inertial frame.
+phi_ref: The orbital phase in the coprecessing frame at the reference
+        time.
+t_ref: The reference (dimensionless) time, where the peak amplitude occurs at
+        t=0.
 omega_ref: The dimensionless orbital angular frequency used to determine t_ref,
-       which is the time derivative of the orbital phase in the coprecessing frame.
-       Specify at most one of t_ref, omega_ref.
+        which is the time derivative of the orbital phase in the coprecessing
+        frame.
+        Specify at most one of t_ref, omega_ref.
+omega_low: The dimensionless orbital angular frequency used to determine t_low,
+        the start time of the waveform data. If None, uses the full surrogate
+        data.
 
 Returns:
 ==================
 q_copr: The quaternion representing the coprecessing frame with shape (4, L)
 orbphase: The orbital phase in the coprecessing frame with shape (L, )
-chiA: The time-dependent chiA in the coprecessing frame with shape (L, 3)
-chiB: The time-dependent chiB in the coprecessing frame with shape (L, 3)
+chiA_copr: The time-dependent chiA in the coprecessing frame with shape (L, 3)
+chiB_copr: The time-dependent chiB in the coprecessing frame with shape (L, 3)
+t_low: The time corresponding to omega_low.
 
 L = len(self.t), and these returned arrays are sampled at self.t
         """
@@ -389,6 +430,14 @@ L = len(self.t), and these returned arrays are sampled at self.t
         if t_ref is not None and omega_ref is not None:
             raise Exception("Specify at most one of t_ref, omega_ref.")
 
+        if use_lalsimulation_conventions:
+            # If True, the spin components are given in the Lalsimulation
+            # source frame (see See Harald Pfeiffer, T1800226-v1 for a
+            # diagram). The surrogate frame has the same z but has its x along
+            # the line of ascending nodes, so we must rotate the (x, y) spin
+            # components by phi_ref.
+            chiA0 = rotate_spin(chiA0, -1 * phi_ref)
+            chiB0 = rotate_spin(chiB0, -1 * phi_ref)
 
         normA = np.sqrt(np.sum(chiA0**2))
         normB = np.sqrt(np.sum(chiB0**2))
@@ -396,12 +445,26 @@ L = len(self.t), and these returned arrays are sampled at self.t
         if maxNorm > 1.001:
             raise Exception("Got a spin magnitude of %s > 1.0"%(maxNorm))
 
+        # Get reference time
         if omega_ref is not None:
-            t_ref = self._get_t_ref(omega_ref, q, chiA0, chiB0, init_orbphase,
-                init_quat)
+            t_ref = self._get_t_from_omega(omega_ref, q, chiA0, chiB0, \
+                    phi_ref, quat_ref)
 
-        y_of_t, i0 = self._initialize(q, chiA0, chiB0, init_quat,
-                init_orbphase, t_ref, normA, normB)
+        # Get start time
+        if omega_low is not None:
+            # If omega_low and omega_ref are the same, no need to
+            # recompute t_low
+            if abs(omega_low == omega_ref) < 1e-10:
+                t_low = t_ref
+            else:
+                t_low = self._get_t_from_omega(omega_low, q, chiA0, chiB0, \
+                        phi_ref, quat_ref)
+        else:
+            t_low = None
+
+
+        y_of_t, i0 = self._initialize(q, chiA0, chiB0, quat_ref,
+                phi_ref, t_ref, normA, normB)
 
         if i0 == 0:
             # Just gonna send it!
@@ -448,9 +511,9 @@ L = len(self.t), and these returned arrays are sampled at self.t
         chiA_copr = y_of_t[:, 5:8]
         chiB_copr = y_of_t[:, 8:]
 
-        return quat, orbphase, chiA_copr, chiB_copr
+        return quat, orbphase, chiA_copr, chiB_copr, t_low
 
-    def _initialize(self, q, chiA0, chiB0, init_quat, init_orbphase, t_ref,
+    def _initialize(self, q, chiA0, chiB0, quat_ref, phi_ref, t_ref,
             normA, normB):
         """
 Initializes an array of data with the initial conditions.
@@ -463,11 +526,11 @@ the nearest time node.
         # compared to self.t
         data = np.zeros((self.L-3, 11))
 
-        y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
+        y0 = np.append(np.array([1., 0., 0., 0., phi_ref]),
                 np.append(chiA0, chiB0))
 
-        if init_quat is not None:
-            y0[:4] = init_quat
+        if quat_ref is not None:
+            y0[:4] = quat_ref
 
         if t_ref is None:
             data[0, :] = y0
@@ -668,14 +731,18 @@ class CoorbitalWaveformSurrogate:
         self.t = h5file['t_coorb'].value
 
         self.data = {}
+        self.mode_list = []
         for ell in range(2, self.ellMax+1):
             # m=0 is different
+            self.mode_list.append( (ell,0) )
             for reim in ['real', 'imag']:
                 group = h5file['hCoorb_%s_0_%s'%(ell, reim)]
                 self.data['%s_0_%s'%(ell, reim)] \
                         = _extract_component_data(group)
 
             for m in range(1, ell+1):
+                self.mode_list.append( (ell,m) )
+                self.mode_list.append( (ell,-m) )
                 for reim in ['Re', 'Im']:
                     for pm in ['+', '-']:
                         group = h5file['hCoorb_%s_%s_%s%s'%(ell, m, reim, pm)]
@@ -712,8 +779,7 @@ ellMax: The maximum ell mode to evaluate.
         return modes
 
 ##############################################################################
-
-# Utility functions for the NRSurrogate7dq2 class:
+# Utility functions
 
 def rotate_spin(chi, phase):
     """For transforming spins between the coprecessing and coorbital frames"""
@@ -737,8 +803,9 @@ def inertial_waveform_modes(t, orbphase, quat, h_coorb):
     h_inertial = rotateWaveform(qfull, h_coorb)
     return h_inertial
 
-def splinterp_many(t_in, t_out, many_things):
-    return np.array([spline(t_in, thing)(t_out) for thing in many_things])
+def splinterp_many(t_out, t_in, many_things):
+    return np.array([_splinterp_Cwrapper(t_out, t_in, thing) \
+            for thing in many_things])
 
 def mode_sum(h_modes, ellMax, theta, phi):
     coefs = []
@@ -778,148 +845,111 @@ filename: The hdf5 file containing the surrogate data."
         self.t_0 = self.t_coorb[0]
         self.t_f = self.t_coorb[-1]
 
-    def get_dynamics(self, q, chiA0, chiB0, init_phase=0.0, init_quat=None,
-                     t_ref=None, omega_ref=None):
+        self.mode_list = self.coorb_sur.mode_list
+
+
+    def _check_unused_opts(self, precessing_opts):
+        """ Call this at the end of call module to check if all the
+        precessing_opts have been used. Assumes precessing_opts were
+        extracted using pop.
         """
-Evaluates only the dynamics surrogate.
-q: The mass ratio mA/mB, with 1 <= q <= 2.
-chiA0, chiB0: The dimensionless black hole spins, given in the
-              coprecessing frame at the reference time
-init_phase: The orbital phase $\\varphi(t_ref)$ at the reference time
-init_quat: The unit quaternion representing the coprecessing frame at the
-           reference time.
-           If None, the coprecessing frame and inertial frames will be
-           aligned, and the spins can be given in the inertial frame.
-t_ref: The reference (dimensionless) time, where the peak amplitude occurs at t=0.
-       Default: The initial time, t_0/M = -4500.
-omega_ref: The orbital angular frequency in the coprecessing frame, used to
-           determine t_ref.
-       Specify at most one of t_ref, fM_ref.
+        if len(precessing_opts.keys()) != 0:
+            unused = ""
+            for k in precessing_opts.keys():
+                unused += "'%s', "%k
+            if unused[-2:] == ", ":     # get rid of trailing comma
+                unused = unused[:-2]
+            raise Exception('Unused keys in precessing_opts: %s'%unused)
 
-Returns:
-q_copr: The quaternion representing the coprecessing frame with shape (4, L)
-orbphase: The orbital phase in the coprecessing frame with shape (L, )
-chiA: The time-dependent chiA with shape (L, 3)
-chiB: The time-dependent chiB with shape (L, 3)
 
-These are sampled on self.tds which has length L.
+    def get_dynamics(self, q, chiA0, chiB0, \
+            use_lalsimulation_conventions=True, quat_ref=None, phi_ref=0.0, \
+            t_ref=None, omega_ref=None):
         """
-        return self.dynamics_sur(q, chiA0, chiB0, init_orbphase=init_phase,
-                 init_quat=init_quat, t_ref=t_ref, omega_ref=omega_ref)
-
-    def get_coorb_waveform(self, q, chiA_coorb, chiB_coorb, ellMax=4):
+        Wrapper for self.dynamics_sur()
         """
-Evaluates the coorbital waveform surrogate.
-q: The mass ratio mA/mB, with 1 <= q <=2.
-chiA_coorb, chiB_coorb: The spins in the coorbital frame, with shape (N, 3)
-    where N = len(self.t_coorb).
-ellMax: The maximum ell mode to evaluate.
+        quat_dyn, orbphase_dyn, chiA_copr_dyn, chiB_copr_dyn, t0 \
+            = self.dynamics_sur(q, chiA0, chiB0, \
+            use_lalsimulation_conventions, phi_ref=phi_ref, \
+            quat_ref=quat_ref, t_ref=t_ref, omega_ref=omega_ref)
+        return quat_dyn, orbphase_dyn, chiA_copr_dyn, chiB_copr_dyn
 
-Returns a 2d array with shape (n_modes, N) where the modes are ordered:
-    (2, -2), ..., (2, 2), (3, -3), ...
-with n_modes = 5, 12, or 21 for ellMax = 2, 3, or 4 respectively
-        """
-        return self.coorb_sur(q, chiA_coorb, chiB_coorb, ellMax=ellMax)
-
-    def get_time_from_freq(self, freq, q, chiA0, chiB0, init_phase=0.0,
-        init_quat=None, t_ref=None, fM_ref=None):
-        """
-Obtain the time at which a particular gravitational wave frequency occurs.
-freq: The gravitational wave frequency.
-See the __call__ docstring for other parameters.
-        """
-        # Determine omega_ref if needed
-        omega_ref = None
-        if fM_ref is not None:
-            omega_ref = fM_ref * np.pi
-
-        # Get freqs vs time
-        quat, orbphase, chiA_copr, chiB_copr = self.get_dynamics(
-                q, chiA0, chiB0, init_phase=init_phase, init_quat=init_quat,
-                t_ref=t_ref, omega_ref=omega_ref)
-
-        omega = np.gradient(orbphase, self.tds)
-        freqs = omega / np.pi
-
-        # Find the first time where freqs >= freq, and interpolate to find the time
-        if freqs[0] > freq:
-            raise Exception("Frequency %s too low: initial frequency is %s"%(
-                    freq, freq[0]))
-        if np.max(freqs) < freq:
-            raise Exception("Frequency %s too high: maximum frequency is %s"%(
-                    freq, np.max(freqs)))
-        i0 = np.where(freqs >= freq)[0][0]
-        t0 = np.interp(freq, freqs, self.tds)
-
-        return t0
 
     def __call__(self, x, phi_ref=None, fM_low=None, fM_ref=None, dtM=None,
             timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
-            precessing_opts=None, tidal_opts=None, par_dict=None,
-            return_dynamics=False):
+            precessing_opts=None, tidal_opts=None, par_dict=None):
         """
 Evaluates a precessing surrogate model.
 
 Arguments:
-    q: The mass ratio mA/mB, with 1 <= q <=2
-    chiA0, chiB0:   The initial dimensionless spins given in the coprecessing
-                    frame. They should be length 3 lists or numpy arrays.
-                    These are $\\vec{\chi_{1,2}^\mathrm{copr}(t_0)$ in THE PAPER.
-                    Their norms should be np.sqrt(chi0**2) <= 0.8
-    init_phase:     The initial orbital phase in the coprecessing frame.
-                    This is $\\varphi(t_0)$ in THE PAPER.
-    init_quat:      The initial unit quaternion (length 4 list or numpy array)
-                    giving the rotation from the coprecessing frame to the
-                    inertial frame.
-                    This is $\hat{q}(t_0)$ in THE PAPER.
-                    If None (default), uses the identity, in which case the spins
-                    in the coprecessing frame are equal to the spins in the
-                    inertial frame.
-    return_spins:   flag to return the inertial frame time-dependent spins,
-                    $\\vec{\chi_{1,2}(t)$.
-    t:              The times at which the output should be sampled.
-                    The output is interpolated from self.t_coorb using cubic
-                    splines. If t=None, returns the results at self.t_coorb.
-    theta, phi:     Either specify one or neither. If given, sums up the
-                    waveform modes for a gravitational wave propagation
-                    direction of (theta, phi) on a sphere centered on the
-                    source, where theta is the polar angle and phi is the
-                    azimuthal angle.
-                    If not given, returns a dictionary of waveform modes h_dict
-                    with (ell, m) keys such that (for example) the (2, 2) mode
-                    is h_dict[2, 2].
-    ellMax:           The maximum ell modes to use.
-                    The NRSur7dq2 surrogate model contains modes up to L=4.
-                    Using ellMax=2 or ellMax=3 reduces the evaluation time.
-    t_ref:
-    fM_ref:
-    t_ref:          The reference (dimensionless) time, where the peak amplitude
-                    occurs at t=0.
-                    Default: The initial time, t_0/M = -4500.
-    fM_ref:          A gravitational wave frequency used to determine t_ref,
-                    taken to be $\omega / pi$ where $\omega$ is the angular
-                    orbital frequency in the coprecessing frame.
-                    Specify at most one of t_ref, fM_ref.
-    use_lalsimulation_conventions: If True, interprets the spin directions and phi
-                    using lalsimulation conventions. Specifically, before evaluating
-                    the surrogate, the spins will be rotated about the z-axis by
-                    init_phase, and pi/2 will be added to phi if it is given.
-                    This agrees with lalsimulation's ChooseTDWaveform but not
-                    ChooseTDModes; set this to false to agree with ChooseTDModes.
-                    This is as of June 2018.
+    x:  Parameters, x = q, chiA0, chiB0. Where,
+        q: The mass ratio mA/mB, where A (B) refers to the heavier BH.
+        chiA0, chiB0:  The initial dimensionless spins given in the
+                coprecessing frame. They should be length 3 lists or numpy
+                arrays.  These are $\\vec{\chi_{1,2}^\mathrm{copr}(t_0)$ in
+                THE PAPER.
+
+        chiA0: The chiA vector at the reference time.
+        chiB0: The chiB vector at the reference time.
+        If use_lalsimulation_conventions is True, interprets the above spins
+        using lalsimulation conventions, where
+
+        If use_lalsimulation_conventions is True, interprets the above spins
+        using lalsimulation conventions, where
+            \chi_z = \chi \cdot \hat{L}, where L is the orbital angular
+                momentum vector at the epoch.
+            \chi_x = \chi \cdot \hat{n}, where n = body2 -> body1 is the
+                separation vector at the epoch. body1 is the heavier body.
+            \chi_y = \chi \cdot \hat{L \cross n}.
+            These spin components are frame-independent as they are
+            defined using vector inner products. This is equivalent to
+            specifying the spins in the coorbital frame used in the
+            surrogate papers.
+
+        Else, interprets the above spins using the surrogate conventions, where
+        chiA0 = copresssing frame spins at the reference time. Same for chiB0.
+
+    phi_ref:    The orbital phase in the coprecessing frame at the reference
+                frequency fM_ref.
+    fM_low:     Initial frequency in dimensionless units. Currently only
+                fM_low = 0 is allowed, in which case the full surrogate is
+                returned.
+    fM_ref:     Reference frequency in dimensionless units, at which the
+                reference frame and spins are defined.
+    dtM:        Time step in dimensionless units.
+    timesM:     Dimensionless times at which the output should be sampled.
+                Give at most one of dtM and timesM. If neither is given
+                returns the results sampled at self.t_coorb.
+    dfM, freqsM: These should be None, as we only have time domain models so
+                far.
+    mode_list:  This should be None, use ellMax instead.
+    ellMax:     The maximum ell modes to use. The NRSur7dq4 surrogate model
+                contains modes up to L=4. Using ellMax=2 or ellMax=3 reduces
+                the evaluation time.
+
+    precessing_opts:
+                A dictionary containing optional parameters for a precessing
+                surrogate model. Default: None.
+                Allowed keys are:
+                quat_ref: The unit quaternion (length 4 vector) giving the
+                    rotation from the coprecessing frame to the inertial frame
+                    at the reference epoch.
+                    Default: None, in which case the spins in the coprecessing
+                    frame are equal to the spins in the inertial frame.
+                return_dynamics:
+                    Return the frame dynamics and spin evolution along with
+                    the waveform. Default: False.
+                use_lalsimulation_conventions: See above. Default: True.
+                Example: precessing_opts = {
+                                    'quat_ref': [1,0,0,0],
+                                    'return_dynamics': True
+                                    }
+    tidal_opts: Should be None for this model.
+    par_dict: Should be None for this model.
+
 
 Returns:
-    h (with return_spins=False)
-  or
-    h, chiA, chiB (with return_spins=True)
-
-    h: If theta and phi are specified, h is a complex 1d array sampled at times
-       t (or self.t_coorb if t=None).
-       Otherwise, h is a dictionary with length-2 integer tuples (ell, m) keys,
-       and complex 1d arrays giving the (ell, m) mode as values.
-    chiA, chiB: The inertial frame spins with shape (N, 3), where N=len(t)
-                (or len(self.t_coorb) if t=None).
-
+    domain, h, dynamics.
         """
 
         if dfM is not None:
@@ -935,28 +965,23 @@ Returns:
             precessing_opts = {}
 
 
-        init_phase = precessing_opts.pop('init_phase', 0)
-        init_quat = precessing_opts.pop('init_quat', None)
+        phi_ref = phi_ref
+        quat_ref = precessing_opts.pop('quat_ref', None)
         return_dynamics = precessing_opts.pop('return_dynamics', False)
         use_lalsimulation_conventions \
-            = precessing_opts.pop('use_lalsimulation_conventions', False)
+            = precessing_opts.pop('use_lalsimulation_conventions', True)
+        self._check_unused_opts(precessing_opts)
 
         if ellMax is None:
             ellMax = 4
+        if ellMax > 4:
+            raise ValueError("NRSur7dq4 only allows ellMax<=4.")
 
         q, chiA0, chiB0 = x
-
-        if use_lalsimulation_conventions:
-            # rotate_spin rotates in the -z direction
-            chiA0 = rotate_spin(chiA0, -1 * init_phase)
-            chiB0 = rotate_spin(chiB0, -1 * init_phase)
-            if phi is not None:
-                phi += 0.5 * np.pi
 
         chiA_norm = np.sqrt(np.sum(chiA0**2))
         chiB_norm = np.sqrt(np.sum(chiB0**2))
 
-        ## Get dynamics
 
         # Get dimensionless omega_ref
         if fM_ref is None or fM_ref == 0:
@@ -964,32 +989,50 @@ Returns:
         else:
             omega_ref = fM_ref * np.pi
 
-        quat, orbphase, chiA_copr, chiB_copr = self.get_dynamics(
-                q, chiA0, chiB0, init_phase=init_phase, init_quat=init_quat,
-                t_ref=None, omega_ref=omega_ref)
+        # Get dimensionless omega_low
+        if fM_low is None or fM_low == 0:
+            omega_low = None
+        else:
+            omega_low = fM_low * np.pi
+
+        ## Get dynamics
+        quat_dyn, orbphase_dyn, chiA_copr_dyn, chiB_copr_dyn, t0 \
+            = self.dynamics_sur(q, chiA0, chiB0, \
+            use_lalsimulation_conventions, phi_ref=phi_ref, \
+            quat_ref=quat_ref, t_ref=None, omega_ref=omega_ref, \
+            omega_low=omega_low)
+
+        ## chiA0 and chiB0 get transformed in self.dynamics_sur if
+        ## use_lalsimulation_conventions is True. To avoid accidental usage
+        ## without this transformation, we set chiA0 and chiB0 to None here.
+        chiA0 = None
+        chiB0 = None
 
         # Interpolate to the coorbital time grid, and transform to coorb frame.
         # Interpolate first since coorbital spins oscillate faster than
         # coprecessing spins
-        chiA_copr = splinterp_many(self.tds, self.t_coorb, chiA_copr.T).T
-        chiB_copr = splinterp_many(self.tds, self.t_coorb, chiB_copr.T).T
+        chiA_copr = splinterp_many(self.t_coorb, self.tds, chiA_copr_dyn.T).T
+        chiB_copr = splinterp_many(self.t_coorb, self.tds, chiB_copr_dyn.T).T
         chiA_copr = normalize_spin(chiA_copr, chiA_norm)
         chiB_copr = normalize_spin(chiB_copr, chiB_norm)
-        orbphase = spline(self.tds, orbphase)(self.t_coorb)
-        quat = splinterp_many(self.tds, self.t_coorb, quat)
+        orbphase = _splinterp_Cwrapper(self.t_coorb, self.tds, orbphase_dyn)
+
+        quat = splinterp_many(self.t_coorb, self.tds, quat_dyn)
         quat = quat/np.sqrt(np.sum(abs(quat)**2, 0))
         chiA_coorb, chiB_coorb = coorb_spins_from_copr_spins(
                 chiA_copr, chiB_copr, orbphase)
 
+
         # Evaluate coorbital waveform surrogate
-        h_coorb = self.get_coorb_waveform(q, chiA_coorb, chiB_coorb, ellMax=ellMax)
+        h_coorb = self.coorb_sur(q, chiA_coorb, chiB_coorb, \
+                ellMax=ellMax)
 
         # Transform the sparsely sampled waveform
         h_inertial = inertial_waveform_modes(self.t_coorb, orbphase, quat,
                 h_coorb)
 
         if timesM is not None:
-            if timesM[-1] > self.t_coorb[-1]:
+            if timesM[-1] > self.t_coorb[-1] + 0.01:
                 raise Exception("'times' includes times larger than the"
                     " maximum time value in domain.")
             if timesM[0] < self.t_coorb[0]:
@@ -1005,8 +1048,10 @@ Returns:
             ## Interpolate onto uniform domain if needed
             do_interp = True
             if dtM is not None:
-                # FIXME use fM_low
-                t0 = self.t_coorb[0]
+                # If omega_low=0 or None, t0 would have been set to None,
+                # in which case we use the full surrogate length
+                if t0 is None:
+                    t0 = self.t_coorb[0]
                 tf = self.t_coorb[-1]
                 num_times = int(np.ceil((tf - t0)/dtM));
                 timesM = t0 + dtM*np.arange(num_times)
@@ -1015,8 +1060,8 @@ Returns:
 
 
         if do_interp:
-            hre = splinterp_many(self.t_coorb, timesM, np.real(h_inertial))
-            him = splinterp_many(self.t_coorb, timesM, np.imag(h_inertial))
+            hre = splinterp_many(timesM, self.t_coorb, np.real(h_inertial))
+            him = splinterp_many(timesM, self.t_coorb, np.imag(h_inertial))
             h_inertial = hre + 1.j*him
 
         # Make mode dict
@@ -1029,28 +1074,27 @@ Returns:
 
         #  Transform and interpolate spins if needed
         if return_dynamics:
-            chiA_inertial = transformTimeDependentVector(quat, chiA_copr.T).T
-            chiB_inertial = transformTimeDependentVector(quat, chiB_copr.T).T
+
             if do_interp:
-                chiA_inertial = splinterp_many(self.t_coorb, timesM,
-                        chiA_inertial.T).T
-
-                chiB_inertial = splinterp_many(self.t_coorb, timesM,
-                        chiB_inertial.T).T
-
-                chiA_inertial = normalize_spin(chiA_inertial, chiA_norm)
-                chiB_inertial = normalize_spin(chiB_inertial, chiB_norm)
-
-                orbphase = spline(self.t_coorb, orbphase)(timesM)
-                quat = splinterp_many(self.t_coorb, timesM, quat)
+                ## Interpolate from self.tds to timesM because that is what
+                ## is done in the LAL code.
+                chiA_copr = splinterp_many(timesM, self.tds, chiA_copr_dyn.T).T
+                chiB_copr = splinterp_many(timesM, self.tds, chiB_copr_dyn.T).T
+                chiA_copr = normalize_spin(chiA_copr, chiA_norm)
+                chiB_copr = normalize_spin(chiB_copr, chiB_norm)
+                orbphase = _splinterp_Cwrapper(timesM, self.tds, orbphase_dyn)
+                quat = splinterp_many(timesM, self.tds, quat_dyn)
                 quat = quat/np.sqrt(np.sum(abs(quat)**2, 0))
 
-                dynamics = {
-                    'chiA': chiA_inertial,
-                    'chiB': chiB_inertial,
-                    'q_copr': quat,
-                    'orbphase': orbphase,
-                    }
+            chiA_inertial = transformTimeDependentVector(quat, chiA_copr.T).T
+            chiB_inertial = transformTimeDependentVector(quat, chiB_copr.T).T
+
+            dynamics = {
+                'chiA': chiA_inertial,
+                'chiB': chiB_inertial,
+                'q_copr': quat,
+                'orbphase': orbphase,
+                }
         else:
             dynamics = None
 

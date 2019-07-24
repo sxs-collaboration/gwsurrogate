@@ -46,7 +46,7 @@ import warnings
 import os
 
 from .new import surrogate as new_surrogate
-#from .new import precessing_surrogate
+from .new import precessing_surrogate
 from . import catalog
 
 try:
@@ -1518,17 +1518,22 @@ class SurrogateEvaluator(object):
     INPUT
     =====
     q :         Mass ratio, mA/mB >= 1.
-    chiA0:      Dimensionless spin vector of the heavier black hole, given in
-                the coprecessing frame at reference epoch.
-    chiB0:      Dimensionless spin vector of the lighter black hole, given in
-                the coprecessing frame at reference epoch.
+    chiA0:      Dimensionless spin vector of the heavier black hole at
+                reference epoch.
+    chiB0:      Dimensionless spin vector of the lighter black hole at
+                reference epoch.
 
-                The coprecessing frame is the minimal rotation frame of
-                arXiv:1110.2965, where the z-axis of this frame always tracks
-                the direction of the instantaneous orbital angular momentum.
-                For nonprecessing models, the direction of orbital angular
-                momentum is constant and this is the same as the inertial
-                frame.
+                This follows the same convention as LAL, where the spin
+                components are defined as:
+                \chi_z = \chi \cdot \hat{L}, where L is the orbital angular
+                    momentum vector at the epoch.
+                \chi_x = \chi \cdot \hat{n}, where n = body2 -> body1 is the
+                    separation vector at the epoch. body1 is the heavier body.
+                \chi_y = \chi \cdot \hat{L \cross n}.
+                These spin components are frame-independent as they are
+                defined using vector inner products. This is equivalent to
+                specifying the spins in the coorbital frame used in the
+                surrogate papers.
 
     M, dist_mpc: Either specify both M and dist_mpc or neither.
         M        :  Total mass (solar masses). Default: None.
@@ -1536,13 +1541,24 @@ class SurrogateEvaluator(object):
 
     f_low :     Instantaneous initial frequency of the (2, 2) mode. In
                 practice, this is estimated to be twice the initial orbital
-                frequency in the coprecessing frame.
-                Should be in cycles/M if units = 'dimensionless', should be in
-                Hertz if units = 'mks'.
+                frequency in the coprecessing frame. Note: the coprecessing
+                frame is the minimal rotation frame of arXiv:1110.2965.
+
+                f_low should be in cycles/M if units = 'dimensionless',
+                should be in Hertz if units = 'mks'.
                 If 0, the entire waveform is returned.
                 Default: None, must be specified by user.
+
+                NOTE: For some models like NRSur7dq4, f_low=0 is recommended.
+                The role of f_low is only to truncate the lower frequencies
+                before returning the waveform. Since this model is already
+                very short, this truncation is not required. On the other hand,
+                f_ref is used to set the reference epoch, and can be freely
+                specified.
+
                 WARNING: Using f_low=0 with a small dt (like 0.1M) can lead to
-                very expensive evaluation for hybridized surrogates.
+                very expensive evaluation for hybridized surrogates like
+                NRHybSur3dq8.
 
     f_ref:      Frequency used to set the reference epoch at which the
                 reference frame is defined and the spins are specified.
@@ -1591,30 +1607,44 @@ class SurrogateEvaluator(object):
                 no clear hierarchy. To get the individual modes just don't
                 specify inclination and a dictionary of modes will be returned.
 
-    phi_ref :   Orbital phase at reference epoch. Default: 0.
+    phi_ref :   The angle on the plane of the orbit from the line of ascending
+                nodes to the position of the body 1 at reference epoch. Can
+                also be thought of as the orbital phase at reference epoch.
+                Default: 0.
 
     inclination : Inclination angle between the orbital angular momentum
                 direction at the reference epoch and the line-of-sight to the
-                observer. If inclination is None, the mode data is returned as
-                a dictionary. If specified, the complex strain (h = hplus -i
-                hcross) evaluated at (inclination, pi/2) on the sky of the
-                reference frame is returned. See below for definition of the
-                reference frame. Default: None.
+                observer. 
+                If inclination is None, the mode data is returned as a
+                dictionary. 
+                If specified, the complex strain (h = hplus -i hcross)
+                evaluated at (inclination, pi/2) on the sky of the reference
+                frame is returned. This follows the same convention as LAL,
+                where the azimuthal angle is set through phi_ref. See below
+                for definition of the reference frame.
+                Default: None.
 
     precessing_opts:
                 A dictionary containing optional parameters for a precessing
                 surrogate model. Default: None.
                 Allowed keys are:
-                init_quat: The initial unit quaternion (length 4 vector)
-                    giving the rotation from the coprecessing frame to the
-                    inertial frame at the reference epoch.
+                quat_ref: The unit quaternion (length 4 vector) giving the
+                    rotation from the coprecessing frame to the inertial frame
+                    at the reference epoch.
                     Default: None, in which case the spins in the coprecessing
                     frame are equal to the spins in the inertial frame.
                 return_dynamics:
                     Return the frame dynamics and spin evolution along with
                     the waveform. Default: False.
+                use_lalsimulation_conventions:
+                    If True, interprets the spin directions and init_orbphase
+                    using lalsimulation conventions. Specifically, before
+                    evaluating the surrogate, the spins will be rotated about
+                    the z-axis by init_phase. Default: True (see 
+                    DynamicsSurrogate, which is the only place this option is
+                    used).
                 Example: precessing_opts = {
-                                    'init_quat': [1,0,0,0],
+                                    'quat_ref': [1,0,0,0],
                                     'return_dynamics': True
                                     }
 
@@ -1700,9 +1730,9 @@ class SurrogateEvaluator(object):
                 orbphase = dynamics['orbphase']
                     The orbital phase in the coprecessing frame with length L.
                 chiA = dynamics['chiA']
-                    The time-dependent inertial frame chiA with shape (L, 3)
+                    The inertial frame chiA with shape (L, 3)
                 chiB = dynamics['chiB']
-                    The time-dependent inertial frame chiB with shape (L, 3)
+                    The inertial frame chiB with shape (L, 3)
 
 
     IMPORTANT NOTES:
@@ -1718,8 +1748,7 @@ class SurrogateEvaluator(object):
 
         Now, if inclination is given, the waveform is evaluated at
         (inclination, pi/2) in the reference frame. This agrees with the LAL
-        convention. See Harald Pfeiffer's, LIGO DCC document T18002260-v1 for
-        the LAL frame diagram.
+        convention. See LIGO DCC document T1800226 for the LAL frame diagram.
         """
 
         chiA0 = np.array(chiA0)
@@ -2032,7 +2061,7 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
 class NRSur7dq4(SurrogateEvaluator):
     """
 A class for the NRSur7dq4 surrogate model presented in Varma et al. 2019,
-arxiv:xxxx.xxxx.    #FIXME
+arxiv1905.09300.
 
 Evaluates gravitational waveforms generated by precessing binary black hole
 systems with generic mass ratios and spins.
@@ -2051,7 +2080,7 @@ waveforms in the above range and has been tested against existing
 NR waveforms in that range.
 
 See the __call__ method on how to evaluate waveforms.
-In the __call__ method, x must have format x = [q, chi1z, chi2z].
+In the __call__ method, x must have format x = [q, chi1, chi2].
     """
 
     def __init__(self, h5filename):
@@ -2102,8 +2131,8 @@ In the __call__ method, x must have format x = [q, chi1z, chi2z].
 ####       the default cases suitable for most people
 SURROGATE_CLASSES = {
     "NRHybSur3dq8": NRHybSur3dq8,
+    "NRSur7dq4": NRSur7dq4,
     "NRHybSur3dq8Tidal": NRHybSur3dq8Tidal,
-#    "NRSur7dq4": NRSur7dq4,
 #    "SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5":EvaluateSurrogate # model SpEC_q1_10_NoSpin
         }
 

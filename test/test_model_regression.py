@@ -21,6 +21,9 @@ from the folder test.
 NOTE: waveform regression data is saved with single precision In order to,
      (i) reduce the size of the regression file and
      (ii) allow h5diff to not fail due to round-off error (Still fails! switched to allclose)
+
+NOTE: No regression on dynamics surrogate output. This is probably
+      OK since coorb full surrogate uses dynamics output.
 """
 
 
@@ -28,7 +31,7 @@ from __future__ import division
 import numpy as np
 import gwsurrogate as gws
 from gwsurrogate.new import surrogate 
-import h5py, os, subprocess, time
+import h5py, os, subprocess, time, warnings
 
 # set global tolerances for floating point comparisons (see np.testing.assert_allclose)
 atol = 0.0
@@ -45,31 +48,72 @@ rtol = 1.e-11
 surrogate_old_interface = ["SpEC_q1_10_NoSpin","EOBNRv2_tutorial","EOBNRv2","SpEC_q1_10_NoSpin_linear"]
 
 # news loader class
-surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal"]
+surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal","NRSur7dq4"]
 
 # Most models are randomly sampled, but in some cases its useful to provide 
 # test points to activate specific code branches. This is done by mapping 
 # a model (named in the surrogate catalog) to a function that will return 
 # 3 unique paramter points.
 #
-# Each sampler should return a list [q, chiAz, chiBz] and a dictionary tidOpts
+# Each sampler should return a list [q, chiA, chiB] and a dictionary tidOpts
+# and a dictionary precesingOpts
 model_sampler = {}
 
 def NRHybSur3dq8Tidal_samples(i):
   """ sample points for the NRHybSur3dq8Tidal model
   the ith sample point to evaluate the model at
-  samples are returned as [q, chiAz, chiBz], tidOpts """
+  samples are returned as [q, chiA, chiB], tidOpts """
 
   assert i in [0,1,2]
 
   if i==0:
-    return [1.2, .1, .1], {'Lambda1': 1000.0, 'Lambda2': 4000.0}
+    return [1.2, [0.,0.,.1], [0.,0.,.1]], {'Lambda1': 1000.0, 'Lambda2': 4000.0}, None
   elif i==1:
-    return [1.2, .4, -.4], {'Lambda1': 0.0, 'Lambda2': 9000.0}
+    return [1.2, [0.,0.,.4], [0.,0.,-.4]], {'Lambda1': 0.0, 'Lambda2': 9000.0}, None
   elif i==2:
-    return [1.2, .0, .0], {'Lambda1': 0.0, 'Lambda2': 0.0}
+    return [1.2, [0.,0.,.0], [0.,0.,.0]], {'Lambda1': 0.0, 'Lambda2': 0.0}, None
 
 model_sampler["NRHybSur3dq8Tidal"] = NRHybSur3dq8Tidal_samples
+
+
+def NRSur7dq4_samples(i):
+  """ sample points for the NRSur7dq4 model
+  the ith sample point to evaluate the model at
+  samples are returned as [q, chiA, chiB], precessingOpts """
+
+  assert i in [0,1,2]
+
+  if i==0:
+    chiA = [-0.2, 0.4, 0.1]
+    chiB = [-0.5, 0.2, -0.4]
+    precessing_opts = {'quat_ref': [1,0,0,0],
+                       'return_dynamics': True,
+                       'use_lalsimulation_conventions': True}
+    return [2., chiA, chiB], None, precessing_opts
+  elif i==1:
+    chiA = [-0.2, 0.4, 0.1]
+    chiB = [-0.5, 0.2, -0.4]
+    precessing_opts = {'quat_ref': [1,0,0,0],
+                       'return_dynamics': True,
+                       'use_lalsimulation_conventions': False}
+    return [3., chiA, chiB], None, precessing_opts
+  elif i==2:
+    chiA = [-0.2, 0.4, 0.1]
+    chiB = [-0.5, 0.2, -0.4]
+    precessing_opts = {'quat_ref': [1,0,0,0],
+                       'return_dynamics': True,
+                       'use_lalsimulation_conventions': True}
+    return [5., chiA, chiB], None, precessing_opts
+
+model_sampler["NRSur7dq4"] = NRSur7dq4_samples
+
+def flatten_params(x):
+  """ Convert [q, chiA, chiB] to [q, chiAx, chiAy, chiAz, chiBx, chiBy, chiBz].
+
+  This function is only used when writting samples from specific model samplers
+  to HDF5 file. """
+
+  return [x[0],x[1][0],x[1][1],x[1][2],x[2][0],x[2][1],x[2][2]]
 
 
 def test_model_regression(generate_regression_data=False):
@@ -103,8 +147,9 @@ def test_model_regression(generate_regression_data=False):
                "EOBNRv2", #TODO: this is two surrogates in one. Break up?
                #"SpEC_q1_10_NoSpin",
                #"EOBNRv2_tutorial",
-               #"NRHybSur3dq8"
-               #"NRHybSur3dq8Tidal"
+               #"NRHybSur3dq8",
+               #"NRHybSur3dq8Tidal",
+               #"NRSur7dq4"
                ]
 
   # Common directory where all surrogates are assumed to be located
@@ -158,8 +203,12 @@ def test_model_regression(generate_regression_data=False):
     elif model in surrogate_loader_interface:
       # sur = gws.LoadSurrogate(datafile) # tidal and aligned models use the same h5 file (so wrong one loaded) 
       sur = gws.LoadSurrogate(model)
-      p_mins = sur._sur_dimless.param_space.min_vals()
-      p_maxs = sur._sur_dimless.param_space.max_vals()
+      try:
+        p_mins = sur._sur_dimless.param_space.min_vals()
+        p_maxs = sur._sur_dimless.param_space.max_vals()
+      except AttributeError: # NRSur7dq4 does not have object sur._sur_dimless.param_space
+        p_mins = None
+        p_maxs = None
     else:
       sur = surrogate.FastTensorSplineSurrogate()
       sur.load(datafile)
@@ -175,7 +224,7 @@ def test_model_regression(generate_regression_data=False):
       for i in range(3):  # sample parameter space 3 times 
         if model in list(model_sampler.keys()):
           custom_sampler = model_sampler[model]
-          x, tidOpts = custom_sampler(i) # [q, chiAz, chiBz], tidOpts
+          x, tidOpts, pecOpts = custom_sampler(i) # [q, chiA, chiB], tidOpts
         else: # default sampler for spin-aligned BBH models
           x = [] # [q, chiAz, chiBz]
           for j in range(len(p_mins)):
@@ -184,19 +233,21 @@ def test_model_regression(generate_regression_data=False):
             tmp = float(np.random.uniform(xj_min, xj_max,size=1))
             x.append(tmp)
           tidOpts = None
-        param_samples.append([x, tidOpts])
+          pecOpts = None
+        param_samples.append([x, tidOpts, pecOpts])
     else: # get point at which to compute comparison waveform data
       for i in range(3):
         if model in list(model_sampler.keys()): # use sample points if provided 
           custom_sampler = model_sampler[model]
-          x, tidOpts = custom_sampler(i) # [q, chiAz, chiBz], tidOpts
+          x, tidOpts, pecOpts = custom_sampler(i) # [q, chiA, chiB], tidOpts
         else: # pull regression points from regression data file; none-tidal models only
           print(model+"/parameter%i/parameter"%i)
           x = []
           x.append( list(fp_regression[model+"/parameter%i/parameter"%i][:]) ) # [q, chiAz, chiBz]
           x = list(fp_regression[model+"/parameter%i/parameter"%i][:]) # [q, chiAz, chiBz]
           tidOpts = None
-        param_samples.append([x, tidOpts])
+          pecOpts = None
+        param_samples.append([x, tidOpts, pecOpts])
 
     param_samples_tested.append(param_samples)
 
@@ -204,20 +255,35 @@ def test_model_regression(generate_regression_data=False):
     for i, ps in enumerate(param_samples):
       x = ps[0]
       tidOpts = ps[1]
+      pecOpts = ps[2]
       if model in surrogate_old_interface:
         ps_float = x[0] # TODO: generalize interface 
         modes, t, hp, hc = sur(q=ps_float,mode_sum=False,fake_neg_modes=True)
       else:
         if model in surrogate_loader_interface:
           q = x[0]
-          chiA = np.array([0, 0, x[1]])
-          chiB = np.array([0, 0, x[2]])
+          if type(x[1]) is np.float64 or type(x[1]) is float: # chiz
+            chiA = np.array([0, 0, x[1]])
+            chiB = np.array([0, 0, x[2]])
+          elif len(x[1])==3: # spin vector
+            chiA = np.array(x[1])
+            chiB = np.array(x[2])
+          else:
+            raise ValueError
           try:
-            t, h, dyanmics = sur(q, chiA, chiB, f_low=0.0, tidal_opts=tidOpts)
+                  # Regression samples outside of the training interval.
+                  # Warnings are raised (as they should) but could 
+                  # appear bad to a new user
+              if model in ["NRSur7dq4"]:
+                with warnings.catch_warnings():
+                  warnings.simplefilter("ignore")
+                  t, h, dyanmics = sur(q, chiA, chiB, f_low=0.0, tidal_opts=tidOpts, precessing_opts=pecOpts)
+              else:
+                t, h, dyanmics = sur(q, chiA, chiB, f_low=0.0, tidal_opts=tidOpts, precessing_opts=pecOpts)
           except ValueError: # some models do not allow for f_low=0.0 and require a time step
              # step size, Units of M
              # initial frequency, Units of cycles/M
-            t, h, dyanmics = sur(q, chiA, chiB, dt = 0.25, f_low=3.e-3, tidal_opts=tidOpts) 
+            t, h, dyanmics = sur(q, chiA, chiB, dt = 0.25, f_low=3.e-3, tidal_opts=tidOpts, precessing_opts=pecOpts) 
         else:
           h= sur(x)
         try:
@@ -229,9 +295,14 @@ def test_model_regression(generate_regression_data=False):
         hp = np.real(h_np)
         hc = np.imag(h_np)
       samplei = model_grp.create_group("parameter"+str(i))
+      if model in list(model_sampler.keys()):
+        # model samplers return a list of lists, which we flatten into 
+        # a list of numbers for storing in an h5 dataset
+        x = flatten_params(x)
       samplei.create_dataset("parameter",data=x)
       samplei.create_dataset("hp", data=hp, dtype='float32')
       samplei.create_dataset("hc", data=hc, dtype='float32')
+
   fp.close()
 
   if not generate_regression_data:
