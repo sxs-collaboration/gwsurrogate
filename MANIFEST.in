@@ -2,6 +2,7 @@
 include LICENSE
 include README.md
 include tutorial/notebooks/*.ipynb
+include tutorial/website/*.ipynb
 include test/*.py
 include gwsurrogate/new/*.py
 include gwsurrogate/eval_pysur/*.py
