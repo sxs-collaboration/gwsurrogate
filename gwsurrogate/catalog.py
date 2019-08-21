@@ -110,11 +110,14 @@ _surrogate_world['NRHybSur3dq8Tidal'] = \
   'https://zenodo.org/record/2549618/files/NRHybSur3dq8.h5',
   '''Surrogate model 'NRHybSur3dq8' modified by splicing in PN tidal
   approximants for aligned-spin binary neutron stars/black hole-neutron star
-  systems with mass ratio q<=8 and spin magnitudes <=.7. The model is spliced
-  using the TaylorT2 expansion and spans the entire LIGO frequency band. This
+  systems with mass ratio q<=8 and spin magnitudes <=.7; please see the 
+  NRHybSur3dq8Tidal class doctring for why these restrictions are smaller
+  than the NRHybSur3dq8 model. The model is spliced using the
+  TaylorT2 expansion and spans the entire LIGO frequency band. This
   model is presented in Barkett et al. 2019, arxiv:xxxx.xxxxx #FIXME. Available
   modes are [(2,2), (2,1), (2,0), (3,3), (3,2), (3,1), (3,0), (4,4), (4,3),
-  (4,2) and (5,5)]. The m<0 modes are deduced from the m>0 modes.''',
+  (4,2) and (5,5)]. The m<0 modes are deduced from the m>0 modes. The same
+  hdf5 file is used for both NRHybSur3dq8Tidal and NRHybSur3dq8 models. ''',
   '''https://arxiv.org/abs/xxxx.xxxxx #FIXME''')
 
 def download_path():
