@@ -1,10 +1,19 @@
 import ctypes
-from ctypes import c_double, c_long, POINTER
+from ctypes import c_double, c_long, POINTER, util
 import numpy as np
 import os
 from glob import glob
 
 def _load_spline_interp(dll_path,function_name):
+
+    cblas_path = util.find_library('cblas')
+    if cblas_path is None:
+        cblas_path = util.find_library('gslcblas')
+        if cblas_path is None:
+            raise OSError("Couldn't load libcblas or libgslcblas!")
+
+    dllCBLAS = ctypes.CDLL(cblas_path, mode=ctypes.RTLD_GLOBAL)
+
     dll = ctypes.CDLL(dll_path, mode=ctypes.RTLD_GLOBAL)
     func = dll.spline_interp
     func.argtypes = [c_long, c_long,
