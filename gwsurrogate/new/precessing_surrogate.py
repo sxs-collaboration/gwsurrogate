@@ -333,18 +333,18 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
         omega = _eval_scalar_fit(self.fit_data[i0]['omega'], fit_params)
         return omega
 
-    def _get_t_from_omega(self, omega_ref, q, chiA0, chiB0, phi_ref,
-            quat_ref):
+    def _get_t_from_omega(self, omega_ref, q, chiA0, chiB0, init_orbphase,
+            init_quat):
 
         if omega_ref > 0.201:
             raise Exception("Got omega_ref = %0.4f > 0.2, too "
                     "large for the NRSur7dq4 model!"%(omega_ref))
 
-        y0 = np.append(np.array([1., 0., 0., 0., phi_ref]),
+        y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
                 np.append(chiA0, chiB0))
 
-        if quat_ref is not None:
-            y0[:4] = quat_ref
+        if init_quat is not None:
+            y0[:4] = init_quat
 
         omega0 = self.get_omega(0, q, y0)
         if omega_ref < omega0:
@@ -370,9 +370,8 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
 
         return t_ref
 
-    def __call__(self, q, chiA0, chiB0, use_lalsimulation_conventions, \
-            quat_ref=None, phi_ref=0.0, t_ref=None, omega_ref=None, \
-            omega_low=None):
+    def __call__(self, q, chiA0, chiB0, init_quat=None, init_orbphase=0.0, \
+            t_ref=None, omega_ref=None, omega_low=None):
         """
 Computes the modeled NR dynamics given the initial conditions.
 
@@ -381,30 +380,25 @@ Arguments:
 q: The mass ratio
 chiA0: The chiA vector at the reference time.
 chiB0: The chiB vector at the reference time.
-use_lalsimulation_conventions:
-    If True, interprets the above spins using lalsimulation conventions.
-        where
-            \chi_z = \chi \cdot \hat{L}, where L is the orbital angular
-                momentum vector at the epoch.
-            \chi_x = \chi \cdot \hat{n}, where n = body2 -> body1 is the
-                separation vector at the epoch. body1 is the heavier body.
-            \chi_y = \chi \cdot \hat{L \cross n}.
-            These spin components are frame-independent as they are
-            defined using vector inner products. This is equivalent to
-            specifying the spins in the coorbital frame used in the
-            surrogate papers.
+The above spins must be in the lalsimulation conventions, where
+    \chi_z = \chi \cdot \hat{L}, where L is the orbital angular
+        momentum vector at the epoch.
+    \chi_x = \chi \cdot \hat{n}, where n = body2 -> body1 is the
+        separation vector at the epoch. body1 is the heavier body.
+    \chi_y = \chi \cdot \hat{L \cross n}.
+    These spin components are frame-independent as they are
+    defined using vector inner products. This is equivalent to
+    specifying the spins in the coorbital frame used in the
+    surrogate papers.
 
-    Else, interprets the above spins using the surrogate conventions,
-        where chiA0 = copresssing frame spins at the reference time.
-        Same for chiB0.
+    The surrogate internally initializes the spins in the coprecessing frame.
+    Therefore, before evaluating the surrogate, the spins will be rotated about
+    the z-axis by init_orbphase.
 
-    Specifically, if True, before evaluating the surrogate, the spins will be
-    rotated about the z-axis by phi_ref.
-
-quat_ref: The quaternion giving the rotation to the coprecessing frame at the
+init_quat: The quaternion giving the rotation to the coprecessing frame at the
         reference time. By default, this will be the identity quaternion,
         indicating the coprecessing frame is aligned with the inertial frame.
-phi_ref: The orbital phase in the coprecessing frame at the reference
+init_orbphase: The orbital phase in the coprecessing frame at the reference
         time.
 t_ref: The reference (dimensionless) time, where the peak amplitude occurs at
         t=0.
@@ -430,14 +424,12 @@ L = len(self.t), and these returned arrays are sampled at self.t
         if t_ref is not None and omega_ref is not None:
             raise Exception("Specify at most one of t_ref, omega_ref.")
 
-        if use_lalsimulation_conventions:
-            # If True, the spin components are given in the Lalsimulation
-            # source frame (see See Harald Pfeiffer, T1800226-v1 for a
-            # diagram). The surrogate frame has the same z but has its x along
-            # the line of ascending nodes, so we must rotate the (x, y) spin
-            # components by phi_ref.
-            chiA0 = rotate_spin(chiA0, -1 * phi_ref)
-            chiB0 = rotate_spin(chiB0, -1 * phi_ref)
+        # The spin components are given in the Lalsimulation source frame (see
+        # See Harald Pfeiffer, T1800226-v1 for a diagram). The surrogate frame
+        # has the same z but has its x along the line of ascending nodes, so we
+        # must rotate the (x, y) spin components by init_orbphase.
+        chiA0 = rotate_spin(chiA0, -1 * init_orbphase)
+        chiB0 = rotate_spin(chiB0, -1 * init_orbphase)
 
         normA = np.sqrt(np.sum(chiA0**2))
         normB = np.sqrt(np.sum(chiB0**2))
@@ -448,7 +440,7 @@ L = len(self.t), and these returned arrays are sampled at self.t
         # Get reference time
         if omega_ref is not None:
             t_ref = self._get_t_from_omega(omega_ref, q, chiA0, chiB0, \
-                    phi_ref, quat_ref)
+                    init_orbphase, init_quat)
 
         # Get start time
         if omega_low is not None:
@@ -458,13 +450,13 @@ L = len(self.t), and these returned arrays are sampled at self.t
                 t_low = t_ref
             else:
                 t_low = self._get_t_from_omega(omega_low, q, chiA0, chiB0, \
-                        phi_ref, quat_ref)
+                        init_orbphase, init_quat)
         else:
             t_low = None
 
 
-        y_of_t, i0 = self._initialize(q, chiA0, chiB0, quat_ref,
-                phi_ref, t_ref, normA, normB)
+        y_of_t, i0 = self._initialize(q, chiA0, chiB0, init_quat,
+                init_orbphase, t_ref, normA, normB)
 
         if i0 == 0:
             # Just gonna send it!
@@ -513,7 +505,7 @@ L = len(self.t), and these returned arrays are sampled at self.t
 
         return quat, orbphase, chiA_copr, chiB_copr, t_low
 
-    def _initialize(self, q, chiA0, chiB0, quat_ref, phi_ref, t_ref,
+    def _initialize(self, q, chiA0, chiB0, init_quat, init_orbphase, t_ref,
             normA, normB):
         """
 Initializes an array of data with the initial conditions.
@@ -526,11 +518,11 @@ the nearest time node.
         # compared to self.t
         data = np.zeros((self.L-3, 11))
 
-        y0 = np.append(np.array([1., 0., 0., 0., phi_ref]),
+        y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
                 np.append(chiA0, chiB0))
 
-        if quat_ref is not None:
-            y0[:4] = quat_ref
+        if init_quat is not None:
+            y0[:4] = init_quat
 
         if t_ref is None:
             data[0, :] = y0
@@ -862,20 +854,18 @@ filename: The hdf5 file containing the surrogate data."
             raise Exception('Unused keys in precessing_opts: %s'%unused)
 
 
-    def get_dynamics(self, q, chiA0, chiB0, \
-            use_lalsimulation_conventions=True, quat_ref=None, phi_ref=0.0, \
-            t_ref=None, omega_ref=None):
+    def get_dynamics(self, q, chiA0, chiB0, init_quat=None, \
+            init_orbphase=0.0, t_ref=None, omega_ref=None):
         """
         Wrapper for self.dynamics_sur()
         """
         quat_dyn, orbphase_dyn, chiA_copr_dyn, chiB_copr_dyn, t0 \
-            = self.dynamics_sur(q, chiA0, chiB0, \
-            use_lalsimulation_conventions, phi_ref=phi_ref, \
-            quat_ref=quat_ref, t_ref=t_ref, omega_ref=omega_ref)
+            = self.dynamics_sur(q, chiA0, chiB0, init_orbphase=init_orbphase, \
+            init_quat=init_quat, t_ref=t_ref, omega_ref=omega_ref)
         return quat_dyn, orbphase_dyn, chiA_copr_dyn, chiB_copr_dyn
 
 
-    def __call__(self, x, phi_ref=None, fM_low=None, fM_ref=None, dtM=None,
+    def __call__(self, x, fM_low=None, fM_ref=None, dtM=None,
             timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
             precessing_opts=None, tidal_opts=None, par_dict=None):
         """
@@ -891,11 +881,7 @@ Arguments:
 
         chiA0: The chiA vector at the reference time.
         chiB0: The chiB vector at the reference time.
-        If use_lalsimulation_conventions is True, interprets the above spins
-        using lalsimulation conventions, where
-
-        If use_lalsimulation_conventions is True, interprets the above spins
-        using lalsimulation conventions, where
+        The above spins use lalsimulation conventions, where
             \chi_z = \chi \cdot \hat{L}, where L is the orbital angular
                 momentum vector at the epoch.
             \chi_x = \chi \cdot \hat{n}, where n = body2 -> body1 is the
@@ -906,11 +892,6 @@ Arguments:
             specifying the spins in the coorbital frame used in the
             surrogate papers.
 
-        Else, interprets the above spins using the surrogate conventions, where
-        chiA0 = copresssing frame spins at the reference time. Same for chiB0.
-
-    phi_ref:    The orbital phase in the coprecessing frame at the reference
-                frequency fM_ref.
     fM_low:     Initial frequency in dimensionless units. Currently only
                 fM_low = 0 is allowed, in which case the full surrogate is
                 returned.
@@ -931,17 +912,21 @@ Arguments:
                 A dictionary containing optional parameters for a precessing
                 surrogate model. Default: None.
                 Allowed keys are:
-                quat_ref: The unit quaternion (length 4 vector) giving the
+                init_orbphase: The orbital phase in the coprecessing frame
+                    at the reference epoch.
+                    Default: None, in which case the coorbital frame and
+                    coprecessing frame are the same.
+                init_quat: The unit quaternion (length 4 vector) giving the
                     rotation from the coprecessing frame to the inertial frame
                     at the reference epoch.
-                    Default: None, in which case the spins in the coprecessing
-                    frame are equal to the spins in the inertial frame.
+                    Default: None, in which case the coprecessing frame is the
+                    same as the inertial frame.
                 return_dynamics:
                     Return the frame dynamics and spin evolution along with
                     the waveform. Default: False.
-                use_lalsimulation_conventions: See above. Default: True.
                 Example: precessing_opts = {
-                                    'quat_ref': [1,0,0,0],
+                                    'init_orbphase': 0,
+                                    'init_quat': [1,0,0,0],
                                     'return_dynamics': True
                                     }
     tidal_opts: Should be None for this model.
@@ -965,11 +950,9 @@ Returns:
             precessing_opts = {}
 
 
-        phi_ref = phi_ref
-        quat_ref = precessing_opts.pop('quat_ref', None)
+        init_orbphase = precessing_opts.pop('init_orbphase', 0)
+        init_quat = precessing_opts.pop('init_quat', None)
         return_dynamics = precessing_opts.pop('return_dynamics', False)
-        use_lalsimulation_conventions \
-            = precessing_opts.pop('use_lalsimulation_conventions', True)
         self._check_unused_opts(precessing_opts)
 
         if ellMax is None:
@@ -997,14 +980,13 @@ Returns:
 
         ## Get dynamics
         quat_dyn, orbphase_dyn, chiA_copr_dyn, chiB_copr_dyn, t0 \
-            = self.dynamics_sur(q, chiA0, chiB0, \
-            use_lalsimulation_conventions, phi_ref=phi_ref, \
-            quat_ref=quat_ref, t_ref=None, omega_ref=omega_ref, \
+            = self.dynamics_sur(q, chiA0, chiB0, init_orbphase=init_orbphase, \
+            init_quat=init_quat, t_ref=None, omega_ref=omega_ref, \
             omega_low=omega_low)
 
-        ## chiA0 and chiB0 get transformed in self.dynamics_sur if
-        ## use_lalsimulation_conventions is True. To avoid accidental usage
-        ## without this transformation, we set chiA0 and chiB0 to None here.
+        # If init_orbphase != 0, chiA0 and chiB0 get transformed in
+        # self.dynamics_sur. To avoid accidental usage without this
+        # transformation, we set chiA0 and chiB0 to None here.
         chiA0 = None
         chiB0 = None
 

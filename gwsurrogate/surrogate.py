@@ -1607,44 +1607,41 @@ class SurrogateEvaluator(object):
                 no clear hierarchy. To get the individual modes just don't
                 specify inclination and a dictionary of modes will be returned.
 
-    phi_ref :   The angle on the plane of the orbit from the line of ascending
-                nodes to the position of the body 1 at reference epoch. Can
-                also be thought of as the orbital phase at reference epoch.
-                Default: 0.
-
     inclination : Inclination angle between the orbital angular momentum
                 direction at the reference epoch and the line-of-sight to the
-                observer. 
-                If inclination is None, the mode data is returned as a
-                dictionary. 
-                If specified, the complex strain (h = hplus -i hcross)
-                evaluated at (inclination, pi/2) on the sky of the reference
-                frame is returned. This follows the same convention as LAL,
-                where the azimuthal angle is set through phi_ref. See below
-                for definition of the reference frame.
+                observer. If inclination is None, the mode data is returned
+                as a dictionary.
                 Default: None.
+
+    phi_ref :   The azimuthal angle on the sky of the source frame following
+                the LAL convention.
+                Default: 0.
+
+                If inclination/phi_ref are specified, the complex strain (h =
+                hplus -i hcross) evaluated at (inclination, pi/2 - phi_ref) on
+                the sky of the reference frame is returned. This follows the
+                same convention as LAL. See below for definition of the
+                reference frame.
 
     precessing_opts:
                 A dictionary containing optional parameters for a precessing
                 surrogate model. Default: None.
                 Allowed keys are:
-                quat_ref: The unit quaternion (length 4 vector) giving the
+                init_orbphase: The orbital phase in the coprecessing frame
+                    at the reference epoch.
+                    Default: 0, in which case the coorbital frame and
+                    coprecessing frame are the same.
+                init_quat: The unit quaternion (length 4 vector) giving the
                     rotation from the coprecessing frame to the inertial frame
                     at the reference epoch.
-                    Default: None, in which case the spins in the coprecessing
-                    frame are equal to the spins in the inertial frame.
+                    Default: None, in which case the coprecessing frame is the
+                    same as the inertial frame.
                 return_dynamics:
                     Return the frame dynamics and spin evolution along with
                     the waveform. Default: False.
-                use_lalsimulation_conventions:
-                    If True, interprets the spin directions and init_orbphase
-                    using lalsimulation conventions. Specifically, before
-                    evaluating the surrogate, the spins will be rotated about
-                    the z-axis by init_phase. Default: True (see 
-                    DynamicsSurrogate, which is the only place this option is
-                    used).
                 Example: precessing_opts = {
-                                    'quat_ref': [1,0,0,0],
+                                    'init_orbphase': 0,
+                                    'init_quat': [1,0,0,0],
                                     'return_dynamics': True
                                     }
 
@@ -1740,15 +1737,14 @@ class SurrogateEvaluator(object):
 
     The reference frame (or inertial frame) is defined as follows:
         The +ve z-axis is along the orbital angular momentum at the reference
-        epoch. The orbital phase at the reference epoch is phi_ref. This means
-        that the separation vector from the lighter BH to the heavier BH is at
-        an azimuthal angle phi_ref from the +ve x-axis, in the orbital plane at
-        the reference epoch. The y-axis completes the right-handed triad. The
-        reference epoch is set using f_ref.
+        epoch. The separation vector from the lighter BH to the heavier BH at
+        the reference epoch is along the +ve x-axis. The y-axis completes the
+        right-handed triad. The reference epoch is set using f_ref.
 
-        Now, if inclination is given, the waveform is evaluated at
-        (inclination, pi/2) in the reference frame. This agrees with the LAL
-        convention. See LIGO DCC document T1800226 for the LAL frame diagram.
+        Now, if inclination/phi_ref are given, the waveform is evaluated at
+        (inclination, pi/2 - phi_ref) in the reference frame. This agrees with
+        the LAL convention. See LIGO DCC document T1800226 for the LAL frame
+        diagram.
         """
 
         chiA0 = np.array(chiA0)
@@ -1837,8 +1833,8 @@ class SurrogateEvaluator(object):
         # Get waveform modes and domain in dimensionless units
         fM_low = f_low*t_scale
         fM_ref = f_ref*t_scale
-        domain, h, dynamics = self._sur_dimless(x, phi_ref=phi_ref,
-            fM_low=fM_low, fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM,
+        domain, h, dynamics = self._sur_dimless(x, fM_low=fM_low,
+            fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM,
             freqsM=freqsM, mode_list=mode_list, ellMax=ellMax,
             precessing_opts=precessing_opts, tidal_opts=tidal_opts,
             par_dict=par_dict)
@@ -1864,7 +1860,7 @@ class SurrogateEvaluator(object):
             fake_neg_modes = not self.keywords['Precessing']
 
             # Follows the LAL convention (see help text)
-            h = self._mode_sum(h, inclination, np.pi/2,
+            h = self._mode_sum(h, inclination, np.pi/2 - phi_ref,
                     fake_neg_modes=fake_neg_modes)
 
         # Rescale domain to physical units
