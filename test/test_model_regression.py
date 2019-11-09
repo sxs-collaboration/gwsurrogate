@@ -86,23 +86,26 @@ def NRSur7dq4_samples(i):
   if i==0:
     chiA = [-0.2, 0.4, 0.1]
     chiB = [-0.5, 0.2, -0.4]
-    precessing_opts = {'quat_ref': [1,0,0,0],
+    precessing_opts = {'init_quat': [1,0,0,0],
                        'return_dynamics': True,
-                       'use_lalsimulation_conventions': True}
+                       'init_orbphase': 0.0}
+                       #'use_lalsimulation_conventions': True}
     return [2., chiA, chiB], None, precessing_opts
   elif i==1:
     chiA = [-0.2, 0.4, 0.1]
     chiB = [-0.5, 0.2, -0.4]
-    precessing_opts = {'quat_ref': [1,0,0,0],
+    precessing_opts = {'init_quat': [1,0,0,0],
                        'return_dynamics': True,
-                       'use_lalsimulation_conventions': False}
+                       'init_orbphase': 1.0}
+                       #'use_lalsimulation_conventions': False}
     return [3., chiA, chiB], None, precessing_opts
   elif i==2:
     chiA = [-0.2, 0.4, 0.1]
     chiB = [-0.5, 0.2, -0.4]
-    precessing_opts = {'quat_ref': [1,0,0,0],
+    precessing_opts = {'init_quat': [1,0,0,0],
                        'return_dynamics': True,
-                       'use_lalsimulation_conventions': True}
+                       'init_orbphase': 0.0}
+                       #'use_lalsimulation_conventions': True}
     return [5., chiA, chiB], None, precessing_opts
 
 model_sampler["NRSur7dq4"] = NRSur7dq4_samples
@@ -136,7 +139,7 @@ def test_model_regression(generate_regression_data=False):
       fp_regression = h5py.File("test/model_regression_data.h5",'r') 
     except IOError:
       print("Downloading regression data...")
-      os.system('wget --directory-prefix=test https://www.dropbox.com/s/bo1ioyba30znqiq/model_regression_data.h5')
+      os.system('wget --directory-prefix=test https://www.dropbox.com/s/vxqsr7fjoffxm5w/model_regression_data.h5')
       fp_regression = h5py.File("test/model_regression_data.h5",'r') 
 
   # remove models if you don't have them
