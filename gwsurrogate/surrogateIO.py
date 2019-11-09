@@ -462,7 +462,30 @@ class H5Surrogate(SurrogateBaseIO):
         return phase_eval
 
       self.phase_fit_func = phase_fit_func
-      
+
+    elif self.fit_type_amp == "spline_1d_degree1" and self.fit_type_phase == "spline_1d_degree1":
+      print("Special case: using spline for parametric model at each EI node")
+
+      n_spline_knots = self.file[subdir+'n_spline_knots'][:]
+      spline_knots = self.file[subdir+'spline_knots'][:]
+
+      # pack necessary data up so the spline function can be called
+      # as self.amp_fit_func(self.fitparams_amp[jj,:], x_0)
+      num_fits = self.fitparams_amp.shape[0]
+      fitparams_amp = []
+      fitparams_phase = []
+      degree = self.file[subdir+'degree'][:]
+      for i in range(num_fits):
+        fitparams_amp.append([spline_knots, self.fitparams_amp[i,:], degree])
+        fitparams_phase.append([spline_knots, self.fitparams_phase[i,:], degree])
+      self.fitparams_amp = np.array(fitparams_amp)
+      self.fitparams_phase = np.array(fitparams_phase)
+
+      print("spline knots = %i, num_fits = %i"%(n_spline_knots,num_fits))
+
+      self.amp_fit_func   = my_funcs[self.fit_type_amp]
+      self.phase_fit_func = my_funcs[self.fit_type_phase]
+
     else:
       self.amp_fit_func   = my_funcs[self.fit_type_amp]
       self.phase_fit_func = my_funcs[self.fit_type_phase]

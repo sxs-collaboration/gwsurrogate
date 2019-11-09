@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 import numpy as np
 from gwtools import gwtools as gwtools # from the package gwtools, import the module gwtools (gwtools.py)....
-
+from scipy.interpolate import splev
 
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -38,6 +38,12 @@ def polyval_1d(coeffs,x):
   """ 1D polynomial defined by coeffs vector and evaluated 
   as numpy.polyval(coeffs,x)"""
   return np.polyval(coeffs, x)
+
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def spline_1d_degree1(coeffs,x):
+  """ 1d spline defined by knots and spline coeffs. """
+  return splev(x, coeffs)
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def ampfitfn1_1d(coeffs,x):
@@ -127,9 +133,23 @@ def q_to_nu(q):
   """
   return gwtools.q_to_nu(q)
 
+def q_to_logq(q):
+  """ map from q to log(q)
+  
+  Surrogates with this parameterization expect its user intput 
+  to be the mass ratio q. 
+  
+  The surrogate will map q to the internal surrogate's 
+  parameterization which is log(q)
+  
+  The surrogates training interval is quoted in log(q).
+  """
+  return np.log(q)
+
 ### dictionary of fitting functions ###
 function_dict = {
                  "polyval_1d": polyval_1d,
+                 "spline_1d_degree1": spline_1d_degree1,
                  "ampfitfn1_1d": ampfitfn1_1d,
                  "ampfitfn2_1d": ampfitfn2_1d,
                  "ampfitfn4_1d": ampfitfn4_1d,
@@ -137,5 +157,6 @@ function_dict = {
                  "nuSingularPlusPolynomial": ampfitfn5_1d,
                  "nuSingular2TermsPlusPolynomial": ampfitfn6_1d,
                  "q_to_q": q_to_q,
-                 "q_to_nu":q_to_nu
+                 "q_to_nu": q_to_nu,
+                 "q_to_logq": q_to_logq
                  }
