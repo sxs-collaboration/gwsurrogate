@@ -77,6 +77,12 @@ For a "proper" installation
 where the "-e" installs an editable (development) project with pip. This allows
 your local code edits to be automatically seen by the system-wide installation.
 
+If you have git cloned this project, you must do
+
+```
+git submodule init
+git submodule update
+```
 
 # Getting Started #
 
@@ -122,7 +128,7 @@ tests, regression data must be generated locally on your machine.
 # NSF Support #
 
 This package is based upon work supported by the National Science Foundation 
-under PHY-1316424 and PHY-1208861.
+under PHY-1316424, PHY-1208861, and PHY-1806665.
 
 Any opinions, findings, and conclusions or recommendations expressed in 
 gwsurrogate are those of the authors and do not necessarily reflect the 
