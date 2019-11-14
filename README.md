@@ -107,7 +107,13 @@ from the directory 'notebooks'
 # Where to find surrogates? #
 
 Surrogates can be downloaded directly from gwsurrogate. For download 
-instructions, see the basics.ipynb Jupyter notebook.
+instructions, see the basics.ipynb Jupyter notebook. To see what's available:
+
+```
+>>> import gwsurrogate as gws
+>>> gws.catalog.list()
+>>> gws.catalog.pull("NRSur7dq4") # if you want to download this model
+```
 
 
 # Tests #
