@@ -421,7 +421,7 @@ class H5Surrogate(SurrogateBaseIO):
     self.fit_min = self.file[subdir+self._fit_min_h5][()]
     self.fit_max = self.file[subdir+self._fit_max_h5][()]
     self.fit_interval = np.array( [self.fit_min, self.fit_max] )
-    
+
     self.fit_type_amp = self.chars_to_string(self.file[subdir+self._fit_type_amp_h5][()])
     self.fit_type_phase = self.chars_to_string(self.file[subdir+self._fit_type_phase_h5][()])
 
@@ -463,7 +463,7 @@ class H5Surrogate(SurrogateBaseIO):
 
       self.phase_fit_func = phase_fit_func
 
-    elif self.fit_type_amp == "spline_1d_degree1" and self.fit_type_phase == "spline_1d_degree1":
+    elif self.fit_type_amp == "spline_1d" and self.fit_type_phase == "spline_1d":
       print("Special case: using spline for parametric model at each EI node")
 
       n_spline_knots = self.file[subdir+'n_spline_knots'][:]
