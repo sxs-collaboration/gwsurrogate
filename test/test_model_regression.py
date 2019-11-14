@@ -143,7 +143,8 @@ def test_model_regression(generate_regression_data=False):
       fp_regression = h5py.File("test/model_regression_data.h5",'r') 
 
   # remove models if you don't have them
-  dont_test = ["NRSur4d2s_TDROM_grid12", # 10 GB file
+  dont_test = ["EMRISur1dq1e4", # model data not currently available in public
+               "NRSur4d2s_TDROM_grid12", # 10 GB file
                "NRSur4d2s_FDROM_grid12", # 10 GB file
                #"SpEC_q1_10_NoSpin_linear_alt",
                #"SpEC_q1_10_NoSpin_linear",
