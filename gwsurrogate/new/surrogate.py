@@ -118,7 +118,7 @@ class ParamDim(SimpleH5Object):
 
         if min_val + 2*tol > max_val:
             raise Exception("tol %s is too large for %s with range [%s, %s]"%(
-                            tolerance, name, min_val, max_val))
+                            tol, name, min_val, max_val))
 
         self.name = name
         self.min_val = min_val

@@ -41,7 +41,7 @@ def polyval_1d(coeffs,x):
 
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-def spline_1d_degree1(coeffs,x):
+def spline_1d(coeffs,x):
   """ 1d spline defined by knots and spline coeffs. """
   return splev(x, coeffs)
 
@@ -149,7 +149,7 @@ def q_to_logq(q):
 ### dictionary of fitting functions ###
 function_dict = {
                  "polyval_1d": polyval_1d,
-                 "spline_1d_degree1": spline_1d_degree1,
+                 "spline_1d": spline_1d,
                  "ampfitfn1_1d": ampfitfn1_1d,
                  "ampfitfn2_1d": ampfitfn2_1d,
                  "ampfitfn4_1d": ampfitfn4_1d,
