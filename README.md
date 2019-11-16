@@ -34,7 +34,11 @@ common library and can be easily installed with a package manager.
 
 Note that at runtime (ie when you do import gwsurrogate) you may need to let
 gsl know where your BLAS library is installed. This can be done by setting
-your LD_PRELOAD or LD_LIBRARY_PATH environment variables. 
+your LD_PRELOAD or LD_LIBRARY_PATH environment variables. A relevant example:
+
+```
+>>> export LD_PRELOAD=~/anaconda3/envs/python27/lib/libgslcblas.so
+```
 
 ## From pip ##
 
