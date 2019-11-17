@@ -32,6 +32,7 @@ import os as os
 import h5py
 from .parametric_funcs import function_dict as my_funcs
 from .new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
+from .catalog import get_modelID_from_filename
 import collections
 
 surrogate_description = """* Description of tags:
@@ -305,7 +306,7 @@ class H5Surrogate(SurrogateBaseIO):
   def prepare_data(self, data_class):
     """ Prepare a dictionary to export with entries filled from imported surrogate data"""
     return [self.prepare_mode_data(data_class.single_modes[mm]) for mm in data_class.modes]
-      
+
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def load_h5(self, file, subdir='', closeQ=True):
     
@@ -329,11 +330,17 @@ class H5Surrogate(SurrogateBaseIO):
     ### Get SurrogateID ####
     name = self.file.filename.split('/')[-1].split('.')[0]
     if self._surrogate_ID_h5 in self.keys:
-      self.surrogate_ID = self.chars_to_string(self.file[subdir+self._surrogate_ID_h5][()])
-      if self.surrogate_ID != name:
+      self.surrogateID = self.chars_to_string(self.file[subdir+self._surrogate_ID_h5][()])
+      if self.surrogateID != name:
         print("\n>>> Warning: SurrogateID does not have expected name.")
     else:
-      "\n>>> Warning: No surrogate ID found."
+      surrogateID = get_modelID_from_filename(file.filename)
+      if len(surrogateID) == 0 or len(surrogateID) > 1:
+        print("\n>>> Warning: No surrogate ID found. Could not deduce ID from file")
+      else:
+        self.surrogateID = surrogateID[0]
+        print("\n>>> Found surrogate ID from file name: %s"%self.surrogateID)
+
     
     ### Get type of basis used to build surrogate 
     # (e.g., basis for complex waveform or for amplitude and phase)

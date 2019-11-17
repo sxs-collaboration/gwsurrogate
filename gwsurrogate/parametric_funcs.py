@@ -108,6 +108,15 @@ def ampfitfn6_1d(coeffs,x):
 
   return a0*np.sqrt(1. - x) + a1*(1. - x)**1.5 + np.polyval(polyCoefs,1. - x)
 
+def emri_normalization_logq(coeffs,x):
+  """ Teukolsky solver that generates EMRI data normalizes by q, since 
+  the EMRI surrogates use log(q) parameterizaiton, we need to undo
+  the log and apply the q-dependent normalization. No coefficients are
+  needed, but we keep this structure for common API. """
+
+  q = np.exp(x)
+  return 1.0/q
+
 ### these are for switching from (q,M) to surrogate's parameterization ###
 def q_to_q(q):
   """ identity map from q to q
@@ -156,6 +165,7 @@ function_dict = {
                  "phifitfn1_1d": phifitfn1_1d,
                  "nuSingularPlusPolynomial": ampfitfn5_1d,
                  "nuSingular2TermsPlusPolynomial": ampfitfn6_1d,
+                 "emri_normalization_logq":emri_normalization_logq,
                  "q_to_q": q_to_q,
                  "q_to_nu": q_to_nu,
                  "q_to_logq": q_to_logq
