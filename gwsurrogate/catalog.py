@@ -167,6 +167,24 @@ def list():
     print("  Description: " + _surrogate_world[surr_key].desc)
     print("  References: "+_surrogate_world[surr_key].refs+'\n')
 
+
+def get_modelID_from_filename(filename):
+  """ From the model's filename (which could be a path), 
+  return the model's unique ID as a list.
+
+  If multiple models have the same datafile, all matching model ID tags
+  are returned. If no match if found, and empty list is returned. """
+
+  file_without_path = filename.split('/')[-1]
+  modelIDs = []
+  for modelID in _surrogate_world.keys():
+    url = _surrogate_world[modelID].url
+    if url.find(file_without_path) >=0:
+      modelIDs.append(modelID)
+  return modelIDs
+
+
+
 def _unzip(surr_name,sdir=download_path()):
   """unzip a tar.gz surrogate and remove the tar.gz file"""
 
