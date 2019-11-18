@@ -351,18 +351,28 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
             raise Exception("Got omega_ref = %0.4f < %0.4f = omega_0, "
                     "too small!"%(omega_ref, omega0))
 
+        # In this function we don't use the 3 half-node indices at the
+        # start. This is mainly to agree with the LAL implementation, where
+        # this was done, and should not affect anything meaningful.
+        full_node_indices = range(len(self.t))
+        full_node_indices.remove(1)
+        full_node_indices.remove(3)
+        full_node_indices.remove(5)
+
         # i0=0 is a lower bound, find the first index where omega > omega_ref
-        imax=1
-        omega_max = self.get_omega(imax, q, y0)
+        imax = 1
         omega_min = omega0
+        omega_max = self.get_omega(full_node_indices[imax], q, y0)
         while omega_max <= omega_ref:
             imax += 1
             omega_min = omega_max
-            omega_max = self.get_omega(imax, q, y0)
+            omega_max = self.get_omega(full_node_indices[imax], q, y0)
 
-        # Interpolate
-        t_ref = (self.t[imax-1] * (omega_max - omega_ref)
-            + self.t[imax] * (omega_ref - omega_min))/(omega_max - omega_min)
+        # Do a linear interpolation between omega_min and omega_max
+        t_min = self.t[full_node_indices[imax-1]];
+        t_max = self.t[full_node_indices[imax]];
+        t_ref = (t_min * (omega_max - omega_ref)
+                + t_max * (omega_ref - omega_min)) / (omega_max - omega_min);
 
         if t_ref < self.t[0] or t_ref > self.t[-1]:
             raise Exception("Somehow, t_ref ended up being outside of "
