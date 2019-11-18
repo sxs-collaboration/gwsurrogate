@@ -13,7 +13,7 @@ Example usage
 To plot the EOBNRv2 surrogate included with this package (others available for download)
 
   import gwsurrogate as gw
-  EOB = gws.EvaluateSurrogate('gwsurrogate/tutorial/EOBNRv2_example/EOBNRv2_q1_2_NoSpin_SingleModes/l2_m2_len12239M_SurID19poly/')
+  EOB = gws.EvaluateSurrogate('EOBNRv2_q1_2_NoSpin_SingleModes/l2_m2_len12239M_SurID19poly/')
   EOB.plot_sur(q_eval = 1.3)
 
 Additional examples can be found in the accompanying ipython notebooks.

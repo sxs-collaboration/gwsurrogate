@@ -498,7 +498,11 @@ class H5Surrogate(SurrogateBaseIO):
       self.phase_fit_func = my_funcs[self.fit_type_phase]
 
     if self._fit_type_norm_h5 in self.keys:
-      self.fitparams_norm = self.file[subdir+self._fitparams_norm_h5][:]
+      try:
+        self.fitparams_norm = self.file[subdir+self._fitparams_norm_h5][:]
+      except KeyError:
+      	self.fitparams_norm = None
+      	print("setting norm fitparams to None...")
       self.fit_type_norm = self.chars_to_string(self.file[subdir+self._fit_type_norm_h5][()])
       self.norm_fit_func  = my_funcs[self.fit_type_norm]
       self.norms = True
