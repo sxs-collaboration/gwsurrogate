@@ -165,6 +165,16 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if (units != 'dimensionless') and (units != 'mks'):
       raise ValueError('units is not supported')
 
+    if(self.surrogateID == 'EMRISur1dq1e4'):
+      # see Eq 4 of https://arxiv.org/abs/1910.10473
+      # if alpha = 1 we have the "raw" waveform computed from 
+      # point-particle black hole perturbation theory
+      # alpha rescales all modes in the same way in time and amplitude
+      nu         = q/(1.+q)**2.
+      alpha_emri = 1.0-1.402671*nu-0.036154*nu*nu-0.2005567*nu*nu*nu-25.6461*nu*nu*nu*nu
+    else:
+      alpha_emri = None
+
     ### if (M,distance) provided, a physical mode in mks units is returned ###
     if( M is not None and dist is not None):
       amp0    = ((M * _gwtools.MSUN_SI ) / (1.e6*dist*_gwtools.PC_SI )) * ( _gwtools.G / np.power(_gwtools.c,2.0) )
@@ -173,11 +183,17 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       amp0    = 1.0
       t_scale = 1.0
 
+    # any model-specific amplitude scalings should go here
+    if(self.surrogateID == 'EMRISur1dq1e4'):
+      amp0 = alpha_emri * amp0
+
     ### evaluation times t: input times or times at which surrogate was built ###
     if (times is not None):
       t = times
     else:
       t = self.time()
+      if self.surrogateID == 'EMRISur1dq1e4':
+        t = t * alpha_emri 
 
     ### if input times are dimensionless, convert to MKS if a physical surrogate is requested ###
     if units == 'dimensionless':
@@ -187,12 +203,15 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if times is not None and units == 'mks':
       times = times / t_scale
 
+    # input time grid needs to be mapped back to "raw EMRI" time grid before evaluation
+    if times is not None and self.surrogateID == 'EMRISur1dq1e4':
+      times = times / alpha_emri 
+
     # convert from input to internal surrogate parameter values, and check within training region #
     x = self.get_surr_params_safe(q)
 
     ### Evaluate dimensionless single mode surrogates ###
     hp, hc = self._h_sur(x, times=times)
-
 
     ### adjust mode's phase by an overall constant ###
     if (phi_ref is not None):
@@ -208,7 +227,11 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if f_low is not None:
       self.find_instant_freq(hp, hc, t, f_low)
 
-    return t, hp, hc
+    # different models were built using different conventions of hlm and hp \pm i hx
+    if self.surrogateID == 'EMRISur1dq1e4':
+      return t, hp, -hc
+    else:
+  	  return t, hp, hc
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
