@@ -165,6 +165,9 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if (units != 'dimensionless') and (units != 'mks'):
       raise ValueError('units is not supported')
 
+    if (M is not None) and (dist is not None) and (times is not None) and (units != 'mks'):
+    	raise ValueError('passing values of M, dist, and times suggest mks units should be used!')
+
     if(self.surrogateID == 'EMRISur1dq1e4'):
       # see Eq 4 of https://arxiv.org/abs/1910.10473
       # if alpha = 1 we have the "raw" waveform computed from 
