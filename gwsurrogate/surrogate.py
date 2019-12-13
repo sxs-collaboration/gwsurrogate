@@ -6,7 +6,7 @@ __copyright__ = "Copyright (C) 2014 Scott Field and Chad Galley"
 __email__     = "sfield@umassd.edu, crgalley@tapir.caltech.edu"
 __status__    = "testing"
 __author__    = "Jonathan Blackman, Scott Field, Chad Galley, Vijay Varma, Kevin Barkett"
-__version__ = "0.9.8"
+__version__ = "0.9.9"
 __license__ = """
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
