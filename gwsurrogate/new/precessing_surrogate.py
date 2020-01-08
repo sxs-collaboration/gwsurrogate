@@ -354,7 +354,7 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
         # In this function we don't use the 3 half-node indices at the
         # start. This is mainly to agree with the LAL implementation, where
         # this was done, and should not affect anything meaningful.
-        full_node_indices = range(len(self.t))
+        full_node_indices = list(range(len(self.t)))
         full_node_indices.remove(1)
         full_node_indices.remove(3)
         full_node_indices.remove(5)
