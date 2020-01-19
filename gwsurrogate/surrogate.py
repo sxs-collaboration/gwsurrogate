@@ -174,7 +174,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       # point-particle black hole perturbation theory
       # alpha rescales all modes in the same way in time and amplitude
       nu         = q/(1.+q)**2.
-      alpha_emri = 1.0-1.402671*nu-0.036154*nu*nu-0.2005567*nu*nu*nu-25.6461*nu*nu*nu*nu
+      alpha_emri = 1.0-1.352854*nu-1.223006*nu*nu+8.601968*nu*nu*nu-46.74562*nu*nu*nu*nu
     else:
       alpha_emri = None
 

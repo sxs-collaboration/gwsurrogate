@@ -151,6 +151,34 @@ _surrogate_world['EMRISur1dq1e4'] = \
   '''https://arxiv.org/abs/1910.10473''',
   '73cc9da9b77e92011a1244df6f4251eb')
 
+# TODO: test function, and then use it whenever a file is loaded
+def is_file_recent(filename):
+  """ Check local hdf5 file's hash against most recent one on Zenodo. """
+
+  import hashlib
+
+  def md5(fname):
+    """ Compute has from file. code taken from 
+    https://stackoverflow.com/questions/3431825/generating-an-md5-checksum-of-a-file"""
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+      for chunk in iter(lambda: f.read(4096), b""):
+        hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+  file_hash = md5(filename)
+
+  names = get_modelID_from_filename(filename)
+  modelID = names[0]
+
+  zenodo_current_hash = _surrogate_world[modelID].md5
+
+  if file_hash != zenodo_current_hash:
+    return False
+    #raise AttributeError("%s out of date.\n Please download the current version"%filename)
+  else:
+    return True
+
 def download_path():
   """return the default path for downloaded surrogates"""
 
