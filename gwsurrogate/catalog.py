@@ -149,7 +149,7 @@ _surrogate_world['EMRISur1dq1e4'] = \
   (4,2), (5,5), (5,4), (5,3)]. The m<0 modes are deduced from the m>0 modes.
   Model details can be found in Rifat et al. 2019, arXiv:1910.10473.''',
   '''https://arxiv.org/abs/1910.10473''',
-  '73cc9da9b77e92011a1244df6f4251eb')
+  'd145958484738e0c7292e084a66a96fa')
 
 # TODO: test function, and then use it whenever a file is loaded
 def is_file_recent(filename):
