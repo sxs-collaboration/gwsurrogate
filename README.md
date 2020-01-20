@@ -50,6 +50,14 @@ Index). gwsurrogate can be installed to the standard location
 >>> pip install gwsurrogate
 ```
 
+## From conda ##
+
+`gwsurrogate` is [on conda-forge](https://anaconda.org/conda-forge/gwsurrogate), and can be installed with
+
+```
+>>> conda install -c conda-forge gwsurrogate
+```
+
 ## From source ##
 
 First, please make sure you have the necessary dependencies
