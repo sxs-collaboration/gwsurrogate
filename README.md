@@ -113,7 +113,14 @@ basics.ipynb, do
 ```
   >>> jupyter notebook basics.ipynb
 ```
-from the directory 'notebooks'
+
+from the directory 'notebooks'. 
+
+Jupyter notebooks located in 'tutorial/notebooks' give a comprehensive
+overview of gwsurrogate. If you dont have the time for that, you can 
+find model-specific quickstart notebooks located in 'tutorial/website'.
+For instance, [look here](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRSur7dq4.ipynb)
+if you want to use the model NRSur7dq4.
 
 
 # Where to find surrogates? #
