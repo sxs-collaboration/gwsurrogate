@@ -327,15 +327,16 @@ class H5Surrogate(SurrogateBaseIO):
       # Get keys in the given subdirectory
       self.keys = list(self.file[subdir[:-1]].keys())
       
-    ### Get SurrogateID ####
+    ### Get surrogateID ####
     name = self.file.filename.split('/')[-1].split('.')[0]
     if self._surrogate_ID_h5 in self.keys:
       self.surrogateID = self.chars_to_string(self.file[subdir+self._surrogate_ID_h5][()])
       if self.surrogateID != name:
-        print("\n>>> Warning: SurrogateID does not have expected name.")
+        print("\n>>> Warning: surrogateID does not have expected name.")
     else:
       surrogateID = get_modelID_from_filename(file.filename)
       if len(surrogateID) == 0 or len(surrogateID) > 1:
+        self.surrogateID = None
         print("\n>>> Warning: No surrogate ID found. Could not deduce ID from file")
       else:
         self.surrogateID = surrogateID[0]
@@ -654,7 +655,7 @@ class TextSurrogateRead(SurrogateBaseIO):
     surrogate_load_info = '' # add to string, display after loading
 
     ### sdir is defined to be the surrogate's ID ###
-    self.SurrogateID = sdir
+    self.surrogateID = sdir
 
     ### type of surrogate (for harmonic mode) ###
     self.surrogate_mode_type = \
@@ -818,7 +819,7 @@ class TextSurrogateWrite(SurrogateBaseIO):
       print("Could not create a surrogate directory. Not ready to export, please try again.")
 
     ### sdir is defined to be the surrogate's ID ###
-    self.SurrogateID = sdir
+    self.surrogateID = sdir
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -834,37 +835,37 @@ class TextSurrogateWrite(SurrogateBaseIO):
     # TODO: flag to zip folder and save full time series
 
     ### pack mass ratio interval (for fits) and time info ###
-    self._np_savetxt_safe(self.SurrogateID+self._fit_interval_txt,fit_interval)
-    self._np_savetxt_safe(self.SurrogateID+self._time_info_txt,time_info)
-    self._np_savetxt_safe(self.SurrogateID+self._greedy_points_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._fit_interval_txt,fit_interval)
+    self._np_savetxt_safe(self.surrogateID+self._time_info_txt,time_info)
+    self._np_savetxt_safe(self.surrogateID+self._greedy_points_txt,\
                          greedy_points,fmt='%2.16f')
-    self._np_savetxt_safe(self.SurrogateID+self._eim_indices_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._eim_indices_txt,\
                          eim_indices,fmt='%i')
-    self._np_savetxt_safe(self.SurrogateID+self._B_1_txt,B.real)
-    self._np_savetxt_safe(self.SurrogateID+self._B_2_txt,B.imag)
-    self._np_savetxt_safe(self.SurrogateID+self._fitparams_phase_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._B_1_txt,B.real)
+    self._np_savetxt_safe(self.surrogateID+self._B_2_txt,B.imag)
+    self._np_savetxt_safe(self.surrogateID+self._fitparams_phase_txt,\
                          fitparams_phase)
-    self._np_savetxt_safe(self.SurrogateID+self._fitparams_amp_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._fitparams_amp_txt,\
                          fitparams_amp)
-    #self._np_savetxt_safe(self.SurrogateID+self._affine_map_txt,\
+    #self._np_savetxt_safe(self.surrogateID+self._affine_map_txt,\
     #                     np.array([int(affine_map)]),fmt='%i')
-    self._np_savetxt_safe(self.SurrogateID+self._affine_map_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._affine_map_txt,\
                          [affine_map],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._V_1_txt,V.real)
-    self._np_savetxt_safe(self.SurrogateID+self._V_2_txt,V.imag)
-    self._np_savetxt_safe(self.SurrogateID+self._R_1_txt,R.real)
-    self._np_savetxt_safe(self.SurrogateID+self._R_2_txt,R.imag)
-    self._np_savetxt_safe(self.SurrogateID+self._fitparams_norm_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._V_1_txt,V.real)
+    self._np_savetxt_safe(self.surrogateID+self._V_2_txt,V.imag)
+    self._np_savetxt_safe(self.surrogateID+self._R_1_txt,R.real)
+    self._np_savetxt_safe(self.surrogateID+self._R_2_txt,R.imag)
+    self._np_savetxt_safe(self.surrogateID+self._fitparams_norm_txt,\
                          fitparams_norm)
-    self._np_savetxt_safe(self.SurrogateID+self._fit_type_phase_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._fit_type_phase_txt,\
                          [fit_type_phase],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._fit_type_amp_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._fit_type_amp_txt,\
                          [fit_type_amp],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._fit_type_norm_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._fit_type_norm_txt,\
                          [fit_type_norm],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._parameterization_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._parameterization_txt,\
                          [parameterization],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._surrogate_mode_type_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._surrogate_mode_type_txt,\
                          [surrogate_mode_type],'%s')
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
