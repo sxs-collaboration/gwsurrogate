@@ -34,7 +34,11 @@ common library and can be easily installed with a package manager.
 
 Note that at runtime (ie when you do import gwsurrogate) you may need to let
 gsl know where your BLAS library is installed. This can be done by setting
-your LD_PRELOAD or LD_LIBRARY_PATH environment variables. 
+your LD_PRELOAD or LD_LIBRARY_PATH environment variables. A relevant example:
+
+```
+>>> export LD_PRELOAD=~/anaconda3/envs/python27/lib/libgslcblas.so
+```
 
 ## From pip ##
 
@@ -44,6 +48,14 @@ Index). gwsurrogate can be installed to the standard location
 
 ```
 >>> pip install gwsurrogate
+```
+
+## From conda ##
+
+`gwsurrogate` is [on conda-forge](https://anaconda.org/conda-forge/gwsurrogate), and can be installed with
+
+```
+>>> conda install -c conda-forge gwsurrogate
 ```
 
 ## From source ##
@@ -77,6 +89,12 @@ For a "proper" installation
 where the "-e" installs an editable (development) project with pip. This allows
 your local code edits to be automatically seen by the system-wide installation.
 
+If you have git cloned this project, you must do
+
+```
+git submodule init
+git submodule update
+```
 
 # Getting Started #
 
@@ -95,13 +113,26 @@ basics.ipynb, do
 ```
   >>> jupyter notebook basics.ipynb
 ```
-from the directory 'notebooks'
+
+from the directory 'notebooks'. 
+
+Jupyter notebooks located in 'tutorial/notebooks' give a comprehensive
+overview of gwsurrogate. If you dont have the time for that, you can 
+find model-specific quickstart notebooks located in 'tutorial/website'.
+For instance, [look here](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRSur7dq4.ipynb)
+if you want to use the model NRSur7dq4.
 
 
 # Where to find surrogates? #
 
 Surrogates can be downloaded directly from gwsurrogate. For download 
-instructions, see the basics.ipynb Jupyter notebook.
+instructions, see the basics.ipynb Jupyter notebook. To see what's available:
+
+```
+>>> import gwsurrogate as gws
+>>> gws.catalog.list()
+>>> gws.catalog.pull("NRSur7dq4") # if you want to download this model
+```
 
 
 # Tests #

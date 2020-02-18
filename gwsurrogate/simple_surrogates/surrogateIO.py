@@ -30,8 +30,14 @@ THE SOFTWARE.
 import numpy as np
 import os as os
 import h5py
-from ..parametric_funcs import function_dict as my_funcs
-from ..new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
+# HEAD -- prob delete this block in favor of master
+#from ..parametric_funcs import function_dict as my_funcs
+#from ..new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
+# MASTER
+from .parametric_funcs import function_dict as my_funcs
+from .new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
+from .catalog import get_modelID_from_filename
+
 import collections
 
 surrogate_description = """* Description of tags:
@@ -305,7 +311,7 @@ class H5Surrogate(SurrogateBaseIO):
   def prepare_data(self, data_class):
     """ Prepare a dictionary to export with entries filled from imported surrogate data"""
     return [self.prepare_mode_data(data_class.single_modes[mm]) for mm in data_class.modes]
-      
+
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def load_h5(self, file, subdir='', closeQ=True):
     
@@ -326,14 +332,21 @@ class H5Surrogate(SurrogateBaseIO):
       # Get keys in the given subdirectory
       self.keys = list(self.file[subdir[:-1]].keys())
       
-    ### Get SurrogateID ####
+    ### Get surrogateID ####
     name = self.file.filename.split('/')[-1].split('.')[0]
     if self._surrogate_ID_h5 in self.keys:
-      self.surrogate_ID = self.chars_to_string(self.file[subdir+self._surrogate_ID_h5][()])
-      if self.surrogate_ID != name:
-        print("\n>>> Warning: SurrogateID does not have expected name.")
+      self.surrogateID = self.chars_to_string(self.file[subdir+self._surrogate_ID_h5][()])
+      if self.surrogateID != name:
+        print("\n>>> Warning: surrogateID does not have expected name.")
     else:
-      "\n>>> Warning: No surrogate ID found."
+      surrogateID = get_modelID_from_filename(file.filename)
+      if len(surrogateID) == 0 or len(surrogateID) > 1:
+        self.surrogateID = None
+        print("\n>>> Warning: No surrogate ID found. Could not deduce ID from file")
+      else:
+        self.surrogateID = surrogateID[0]
+        print("\n>>> Found surrogate ID from file name: %s"%self.surrogateID)
+
     
     ### Get type of basis used to build surrogate 
     # (e.g., basis for complex waveform or for amplitude and phase)
@@ -421,7 +434,7 @@ class H5Surrogate(SurrogateBaseIO):
     self.fit_min = self.file[subdir+self._fit_min_h5][()]
     self.fit_max = self.file[subdir+self._fit_max_h5][()]
     self.fit_interval = np.array( [self.fit_min, self.fit_max] )
-    
+
     self.fit_type_amp = self.chars_to_string(self.file[subdir+self._fit_type_amp_h5][()])
     self.fit_type_phase = self.chars_to_string(self.file[subdir+self._fit_type_phase_h5][()])
 
@@ -462,13 +475,40 @@ class H5Surrogate(SurrogateBaseIO):
         return phase_eval
 
       self.phase_fit_func = phase_fit_func
-      
+
+    elif self.fit_type_amp == "spline_1d" and self.fit_type_phase == "spline_1d":
+      print("Special case: using spline for parametric model at each EI node")
+
+      n_spline_knots = self.file[subdir+'n_spline_knots'][:]
+      spline_knots = self.file[subdir+'spline_knots'][:]
+
+      # pack necessary data up so the spline function can be called
+      # as self.amp_fit_func(self.fitparams_amp[jj,:], x_0)
+      num_fits = self.fitparams_amp.shape[0]
+      fitparams_amp = []
+      fitparams_phase = []
+      degree = self.file[subdir+'degree'][:]
+      for i in range(num_fits):
+        fitparams_amp.append([spline_knots, self.fitparams_amp[i,:], degree])
+        fitparams_phase.append([spline_knots, self.fitparams_phase[i,:], degree])
+      self.fitparams_amp = np.array(fitparams_amp)
+      self.fitparams_phase = np.array(fitparams_phase)
+
+      print("spline knots = %i, num_fits = %i"%(n_spline_knots,num_fits))
+
+      self.amp_fit_func   = my_funcs[self.fit_type_amp]
+      self.phase_fit_func = my_funcs[self.fit_type_phase]
+
     else:
       self.amp_fit_func   = my_funcs[self.fit_type_amp]
       self.phase_fit_func = my_funcs[self.fit_type_phase]
 
     if self._fit_type_norm_h5 in self.keys:
-      self.fitparams_norm = self.file[subdir+self._fitparams_norm_h5][:]
+      try:
+        self.fitparams_norm = self.file[subdir+self._fitparams_norm_h5][:]
+      except KeyError:
+      	self.fitparams_norm = None
+      	print("setting norm fitparams to None...")
       self.fit_type_norm = self.chars_to_string(self.file[subdir+self._fit_type_norm_h5][()])
       self.norm_fit_func  = my_funcs[self.fit_type_norm]
       self.norms = True
@@ -620,7 +660,7 @@ class TextSurrogateRead(SurrogateBaseIO):
     surrogate_load_info = '' # add to string, display after loading
 
     ### sdir is defined to be the surrogate's ID ###
-    self.SurrogateID = sdir
+    self.surrogateID = sdir
 
     ### type of surrogate (for harmonic mode) ###
     self.surrogate_mode_type = \
@@ -784,7 +824,7 @@ class TextSurrogateWrite(SurrogateBaseIO):
       print("Could not create a surrogate directory. Not ready to export, please try again.")
 
     ### sdir is defined to be the surrogate's ID ###
-    self.SurrogateID = sdir
+    self.surrogateID = sdir
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -800,37 +840,37 @@ class TextSurrogateWrite(SurrogateBaseIO):
     # TODO: flag to zip folder and save full time series
 
     ### pack mass ratio interval (for fits) and time info ###
-    self._np_savetxt_safe(self.SurrogateID+self._fit_interval_txt,fit_interval)
-    self._np_savetxt_safe(self.SurrogateID+self._time_info_txt,time_info)
-    self._np_savetxt_safe(self.SurrogateID+self._greedy_points_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._fit_interval_txt,fit_interval)
+    self._np_savetxt_safe(self.surrogateID+self._time_info_txt,time_info)
+    self._np_savetxt_safe(self.surrogateID+self._greedy_points_txt,\
                          greedy_points,fmt='%2.16f')
-    self._np_savetxt_safe(self.SurrogateID+self._eim_indices_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._eim_indices_txt,\
                          eim_indices,fmt='%i')
-    self._np_savetxt_safe(self.SurrogateID+self._B_1_txt,B.real)
-    self._np_savetxt_safe(self.SurrogateID+self._B_2_txt,B.imag)
-    self._np_savetxt_safe(self.SurrogateID+self._fitparams_phase_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._B_1_txt,B.real)
+    self._np_savetxt_safe(self.surrogateID+self._B_2_txt,B.imag)
+    self._np_savetxt_safe(self.surrogateID+self._fitparams_phase_txt,\
                          fitparams_phase)
-    self._np_savetxt_safe(self.SurrogateID+self._fitparams_amp_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._fitparams_amp_txt,\
                          fitparams_amp)
-    #self._np_savetxt_safe(self.SurrogateID+self._affine_map_txt,\
+    #self._np_savetxt_safe(self.surrogateID+self._affine_map_txt,\
     #                     np.array([int(affine_map)]),fmt='%i')
-    self._np_savetxt_safe(self.SurrogateID+self._affine_map_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._affine_map_txt,\
                          [affine_map],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._V_1_txt,V.real)
-    self._np_savetxt_safe(self.SurrogateID+self._V_2_txt,V.imag)
-    self._np_savetxt_safe(self.SurrogateID+self._R_1_txt,R.real)
-    self._np_savetxt_safe(self.SurrogateID+self._R_2_txt,R.imag)
-    self._np_savetxt_safe(self.SurrogateID+self._fitparams_norm_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._V_1_txt,V.real)
+    self._np_savetxt_safe(self.surrogateID+self._V_2_txt,V.imag)
+    self._np_savetxt_safe(self.surrogateID+self._R_1_txt,R.real)
+    self._np_savetxt_safe(self.surrogateID+self._R_2_txt,R.imag)
+    self._np_savetxt_safe(self.surrogateID+self._fitparams_norm_txt,\
                          fitparams_norm)
-    self._np_savetxt_safe(self.SurrogateID+self._fit_type_phase_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._fit_type_phase_txt,\
                          [fit_type_phase],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._fit_type_amp_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._fit_type_amp_txt,\
                          [fit_type_amp],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._fit_type_norm_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._fit_type_norm_txt,\
                          [fit_type_norm],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._parameterization_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._parameterization_txt,\
                          [parameterization],'%s')
-    self._np_savetxt_safe(self.SurrogateID+self._surrogate_mode_type_txt,\
+    self._np_savetxt_safe(self.surrogateID+self._surrogate_mode_type_txt,\
                          [surrogate_mode_type],'%s')
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

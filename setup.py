@@ -62,6 +62,7 @@ setup(name='gwsurrogate',
       # Alphabetical by last name.
       ""],
       description='An easy to use interface to gravitational wave surrogate models',
+      long_description_content_type='text/markdown',
       long_description=long_description,
       # will start new downloads if these are installed in a non-standard location
       install_requires=["gwtools"],

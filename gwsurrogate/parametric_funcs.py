@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 import numpy as np
 from gwtools import gwtools as gwtools # from the package gwtools, import the module gwtools (gwtools.py)....
-
+from scipy.interpolate import splev
 
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -38,6 +38,12 @@ def polyval_1d(coeffs,x):
   """ 1D polynomial defined by coeffs vector and evaluated 
   as numpy.polyval(coeffs,x)"""
   return np.polyval(coeffs, x)
+
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def spline_1d(coeffs,x):
+  """ 1d spline defined by knots and spline coeffs. """
+  return splev(x, coeffs)
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def ampfitfn1_1d(coeffs,x):
@@ -102,6 +108,15 @@ def ampfitfn6_1d(coeffs,x):
 
   return a0*np.sqrt(1. - x) + a1*(1. - x)**1.5 + np.polyval(polyCoefs,1. - x)
 
+def emri_normalization_logq(coeffs,x):
+  """ Teukolsky solver that generates EMRI data normalizes by q, since 
+  the EMRI surrogates use log(q) parameterizaiton, we need to undo
+  the log and apply the q-dependent normalization. No coefficients are
+  needed, but we keep this structure for common API. """
+
+  q = np.exp(x)
+  return 1.0/q
+
 ### these are for switching from (q,M) to surrogate's parameterization ###
 def q_to_q(q):
   """ identity map from q to q
@@ -127,15 +142,31 @@ def q_to_nu(q):
   """
   return gwtools.q_to_nu(q)
 
+def q_to_logq(q):
+  """ map from q to log(q)
+  
+  Surrogates with this parameterization expect its user intput 
+  to be the mass ratio q. 
+  
+  The surrogate will map q to the internal surrogate's 
+  parameterization which is log(q)
+  
+  The surrogates training interval is quoted in log(q).
+  """
+  return np.log(q)
+
 ### dictionary of fitting functions ###
 function_dict = {
                  "polyval_1d": polyval_1d,
+                 "spline_1d": spline_1d,
                  "ampfitfn1_1d": ampfitfn1_1d,
                  "ampfitfn2_1d": ampfitfn2_1d,
                  "ampfitfn4_1d": ampfitfn4_1d,
                  "phifitfn1_1d": phifitfn1_1d,
                  "nuSingularPlusPolynomial": ampfitfn5_1d,
                  "nuSingular2TermsPlusPolynomial": ampfitfn6_1d,
+                 "emri_normalization_logq":emri_normalization_logq,
                  "q_to_q": q_to_q,
-                 "q_to_nu":q_to_nu
+                 "q_to_nu": q_to_nu,
+                 "q_to_logq": q_to_logq
                  }
