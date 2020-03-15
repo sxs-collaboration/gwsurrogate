@@ -1,3 +1,4 @@
 [submodule "gwsurrogate/eval_pysur"]
 	path = gwsurrogate/eval_pysur
-	url = git@bitbucket.org:vijayvarma392/eval_pysur.git
+	url = https://bitbucket.org/vijayvarma392/eval_pysur.git
+	#url = git@bitbucket.org:vijayvarma392/eval_pysur.git
