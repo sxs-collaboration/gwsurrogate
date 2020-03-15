@@ -30,13 +30,14 @@ THE SOFTWARE.
 import numpy as np
 import os as os
 import h5py
-# HEAD -- prob delete this block in favor of master
 #from ..parametric_funcs import function_dict as my_funcs
 #from ..new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
-# MASTER
-from .parametric_funcs import function_dict as my_funcs
-from .new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
-from .catalog import get_modelID_from_filename
+#from .parametric_funcs import function_dict as my_funcs
+#from .new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
+#from .catalog import get_modelID_from_filename
+from gwsurrogate.parametric_funcs import function_dict as my_funcs
+from gwsurrogate.new.spline_evaluation import TensorSplineGrid, fast_tensor_spline_eval
+from gwsurrogate.catalog import get_modelID_from_filename
 
 import collections
 
