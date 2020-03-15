@@ -27,13 +27,30 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+
+ # adding "_" prefix to potentially unfamiliar module names
+ # so they won't show up in gws' tab completion
+from scipy.interpolate import splrep as _splrep
+from scipy.interpolate import splev as _splev
+from gwtools import plot_pretty as _plot_pretty
+from gwsurrogate.simple_surrogates.surrogateIO import H5Surrogate as _H5Surrogate
+from gwsurrogate.simple_surrogates.surrogateIO import TextSurrogateRead as _TextSurrogateRead
+from gwsurrogate.simple_surrogates.surrogateIO import TextSurrogateWrite as _TextSurrogateWrite
+from gwsurrogate.new.surrogate import _ParamDim, _ParamSpace
+
+  
+import warnings
+import os
+  
+from .new import surrogate as new_surrogate
+from .new import precessing_surrogate
+
+
 # adding "_" prefix to module names so they won't show up in gws tab completion
 import numpy as _np
 from gwtools.harmonics import sYlm as _sYlm
 from gwtools import gwtools as _gwtools
 from gwtools import gwutils as _gwutils
-from gwsurrogate.new.surrogate import ParamDim as _ParamDim
-from gwsurrogate.new.surrogate import ParamSpace as _ParamSpace
 
 
 from . import catalog
@@ -42,7 +59,7 @@ from .new import precessing_surrogate as _precessing_surrogate
 from .simple_surrogates import surrogate as _simple_surrogate
 from .simple_surrogates.surrogate import EvaluateSingleModeSurrogate, EvaluateSurrogate # for backwards compatibility
 try:
-  import matplotlib.pyplot as plt
+  import matplotlib.pyplot as _plt
 except:
   print("Cannot load matplotlib.")
 
@@ -66,9 +83,9 @@ def write_waveform(t, hp, hc, filename='output',ext='bin'):
   """write waveform to text or numpy binary file"""
 
   if( ext == 'txt'):
-    np.savetxt(filename, [t, hp, hc])
+    _np.savetxt(filename, [t, hp, hc])
   elif( ext == 'bin'):
-    np.save(filename, [t, hp, hc])
+    _np.save(filename, [t, hp, hc])
   else:
     raise ValueError('not a valid file extension')
 
@@ -172,7 +189,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
     ### if (M,distance) provided, a physical mode in mks units is returned ###
     if( M is not None and dist is not None):
-      amp0    = ((M * _gwtools.MSUN_SI ) / (1.e6*dist*_gwtools.PC_SI )) * ( _gwtools.G / np.power(_gwtools.c,2.0) )
+      amp0    = ((M * _gwtools.MSUN_SI ) / (1.e6*dist*_gwtools.PC_SI )) * ( _gwtools.G / _np.power(_gwtools.c,2.0) )
       t_scale = _gwtools.Msuninsec * M
     else:
       amp0    = 1.0
@@ -240,7 +257,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     f_instant = _gwtools.find_instant_freq(hp, hc, t)
 
     # TODO: this is a hack to account for inconsistent conventions!
-    f_instant = np.abs(f_instant)
+    f_instant = _np.abs(f_instant)
 
     if f_low is None:
       return f_instant
@@ -262,7 +279,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     """Phase of mode at amplitude's discrete peak. h = A*exp(i*phi)."""
 
     amp, phase = self.amp_phase(h)
-    argmax_amp = np.argmax(amp)
+    argmax_amp = _np.argmax(amp)
 
     return phase[argmax_amp]
 
@@ -282,7 +299,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     """average time to evaluate surrogate waveforms. """
 
     qmin, qmax = self.fit_interval
-    ran = np.random.uniform(qmin, qmax, 1000)
+    ran = _np.random.uniform(qmin, qmax, 1000)
 
     import time
     tic = time.time()
@@ -333,7 +350,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if dt is None:
       return t
     else:
-      return np.arange(t[0],t[-1],dt)
+      return _np.arange(t[0],t[-1],dt)
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def basis(self, i, flavor='waveform'):
@@ -344,10 +361,10 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       if flavor == 'cardinal':
         basis = self.B[:,i]
       elif flavor == 'orthogonal':
-        basis = np.dot(self.B,self.V)[:,i]
+        basis = _np.dot(self.B,self.V)[:,i]
       elif flavor == 'waveform':
-        E = np.dot(self.B,self.V)
-        basis = np.dot(E,self.R)[:,i]
+        E = _np.dot(self.B,self.V)
+        basis = _np.dot(E,self.R)[:,i]
       else:
         raise ValueError("Not a valid basis type")
 
@@ -362,13 +379,13 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   def resample_B(self, times, ext=1):
     """resample the empirical interpolant operator, B, at the input time samples"""
 
-    evaluations = np.array([_splev(times, self.reB_spline_params[jj],ext=ext)  \
+    evaluations = _np.array([_splev(times, self.reB_spline_params[jj],ext=ext)  \
              + 1j*_splev(times, self.imB_spline_params[jj],ext=ext) for jj in range(self.B.shape[1])]).T
 
     # allow for extrapolation if very close to surrogate's temporal interval
     t0 = self.times[0]
-    if (np.abs(times[0] - t0) < t0 * 1.e-12) or (t0==0 and np.abs(times[0] - t0) <1.e-12):
-      evaluations[0] = np.array([_splev(times[0], self.reB_spline_params[jj],)  \
+    if (_np.abs(times[0] - t0) < t0 * 1.e-12) or (t0==0 and _np.abs(times[0] - t0) <1.e-12):
+      evaluations[0] = _np.array([_splev(times[0], self.reB_spline_params[jj],)  \
              + 1j*_splev(times[0], self.imB_spline_params[jj]) for jj in range(self.B.shape[1])]).T
     
     return evaluations
@@ -378,11 +395,11 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   def resample_B_1(self, times, ext=1):
     """resample the B_1 basis at the input time samples"""
 
-    evaluations = np.array([_splev(times, self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T
+    evaluations = _np.array([_splev(times, self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T
 
     # allow for extrapolation if very close to surrogate's temporal interval
-    if np.abs(times[0] - self.times[0])/self.times[0] < 1.e-12:
-      evaluations[0] = np.array([_splev(times[0], self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T
+    if _np.abs(times[0] - self.times[0])/self.times[0] < 1.e-12:
+      evaluations[0] = _np.array([_splev(times[0], self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T
     
     return evaluations
 
@@ -391,11 +408,11 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   def resample_B_2(self, times, ext=1):
     """resample the B_2 basis at the input samples"""
 
-    evaluations = np.array([_splev(times, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T
+    evaluations = _np.array([_splev(times, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T
 
     # allow for extrapolation if very close to surrogate's temporal interval
-    if np.abs(times[0] - self.times[0])/self.times[0] < 1.e-12:
-      evaluations[0] = np.array([_splev(times[0], self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T
+    if _np.abs(times[0] - self.times[0])/self.times[0] < 1.e-12:
+      evaluations[0] = _np.array([_splev(times[0], self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T
     
     return evaluations
 
@@ -409,7 +426,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     fig   = _plot_pretty(self.times,[basis.real,basis.imag])
 
     if showQ:
-      plt.show()
+      _plt.show()
     
     # Return figure method to allow for saving plot with fig.savefig
     return fig
@@ -427,8 +444,8 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       'hphc': [hp, hc],
       'hp': hp,
       'hc': hc,
-      'AmpPhase': [np.abs(h), _gwtools.phase(h)],
-      'Amp': np.abs(h),
+      'AmpPhase': [_np.abs(h), _gwtools.phase(h)],
+      'Amp': _np.abs(h),
       'Phase': _gwtools.phase(h),
       }
     
@@ -440,11 +457,11 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     # Plot surrogate waveform
     fig = _plot_pretty(t, y[htype], flavor=flavor, color=color, linestyle=linestyle, \
                 label=label, legendQ=legendQ, showQ=False)
-    plt.xlabel(xlab)
-    plt.ylabel('Surrogate waveform')
+    _plt.xlabel(xlab)
+    _plt.ylabel('Surrogate waveform')
     
     if showQ:
-      plt.show()
+      _plt.show()
         
     # Return figure method to allow for saving plot with fig.savefig
     return fig
@@ -454,7 +471,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   def plot_eim_data(self, inode=None, htype='Amp', nuQ=False, fignum=1, showQ=True):
     """Plot empirical interpolation data used for performing fits in parameter"""
     
-    fig = plt.figure(fignum)
+    fig = _plt.figure(fignum)
     ax1 = fig.add_subplot(111)
     
     y = {
@@ -466,23 +483,23 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       nu = _gwtools.q_to_nu(self.greedy_points)
       
       if inode is None:
-        [plt.plot(nu, ee, 'ko') for ee in y[htype]]
+        [_plt.plot(nu, ee, 'ko') for ee in y[htype]]
       else:
-        plt.plot(nu, y[htype][inode], 'ko')
+        _plt.plot(nu, y[htype][inode], 'ko')
       
-      plt.xlabel('Symmetric mass ratio, $\\nu$')
+      _plt.xlabel('Symmetric mass ratio, $\\nu$')
     
     else:
       
       if inode is None:
-        [plt.plot(self.greedy_points, ee, 'ko') for ee in y[htype]]
+        [_plt.plot(self.greedy_points, ee, 'ko') for ee in y[htype]]
       else:
-        plt.plot(self.greedy_points, y[htype][inode], 'ko')
+        _plt.plot(self.greedy_points, y[htype][inode], 'ko')
       
-      plt.xlabel('Mass ratio, $q$')
+      _plt.xlabel('Mass ratio, $q$')
     
     if showQ:
-      plt.show()
+      _plt.show()
     
     return fig
   
@@ -491,7 +508,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   def plot_eim_fits(self, inode=None, htype='Amp', nuQ=False, fignum=1, num=200, showQ=True):
     """Plot empirical interpolation data and fits"""
     
-    fig = plt.figure(fignum)
+    fig = _plt.figure(fignum)
     ax1 = fig.add_subplot(111)
     
     fitfn = {
@@ -507,24 +524,24 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     # Plot EIM data points
     self.plot_eim_data(inode=inode, htype=htype, nuQ=nuQ, fignum=fignum, showQ=False)
     
-    qs = np.linspace(self.fit_min, self.fit_max, num)
+    qs = _np.linspace(self.fit_min, self.fit_max, num)
     nus = _gwtools.q_to_nu(qs)
     
     # Plot fits to EIM data points
     if nuQ:
       if inode is None:
-        [plt.plot(nus, fitfn[htype](cc, qs), 'k-') for cc in coeffs[htype]]
+        [_plt.plot(nus, fitfn[htype](cc, qs), 'k-') for cc in coeffs[htype]]
       else:
-        plt.plot(nus, fitfn[htype](coeffs[htype][inode], qs), 'k-')  
+        _plt.plot(nus, fitfn[htype](coeffs[htype][inode], qs), 'k-')  
     
     else:
       if inode is None:
-        [plt.plot(qs, fitfn[htype](cc, qs), 'k-') for cc in coeffs[htype]]
+        [_plt.plot(qs, fitfn[htype](cc, qs), 'k-') for cc in coeffs[htype]]
       else:
-        plt.plot(qs, fitfn[htype](coeffs[htype][inode], qs), 'k-')
+        _plt.plot(qs, fitfn[htype](coeffs[htype][inode], qs), 'k-')
       
     if showQ:
-      plt.show()
+      _plt.show()
     
     return fig
   
@@ -537,7 +554,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
     x_min, x_max = self.fit_interval
 
-    if(np.any(x < x_min) or np.any(x > x_max)):
+    if(_np.any(x < x_min) or _np.any(x > x_max)):
       if strong_checking:
         raise ValueError('Surrogate not trained at requested parameter value')
       else:
@@ -622,7 +639,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if not self.norms:
       return 1.
     else:
-      return np.array([ self.norm_fit_func(self.fitparams_norm, x_0) ])
+      return _np.array([ self.norm_fit_func(self.fitparams_norm, x_0) ])
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -634,7 +651,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if self.fit_type_amp == 'fast_spline_real':
       return self.amp_fit_func(self.fitparams_amp, x_0)
     else:
-      return np.array([ self.amp_fit_func(self.fitparams_amp[jj,:], x_0) for jj in range(self.fitparams_amp.shape[0]) ])
+      return _np.array([ self.amp_fit_func(self.fitparams_amp[jj,:], x_0) for jj in range(self.fitparams_amp.shape[0]) ])
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -646,7 +663,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if self.fit_type_phase == 'fast_spline_imag':
       return self.phase_fit_func(self.fitparams_phase, x_0)
     else:
-      return np.array([ self.phase_fit_func(self.fitparams_phase[jj,:], x_0) for jj in range(self.fitparams_phase.shape[0]) ])
+      return _np.array([ self.phase_fit_func(self.fitparams_phase[jj,:], x_0) for jj in range(self.fitparams_phase.shape[0]) ])
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -675,7 +692,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       if self.fit_type_amp == 'fast_spline_real':
         h_EIM = nrm_eval * (amp_eval + 1j*phase_eval)
       else:
-        h_EIM = nrm_eval*amp_eval*np.exp(1j*phase_eval) # dim_RB-vector fit evaluation of h
+        h_EIM = nrm_eval*amp_eval*_np.exp(1j*phase_eval) # dim_RB-vector fit evaluation of h
       return h_EIM
     elif self.surrogate_mode_type  == 'amp_phase_basis':
       if self.fit_type_amp == 'fast_spline_real':
@@ -700,9 +717,9 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       h_EIM = self._eim_coeffs(x, 'waveform_basis')
 
       if times is None:
-        surrogate = np.dot(self.B, h_EIM)
+        surrogate = _np.dot(self.B, h_EIM)
       else:
-        surrogate = np.dot(self.resample_B(times), h_EIM)
+        surrogate = _np.dot(self.resample_B(times), h_EIM)
 
       #surrogate = nrm_eval * surrogate
 
@@ -711,15 +728,15 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       amp_eval, phase_eval, nrm_eval = self._eim_coeffs(x, 'amp_phase_basis')
 
       if times is None:
-        sur_A = np.dot(self.B_1, amp_eval)
-        sur_P = np.dot(self.B_2, phase_eval)
+        sur_A = _np.dot(self.B_1, amp_eval)
+        sur_P = _np.dot(self.B_2, phase_eval)
       else:
-        #sur_A = np.dot(np.array([_splev(times, self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T, amp_eval)
-        #sur_P = np.dot(np.array([_splev(times, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T, phase_eval)
-        sur_A = np.dot(self.resample_B_1(times), amp_eval)
-        sur_P = np.dot(self.resample_B_2(times), phase_eval)
+        #sur_A = _np.dot(_np.array([_splev(times, self.B1_spline_params[jj],ext=1) for jj in range(self.B_1.shape[1])]).T, amp_eval)
+        #sur_P = _np.dot(_np.array([_splev(times, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T, phase_eval)
+        sur_A = _np.dot(self.resample_B_1(times), amp_eval)
+        sur_P = _np.dot(self.resample_B_2(times), phase_eval)
 
-      surrogate = nrm_eval * sur_A * np.exp(1j*sur_P)
+      surrogate = nrm_eval * sur_A * _np.exp(1j*sur_P)
 
 
     else:
@@ -911,16 +928,16 @@ class EvaluateSurrogate():
     for key in list(self.single_mode_dict.keys()):
       tmp_range = self.single_mode_dict[key].fit_interval
       tmp_parameterization = self.single_mode_dict[key].get_surr_params
-      if(np.max(np.abs(tmp_range - training_parameter_range)) != 0):
+      if(_np.max(_np.abs(tmp_range - training_parameter_range)) != 0):
         raise ValueError('inconsistent single mode parameter grids')  
       if(tmp_parameterization != parameterization):
         raise ValueError('inconsistent single mode parameterizations') 
     # common parameter interval and parameterization for all modes 
     # use newer parameter space class for common interface
-    pd = ParamDim(name='unknown parmater', 
+    pd = _ParamDim(name='unknown parmater', 
                   min_val=training_parameter_range[0],
                   max_val=training_parameter_range[1])
-    self.param_space = ParamSpace(name='unknown', params=[pd])
+    self.param_space = _ParamSpace(name='unknown', params=[pd])
     self.parameterization = parameterization
     
     print("Surrogate interval",training_parameter_range)
@@ -1237,11 +1254,11 @@ class EvaluateSurrogate():
 
     # TODO: should the dtype be complex?
     if(num_modes==1): # return as vector instead of array
-      hp_full = np.zeros(sample_size)
-      hc_full = np.zeros(sample_size)
+      hp_full = _np.zeros(sample_size)
+      hc_full = _np.zeros(sample_size)
     else:
-      hp_full = np.zeros((sample_size,num_modes))
-      hc_full = np.zeros((sample_size,num_modes))
+      hp_full = _np.zeros((sample_size,num_modes))
+      hc_full = _np.zeros((sample_size,num_modes))
 
     return hp_full, hc_full
 
@@ -1256,8 +1273,8 @@ class EvaluateSurrogate():
     if (m<=0):
       raise ValueError('m must be nonnegative. m<0 will be generated for you from the m>0 mode.')
     else:
-      hp_mode =   np.power(-1,ell) * hp_mode
-      hc_mode = - np.power(-1,ell) * hc_mode
+      hp_mode =   _np.power(-1,ell) * hp_mode
+      hc_mode = - _np.power(-1,ell) * hc_mode
 
     return hp_mode, hc_mode
 
@@ -1296,7 +1313,7 @@ def CompareSingleModeSurrogate(sur1,sur2):
                'modeled_data','fits_required','dt','times',\
                'fit_min','fit_max']:
 
-      if np.max(np.abs(sur1.__dict__[key] - sur2.__dict__[key])) != 0:
+      if _np.max(_np.abs(sur1.__dict__[key] - sur2.__dict__[key])) != 0:
         different.append(key)
       else:
         agrees.append(key)
@@ -1873,7 +1890,7 @@ class SurrogateEvaluator(object):
             fake_neg_modes = not self.keywords['Precessing']
 
             # Follows the LAL convention (see help text)
-            h = self._mode_sum(h, inclination, np.pi/2 - phi_ref,
+            h = self._mode_sum(h, inclination, _np.pi/2 - phi_ref,
                     fake_neg_modes=fake_neg_modes)
 
         # Rescale domain to physical units
