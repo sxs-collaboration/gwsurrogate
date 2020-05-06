@@ -1033,8 +1033,10 @@ Returns:
 
         return_times = True
         if dtM is None and timesM is None:
-            # Use the sparse domain
-            timesM = self.t_coorb
+            # Use the sparse domain. Python normally copies numpy arrays by
+            # reference, so we do a deep copy so as to not overwrite
+            # self.t_coorb.
+            timesM = np.copy(self.t_coorb)
             do_interp = False
         else:
             ## Interpolate onto uniform domain if needed
