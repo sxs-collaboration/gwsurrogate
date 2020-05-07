@@ -194,13 +194,13 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if (times is not None):
       t = times
     else:
-      t = self.time()
+      t = self.time() # shallow copy of self.times
       if self.surrogateID == 'EMRISur1dq1e4':
-        t = t * alpha_emri 
+        t = t * alpha_emri # this will deep copy, preserving data in self.times
 
     ### if input times are dimensionless, convert to MKS if a physical surrogate is requested ###
     if units == 'dimensionless':
-      t = t_scale * t
+      t = t_scale * t  # this will deep copy, preserving data in self.times
 
     # because times is passed to _h_sur, it must be dimensionless form t/M
     if times is not None and units == 'mks':
