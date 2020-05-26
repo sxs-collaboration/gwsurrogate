@@ -187,15 +187,16 @@ def download_path():
   gws_path = os.path.dirname(gwsurrogate.__file__)
   return gws_path+'/surrogate_downloads/'
 
-def list():
+def list(verbose=False):
   """show all known surrogates available for download"""
 
   for surr_key in _surrogate_world.keys():
-    print(surr_key+'...')
-    print('  url: '+_surrogate_world[surr_key].url)
-    print('  md5 hash: %s'%str(_surrogate_world[surr_key].md5))
-    print("  Description: " + _surrogate_world[surr_key].desc)
-    print("  References: "+_surrogate_world[surr_key].refs+'\n')
+    print(surr_key)
+    if verbose:
+        print('  url: '+_surrogate_world[surr_key].url)
+        print('  md5 hash: %s'%str(_surrogate_world[surr_key].md5))
+        print("  Description: " + _surrogate_world[surr_key].desc)
+        print("  References: "+_surrogate_world[surr_key].refs+'\n')
 
 
 def get_modelID_from_filename(filename):
