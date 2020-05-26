@@ -1726,13 +1726,13 @@ class SurrogateEvaluator(object):
 
     h :         The waveform.
                     If inclination is specified, the complex strain (h = hplus
-                    -i hcross) evaluated at (inclination, pi/2) on the sky of
-                    the reference frame is returned. This follows the LAL
-                    convention, see below for details.  This includes all modes
-                    given in the ellMax/mode_list argument. For nonprecessing
-                    systems the m<0 modes are automatically deduced from the
-                    m>0 modes. To see if a model is precessing check
-                    self.keywords.
+                    -i hcross) evaluated at (inclination, pi/2 - phi_ref) on
+                    the sky of the reference frame is returned. This follows
+                    the LAL convention, see below for details.  This includes
+                    all modes given in the ellMax/mode_list argument. For
+                    nonprecessing systems the m<0 modes are automatically
+                    deduced from the m>0 modes. To see if a model is precessing
+                    check self.keywords.
 
                     Else, h is a dictionary of available modes with (l, m)
                     tuples as keys. For example, h22 = h[(2,2)].
