@@ -456,7 +456,7 @@ L = len(self.t), and these returned arrays are sampled at self.t
         if omega_low is not None:
             # If omega_low and omega_ref are the same, no need to
             # recompute t_low
-            if abs(omega_low == omega_ref) < 1e-10:
+            if abs(omega_low - omega_ref) < 1e-10:
                 t_low = t_ref
             else:
                 t_low = self._get_t_from_omega(omega_low, q, chiA0, chiB0, \
