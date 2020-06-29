@@ -37,4 +37,8 @@ jobs:
       run: |
         pwd
         ls
+        cd ..
+        ls
+        pip install -e gwsurrogate
+        cd gwsurrogate
         pytest
