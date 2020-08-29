@@ -1869,7 +1869,7 @@ class SurrogateEvaluator(object):
         # this corresponds to inspiral, merger, or ringdown.
         if taper_end_duration is not None:
             h_tapered = {}
-            for mode, hlm in h.iteritems():
+            for mode, hlm in h.items():
                 # NOTE: we use a roll on window [domain[0]-100, domain[0]-50]
                 # to trick the window function into not tapering the beginning
                 # of h
