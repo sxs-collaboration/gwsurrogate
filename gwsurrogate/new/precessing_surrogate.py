@@ -242,7 +242,7 @@ These time derivatives are given to the AB4 ODE solver.
 
     def __init__(self, h5file):
         """h5file is a h5py.File containing the surrogate data"""
-        self.t = h5file['t_ds'].value
+        self.t = h5file['t_ds'][()]
 
 
         self.fit_data = []
@@ -269,8 +269,8 @@ These time derivatives are given to the AB4 ODE solver.
     def _load_scalar_fit(self, group, key):
         """ Loads a single scalar fit """
         fit_data = {
-                'coefs': group['%s_coefs'%(key)].value,
-                'bfOrders': group['%s_bfOrders'%(key)].value
+                'coefs': group['%s_coefs'%(key)][()],
+                'bfOrders': group['%s_bfOrders'%(key)][()]
                 }
         return fit_data
 
@@ -279,8 +279,8 @@ These time derivatives are given to the AB4 ODE solver.
         fit_data = []
         for i in range(size):
             fit_data.append({
-                    'coefs': group['%s_%d_coefs'%(key, i)].value,
-                    'bfOrders': group['%s_%d_bfOrders'%(key, i)].value
+                    'coefs': group['%s_%d_coefs'%(key, i)][()],
+                    'bfOrders': group['%s_%d_bfOrders'%(key, i)][()]
                     })
         return fit_data
 
@@ -688,11 +688,11 @@ dt_ab4 is [t(i0 + 3) - t(i0 + 2), t(i0 + 2) - t(i0 + 1), t(i0 + 1) - t(i0)]
 
 def _extract_component_data(h5_group):
     data = {}
-    data['EI_basis'] = h5_group['EIBasis'].value
-    data['nodeIndices'] = h5_group['nodeIndices'].value
-    data['coefs'] = [h5_group['nodeModelers']['coefs_%s'%(i)].value
+    data['EI_basis'] = h5_group['EIBasis'][()]
+    data['nodeIndices'] = h5_group['nodeIndices'][()]
+    data['coefs'] = [h5_group['nodeModelers']['coefs_%s'%(i)][()]
                      for i in range(len(data['nodeIndices']))]
-    data['orders'] = [h5_group['nodeModelers']['bfOrders_%s'%(i)].value
+    data['orders'] = [h5_group['nodeModelers']['bfOrders_%s'%(i)][()]
                       for i in range(len(data['nodeIndices']))]
     return data
 
@@ -730,7 +730,7 @@ class CoorbitalWaveformSurrogate:
         while 'hCoorb_%s_%s_Re+'%(self.ellMax+1, self.ellMax+1) in h5file.keys():
             self.ellMax += 1
 
-        self.t = h5file['t_coorb'].value
+        self.t = h5file['t_coorb'][()]
 
         self.data = {}
         self.mode_list = []
