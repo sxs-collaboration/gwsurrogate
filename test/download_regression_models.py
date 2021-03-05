@@ -9,7 +9,8 @@ models = ['SpEC_q1_10_NoSpin_linear_alt',
 'NRHybSur3dq8',
 'SpEC_q1_10_NoSpin',
 'SpEC_q1_10_NoSpin_linear',
-'NRSur7dq4'
+'NRSur7dq4',
+'NRHybSur2dq15'
 ]
 
 for model in models:

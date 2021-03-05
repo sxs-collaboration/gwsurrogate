@@ -109,6 +109,17 @@ _surrogate_world['NRHybSur3dq8'] = \
   '''https://journals.aps.org/prd/abstract/10.1103/PhysRevD.99.064045''',
   'b42cd577f497b1db3da14f1e4ee0ccd1')
 
+_surrogate_world['NRHybSur2dq15'] = \
+  surrogate_info(\
+  'https://www.dropbox.com/s/00kzpmikyqer03j/NRHybSur2dq15.h5',
+  '''Surrogate model for aligned-spin binary black holes with mass ratios q<=15
+  and spin magnitudes <=0.5. The model is trained on NR waveforms that have been
+  hybridized using EOB/PN and spans the entire LIGO frequency band. This model
+  is  presented in arxiv:2203.10109. Available modes are
+  [(2,2), (2,1), (3,3), (4,4), and (5,5)]. The m<0 modes are deduced from the m>0 modes.''',
+  '''https://arxiv.org/abs/2203.10109''',
+  '140af07f2864e4e513eff648aaf8a7de')
+
 _surrogate_world['NRSur7dq4'] = \
   surrogate_info(\
   'https://zenodo.org/record/3348115/files/NRSur7dq4.h5',
@@ -264,3 +275,5 @@ def pull(surr_name,sdir=download_path()):
     surr_path = sdir+file_name
 
   return surr_path
+
+

@@ -128,6 +128,36 @@ class NRHybSur3dq8Fit(pySurrogateFit):
 
             return super(NRHybSur3dq8Fit, self).__call__(mapped_x)
 
+class NRHybSur2dq15Fit(pySurrogateFit):
+    """
+    Evaluates fits for the NRHybSur2dq15 surrogate model.
+
+    Transforms the input parameter to fit parameters before evaluating the fit.
+    That is, maps from [q, chi1z] to [np.log(q), chiHat]
+    chiHat is defined in Eq.(3) of 1508.07253.
+    """
+
+    def __call__(self, x):
+        q, chi1z = x
+        chi2z = 0
+
+        eta = q/(1.+q)**2
+        chi_wtAvg = (q*chi1z+chi2z)/(1.+q)
+        chiHat = (chi_wtAvg - 38.*eta/113.*(chi1z + chi2z))/(1. - 76.*eta/113.)
+
+        mapped_x = [np.log(q), chiHat]
+
+        with warnings.catch_warnings():
+            # Ignore this specific GPR warning.
+            # This warning was mentioned in issues:
+            # https://github.com/autoreject/autoreject/issues/35
+            # https://github.com/scikit-learn/scikit-learn/issues/8748
+            # But it seems like we can ignore it
+            warnings.filterwarnings("ignore", message="Predicted variances"
+                " smaller than 0. Setting those variances to 0.")
+
+            return super(NRHybSur2dq15Fit, self).__call__(mapped_x)
+
 
 class MappedPolyFit1D_q10_q_to_nu(Polyfit1D):
     """
@@ -145,6 +175,7 @@ NODE_CLASSES = {
     "Polyfit1D": Polyfit1D,
     "SpEC_q10_non_spinning": MappedPolyFit1D_q10_q_to_nu,
     "NRHybSur3dq8Fit": NRHybSur3dq8Fit,
+    "NRHybSur2dq15Fit": NRHybSur2dq15Fit,
         }
 
 
