@@ -887,7 +887,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         """ 0 PN TaylorT3 phase. See Eq.43 of arxiv.1812.07865
         """
 
-        q, chi1z, chi2z = x
+        q = x[0]
         eta = q/(1.+q)**2
 
         # 0PN TaylorT3 phase
