@@ -418,7 +418,7 @@ class H5Surrogate(SurrogateBaseIO):
       self.B = self.file[subdir+self._B_h5][:]	
     else:
       raise ValueError('invalid surrogate type')
-    
+
     ### Information about phase/amp parametric fit ###
     if self._affine_map_h5 in self.keys:
       self.affine_map = self.chars_to_string(self.file[subdir+self._affine_map_h5][()])
@@ -558,6 +558,31 @@ class H5Surrogate(SurrogateBaseIO):
     
     if closeQ:
       self.file.close()
+
+
+
+    ### check that data has been loaded as 64-bit double (NOTE: not all datasets are checked here)
+    ### Why is this important? It was found that using np.float32 can lead to problems,
+    ### for example when trying to comput flow, which is sensitive to small changes, round-off
+    ### errors can give wildly incorrect values (off by ~10%)
+    if not isinstance(self.times[0], np.float64):
+      print("Time grid loaded with data type %s. Changing to float64..."%type(self.times[0]))
+      self.times = np.array(self.times, dtype=np.float64)
+      self.tmin = self.times[0]
+      self.tmax = self.times[-1]
+    if self.surrogate_mode_type == 'amp_phase_basis':
+      if not isinstance(self.B_1[0][0], np.float64):
+        print("Basis matrix loaded with data type %s. Changing to float64..."%type(self.B_1[0][0]))
+        self.B_1 = np.array(self.B_1, dtype=np.float64)
+        self.B_2 = np.array(self.B_2, dtype=np.float64)
+    elif self.surrogate_mode_type  == 'waveform_basis':
+      if not isinstance(np.real(self.B[0][0]), np.float64):
+        print("Basis matrix loaded with data type %s. Should change to float64...BUT NOT CODED YET!!!"%type(self.B_1[0][0]))
+    if self.fit_type_amp == "spline_1d" and self.fit_type_phase == "spline_1d":
+      if not isinstance(self.fitparams_amp[0][0][0], np.float64):
+        print("Fit parameters loaded with data type %s. This is probably OK. NOT changing to float64..."%type(self.fitparams_amp[0][0][0]))
+    #    self.fitparams_amp = np.array(self.fitparams_amp, dtype=np.float64)
+    #    self.fitparams_phase = np.array(self.fitparams_phase, dtype=np.float64)
     
     pass
     

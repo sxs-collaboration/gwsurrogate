@@ -147,7 +147,9 @@ _surrogate_world['EMRISur1dq1e4'] = \
   point-particle perturbation theory waveforms set alpha_emri = 1.
   Available modes are [(2,2), (2,1), (3,3), (3,2), (3,1), (4,4), (4,3), 
   (4,2), (5,5), (5,4), (5,3)]. The m<0 modes are deduced from the m>0 modes.
-  Model details can be found in Rifat et al. 2019, arXiv:1910.10473.''',
+  Model details can be found in Rifat et al. 2019, arXiv:1910.10473. NOTE: 
+  the datasets in this hdf5 file are 32-bit (single) precision. Some are up-cast
+  to double in SurrogateIO.''',
   '''https://arxiv.org/abs/1910.10473''',
   'd145958484738e0c7292e084a66a96fa')
 
