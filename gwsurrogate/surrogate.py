@@ -1703,7 +1703,7 @@ class SurrogateEvaluator(object):
                 Skip sanity checks for inputs. Use this if you want to
                 extrapolate outside allowed range. Default: False.
 
-    taper_end_durataion:
+    taper_end_duration:
                 Taper the last TAPER_END_DURATION (M) of a time-domain waveform
                 in units of M. For exmple, passing 40 will taper the last 40M.
                 When set to None, no taper is applied
