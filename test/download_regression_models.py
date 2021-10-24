@@ -8,7 +8,8 @@ import gwsurrogate as gws
 models = ['SpEC_q1_10_NoSpin_linear_alt',
 'NRHybSur3dq8',
 'SpEC_q1_10_NoSpin',
-'SpEC_q1_10_NoSpin_linear'
+'SpEC_q1_10_NoSpin_linear',
+'NRSur7dq4'
 ]
 
 for model in models:
