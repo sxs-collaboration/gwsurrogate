@@ -156,16 +156,16 @@ give a more comprehensive overview of individual models.
 # Tests #
 
 If you have downloaded the entire project as a tar.gz file, its a good idea
-to run some regression tests. Note that if you are running the model regression
-tests, regression data must be generated locally on your machine.
+to run some regression tests. 
 
 
 ```
->>> cd test                          # move into the folder test
->>> python test_model_regression.py  # create model regression data
->>> cd ..                            # move back to the top-level folder
->>> pytest                           # run all tests
->>> pytest -v -s                     # run all tests with high verbosity
+>>> cd test                              # move into the folder test
+>>> python download_regression_models.py # download all surrogate models to test
+>>> python test_model_regression.py      # (optional) generate regression data locally on your machine
+>>> cd ..                                # move back to the top-level folder
+>>> pytest                               # run all tests
+>>> pytest -v -s                         # run all tests with high verbosity
 ```
 
 # NSF Support #

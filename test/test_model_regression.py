@@ -45,7 +45,7 @@ rtol = 1.e-11
 #       model-specific cases like below
 
 # Old surrogate interface
-surrogate_old_interface = ["SpEC_q1_10_NoSpin","EOBNRv2_tutorial","EOBNRv2","SpEC_q1_10_NoSpin_linear"]
+surrogate_old_interface = ["SpEC_q1_10_NoSpin","EOBNRv2_tutorial","EOBNRv2","SpEC_q1_10_NoSpin_linear","EMRISur1dq1e4"]
 
 # news loader class
 surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal","NRSur7dq4"]
@@ -143,7 +143,7 @@ def test_model_regression(generate_regression_data=False):
       fp_regression = h5py.File("test/model_regression_data.h5",'r') 
 
   # remove models if you don't have them
-  dont_test = ["EMRISur1dq1e4", # model data not currently available in public
+  dont_test = [#"EMRISur1dq1e4",
                "NRSur4d2s_TDROM_grid12", # 10 GB file
                "NRSur4d2s_FDROM_grid12", # 10 GB file
                #"SpEC_q1_10_NoSpin_linear_alt",
@@ -197,7 +197,7 @@ def test_model_regression(generate_regression_data=False):
   param_samples_tested = []
   for model, datafile in models_to_test.items():
 
-    print("Generating regression data for model = %s"%model)
+    print("Generating data for model = %s"%model)
     print(datafile)
 
     if model in surrogate_old_interface:
