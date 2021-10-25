@@ -33,6 +33,18 @@ import gwsurrogate as gws
 from gwsurrogate.new import surrogate 
 import h5py, os, subprocess, time, warnings
 
+
+import hashlib
+
+def md5(fname):
+  """ Compute has from file. code taken from 
+  https://stackoverflow.com/questions/3431825/generating-an-md5-checksum-of-a-file"""
+  hash_md5 = hashlib.md5()
+  with open(fname, "rb") as f:
+    for chunk in iter(lambda: f.read(4096), b""):
+      hash_md5.update(chunk)
+  return hash_md5.hexdigest()
+
 # set global tolerances for floating point comparisons (see np.testing.assert_allclose)
 atol = 0.0
 # why a high tolerance? For some reason, a high tolerance is needed when 
@@ -141,6 +153,8 @@ def test_model_regression(generate_regression_data=False):
       print("Downloading regression data...")
       os.system('wget --directory-prefix=test https://www.dropbox.com/s/vxqsr7fjoffxm5w/model_regression_data.h5')
       fp_regression = h5py.File("test/model_regression_data.h5",'r') 
+    regression_hash = md5("test/model_regression_data.h5")
+    print("hash of model_regression_data.h5 is ",regression_hash)
 
   # remove models if you don't have them
   dont_test = [#"EMRISur1dq1e4",
@@ -322,8 +336,9 @@ def test_model_regression(generate_regression_data=False):
           local_rtol = rtol_gsl
         else:
           local_rtol = rtol_gsl
-        np.testing.assert_allclose(hp_regression, hp_comparison, rtol=local_rtol, atol=atol)
-        np.testing.assert_allclose(hc_regression, hc_comparison, rtol=local_rtol, atol=atol)
+        err_msg="Failed: model %s"%(model)
+        np.testing.assert_allclose(hp_regression, hp_comparison, rtol=local_rtol, atol=atol, err_msg=err_msg)
+        np.testing.assert_allclose(hc_regression, hc_comparison, rtol=local_rtol, atol=atol, err_msg=err_msg)
 
     # fails due to round-off error differences of different machines
     #fp_regression.close()
