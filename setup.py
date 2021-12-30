@@ -65,7 +65,13 @@ setup(name='gwsurrogate',
       long_description_content_type='text/markdown',
       long_description=long_description,
       # will start new downloads if these are installed in a non-standard location
-      install_requires=["gwtools"],
+      install_requires=[
+                "numpy",
+                "scipy",
+                "h5py",
+                "scikit-learn",
+                "gwtools",
+                ],
       classifiers=[
                 'Intended Audience :: Other Audience',
                 'Intended Audience :: Science/Research',
