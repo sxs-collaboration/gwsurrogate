@@ -45,4 +45,5 @@ jobs:
         cd gwsurrogate
         pwd
         python test/download_regression_models.py
+        pytest -v -s -k package_versions
         pytest

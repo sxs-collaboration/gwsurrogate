@@ -7,7 +7,7 @@ from __future__ import division
 import nose
 import numpy as np
 import gwsurrogate as gws
-import os
+import os, sys
 
 # set global tolerances for floating point comparisons (see np.testing.assert_allclose)
 atol = 0.0
@@ -153,6 +153,14 @@ def test_tPNT2Tidal():
   assert( np.abs(out[0] + 15351562.5216222 )/ 15351562.5216222 < 1.e-12)
   assert( np.abs(out[1] + 61.40625000865016 )/ 61.40625000865016 < 1.e-12)
 
+# when regression tests fail, this information is useful
+def test_package_versions():
+  print("\n============= VERSIONS ============", file=sys.stdout)
+  print("numpy version = %s"%np.__version__, file=sys.stdout)
+  import sklearn
+  sklearn.__version__
+  print("sklearn version = %s"%sklearn.__version__, file=sys.stdout)
+  print("\n", file=sys.stdout)
  
 if __name__ == '__main__':
   print("Running test 1...")
@@ -163,3 +171,4 @@ if __name__ == '__main__':
   test_notebook_basics_lesson3()
   print("Running test 4...")
   test_notebook_basics_lesson4()
+
