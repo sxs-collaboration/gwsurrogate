@@ -66,6 +66,13 @@ def read_main_file(key):
             if key in line:
                 return line.split('"')[1]
 
+entries = {"pycbc.waveform.td":
+            ["GWS-NRHybSur3dq8 = gwsurrogate.pycbc:gws_td_gen",
+             "GWS-NRSur7dq4 = gwsurrogate.pycbc:gws_td_gen",
+             "GWS-NRHybSur3dq8Tidal = gwsurrogate.pycbc:gws_td_gen",
+            ]
+          }
+
 setup(name='gwsurrogate',
       version=read_main_file("__version__"),
       author=read_main_file("__author__"),
@@ -97,6 +104,7 @@ setup(name='gwsurrogate',
                 'Topic :: Scientific/Engineering :: Mathematics',
                 'Topic :: Scientific/Engineering :: Physics',
       ],
+      entry_points = entries,
       cmdclass = {'build_ext': LateNumpyIncludeCommand},
       ext_modules = extmods,
 )
