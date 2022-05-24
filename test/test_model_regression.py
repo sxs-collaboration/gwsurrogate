@@ -157,7 +157,8 @@ def test_model_regression(generate_regression_data=False):
     print("hash of model_regression_data.h5 is ",regression_hash)
 
   # remove models if you don't have them
-  dont_test = [#"EMRISur1dq1e4",
+  dont_test = ["NRHybSur2dq15",
+               #"EMRISur1dq1e4",
                "NRSur4d2s_TDROM_grid12", # 10 GB file
                "NRSur4d2s_FDROM_grid12", # 10 GB file
                #"SpEC_q1_10_NoSpin_linear_alt",
