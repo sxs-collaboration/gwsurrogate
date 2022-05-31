@@ -44,6 +44,7 @@ jobs:
         pip install -e gwsurrogate
         cd gwsurrogate
         pwd
+        conda env export
         python test/download_regression_models.py
         pytest -v -s -k package_versions
         pytest
