@@ -45,6 +45,7 @@ jobs:
         cd gwsurrogate
         pwd
         pip list
+        gsl-config --version
         python test/download_regression_models.py
         pytest -v -s -k package_versions
         pytest
