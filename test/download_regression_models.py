@@ -24,6 +24,7 @@ models = ['SpEC_q1_10_NoSpin_linear_alt',
 ]
 
 for model in models:
+  print("Downloading model %s ..."%model)
   gws.catalog.pull(model)
   surr_url = gws.catalog._surrogate_world[model].url
   path_to_model = gws.catalog.download_path()+os.path.basename(surr_url)
