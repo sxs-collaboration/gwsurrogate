@@ -67,7 +67,7 @@ _surrogate_world['SpEC_q1_10_NoSpin_linear'] = \
                  '''Linear surrogate (using fast splines) version of the SpEC_q1_10_NoSpin.
                  This surrogate is designed to be loaded with the original gws interface.''',
                  '''http://iopscience.iop.org/article/10.1088/1361-6382/aa7649/meta''',
-                 None)
+                 '3f8bd987b0473ac068d91b284e7d3d2e')
 
 _surrogate_world['SpEC_q1_10_NoSpin_linear_alt'] = \
   surrogate_info('http://www.math.umassd.edu/~sfield/external/surrogates/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0_FastSplined_WithVandermonde_NewInterface.h5',
@@ -75,7 +75,7 @@ _surrogate_world['SpEC_q1_10_NoSpin_linear_alt'] = \
                This surrogate is designed to be loaded with an alternative (experimental)
                gws interface.''',
                '''http://iopscience.iop.org/article/10.1088/1361-6382/aa7649/meta''',
-               None)
+               '6ae4249bc2c420fa27553d07f4df62df')
 
 _surrogate_world['NRSur4d2s_TDROM_grid12'] = \
   surrogate_info('https://zenodo.org/record/3348115/files/NRSur4d2s_TDROM_grid12.h5',
