@@ -48,9 +48,9 @@ def md5(fname):
 # set global tolerances for floating point comparisons (see np.testing.assert_allclose)
 atol = 0.0
 # why a high tolerance? For some reason, a high tolerance is needed when 
-# comparining to regression data on different machines
-# TODO: explore the orgin of these large discrepencies (note that hdf5 data is saved in single precision, and errors seem to post-merger)
-rtol_gsl = 5.e-1
+# comparing to regression data on different machines
+# TODO: explore the origin of these large discrepancies (note that hdf5 data is saved in single precision, and errors seem to be post-merger)
+rtol_gsl = 0.75
 rtol = 1.e-11
 
 # TODO: new and old surrogate interfaces should be similar enough to avoid
