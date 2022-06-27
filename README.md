@@ -107,13 +107,18 @@ To get a list of all available surrogate models, do:
 ```
 
 ### Current models
-The most up-to-date models are listed below.
+The most up-to-date models are listed below, along with links to example
+notebooks.
 - [NRSur7dq4](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRSur7dq4.ipynb):
   For generically precessing BBHs, trained on mass ratios q≤4. Paper:
   [arxiv:1905.09300](https://arxiv.org/abs/1905.09300).
 - [NRHybSur3dq8](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRHybSur3dq8.ipynb):
   For nonprecessing BBHs, trained on mass ratios q≤8. Paper:
   [arxiv:1812.07865](https://arxiv.org/abs/1812.07865).
+- [NRHybSur2dq15](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRHybSur2dq15.ipynb):
+  For nonprecessing BBHs, trained on q≤15, chi1≤0.5, chi2=0. Paper:
+  [arxiv:2203.10109](https://arxiv.org/abs/2203.10109).
+
 
 ## Download surrogate data and load it
 Pick a model, let's say `NRSur7dq4` and download the data. Note this only
