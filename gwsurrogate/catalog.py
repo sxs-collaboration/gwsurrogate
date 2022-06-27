@@ -111,9 +111,10 @@ _surrogate_world['NRHybSur3dq8'] = \
 
 _surrogate_world['NRHybSur2dq15'] = \
   surrogate_info(\
-  'https://www.dropbox.com/s/00kzpmikyqer03j/NRHybSur2dq15.h5',
-  '''Surrogate model for aligned-spin binary black holes with mass ratios q<=15
-  and spin magnitudes <=0.5. The model is trained on NR waveforms that have been
+  'https://zenodo.org/record/6726994/files/NRHybSur2dq15.h5',
+  '''Surrogate model for aligned-spin binary black holes with mass ratios q<=15,
+  primary spin magnitudes <=0.5, and zero spin on secondary. 
+  The model is trained on NR waveforms that have been
   hybridized using EOB/PN and spans the entire LIGO frequency band. This model
   is  presented in arxiv:2203.10109. Available modes are
   [(2,2), (2,1), (3,3), (4,4), and (5,5)]. The m<0 modes are deduced from the m>0 modes.''',
