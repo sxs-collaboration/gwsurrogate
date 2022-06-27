@@ -1945,7 +1945,6 @@ in the above range and has been tested against existing NR waveforms in that
 range.
 
 See the __call__ method on how to evaluate waveforms.
-In the __call__method, the first element of x should be q. 
    """
 
     def __init__(self, h5filename):
@@ -2023,7 +2022,6 @@ problematic behavior in the waveform at late times as the spin-tidal
 crossterms grow significant. This is future work.
 
 See the __call__ method on how to evaluate waveforms.
-In the __call__method, the first element of x should be q.
     """
 
     def __init__(self, h5filename):
@@ -2103,7 +2101,6 @@ q \in [1, 15] and chi1z \in [-0.5, 0.5] chi2z = 0, but produces reasonable
 waveforms in the above range. 
 
 See the __call__ method on how to evaluate waveforms.
-In the __call__method, the first element of x should be q.
     """
 
     def __init__(self, h5filename):
@@ -2175,7 +2172,6 @@ waveforms in the above range and has been tested against existing
 NR waveforms in that range.
 
 See the __call__ method on how to evaluate waveforms.
-In the __call__ method, x must have format x = [q, chi1, chi2].
     """
 
     def __init__(self, h5filename):
