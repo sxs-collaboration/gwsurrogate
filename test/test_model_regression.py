@@ -17,13 +17,22 @@ file is being created to upload to Dropbox. In this case do
 
 from the folder test.
 
+NOTES
+=====
+(1) Single precision regression data
 
-NOTE: waveform regression data is saved with single precision In order to,
+Waveform regression data is saved with single precision in order to,
+
      (i) reduce the size of the regression file and
-     (ii) allow h5diff to not fail due to round-off error (Still fails! switched to allclose)
+     (ii) allow h5diff to not fail due to round-off error (Still fails! switched comparison to np.allclose)
 
-NOTE: No regression on dynamics surrogate output. This is probably
-      OK since coorb full surrogate uses dynamics output.
+this is OK because the models themselves are not accurate to better than single precision.
+
+
+(2) Dynamics surrogate not (directly) tested
+
+No regression on dynamics surrogate output. This is probably OK since coorb
+full surrogate uses dynamics output.
 """
 
 
@@ -45,13 +54,25 @@ def md5(fname):
       hash_md5.update(chunk)
   return hash_md5.hexdigest()
 
-# set global tolerances for floating point comparisons (see np.testing.assert_allclose)
+# set global tolerances for floating point comparisons. 
+# From documentation on np.testing.assert_allclose
+# the comparison is
+#
+#     absolute(`a` - `b`) <= (`atol` + `rtol` * absolute(`b`))
+#
+# Setting atol=0 means we are only testing relative errors
+#
 atol = 0.0
 # why a high tolerance? For some reason, a high tolerance is needed when 
 # comparing to regression data on different machines
-# TODO: explore the origin of these large discrepancies (note that hdf5 data is saved in single precision, and errors seem to be post-merger)
-rtol_gsl = 0.75
-rtol = 1.e-11
+# TODO: explore the origin of these large discrepancies 
+#       note that regression data model_regression_data.h5 is saved in single precision (see above)
+#       largest relative errors seem to be post-merger
+#       only seems to affect models that use gpr fits and/or gsl calls
+rtol                   = 1.e-11
+rtol_NRHybSur3dq8      = 2.e-5
+rtol_NRHybSur3dq8Tidal = 3.e-4
+rtol_SpEC_q1_10_NoSpin_linear_alt = 3.e-8 # needed for (8,7) mode to pass. Other modes pass with 1e-11 tolerance
 
 # TODO: new and old surrogate interfaces should be similar enough to avoid
 #       model-specific cases like below
@@ -65,7 +86,7 @@ surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal","NRSur7dq4","NR
 # Most models are randomly sampled, but in some cases its useful to provide 
 # test points to activate specific code branches. This is done by mapping 
 # a model (named in the surrogate catalog) to a function that will return 
-# 3 unique paramter points.
+# 3 unique parameter points.
 #
 # Each sampler should return a list [q, chiA, chiB] and a dictionary tidOpts
 # and a dictionary precesingOpts
@@ -193,6 +214,8 @@ def test_model_regression(generate_regression_data=False):
       msg +="To download this surrogate, from ipython do\n\n >>> gws.catalog.pull(%s)\n"%model
       print(msg)
       time.sleep(1)
+      # Comment out following assert if experimenting with model-specific tests
+      #assert(False)
       
  
   # also test the tutorial surrogate
@@ -306,9 +329,11 @@ def test_model_regression(generate_regression_data=False):
         else:
           h= sur(x)
         try:
-          h_np = [h[mode] for mode in sur.mode_list]
+          modes = sur.mode_list
+          h_np = [h[mode] for mode in modes]
         except AttributeError: # for new interface
-          h_np = [h[mode] for mode in sur._sur_dimless.mode_list]
+          modes = sur._sur_dimless.mode_list
+          h_np = [h[mode] for mode in modes]
 
         h_np = np.vstack(h_np)
         hp = np.real(h_np)
@@ -321,6 +346,10 @@ def test_model_regression(generate_regression_data=False):
       samplei.create_dataset("parameter",data=x)
       samplei.create_dataset("hp", data=hp, dtype='float32')
       samplei.create_dataset("hc", data=hc, dtype='float32')
+      # added on 7/24/2022 -- not part of model_regression_data.h5
+      # but is used in code logic below
+      samplei.create_dataset("time", data=t, dtype='float32')
+      samplei.create_dataset("modes", data=np.array(modes), dtype='int')
 
   fp.close()
 
@@ -330,16 +359,50 @@ def test_model_regression(generate_regression_data=False):
       print("testing model %s ..."%model)
       for i in range(3): # 3 parameter samples
         hp_regression = fp_regression[model+"/parameter%i/hp"%i][:]
-        hc_regression = fp_regression[model+"/parameter%i/hp"%i][:]
+        hc_regression = fp_regression[model+"/parameter%i/hc"%i][:]
         hp_comparison = fp[model+"/parameter%i/hp"%i][:]
-        hc_comparison = fp[model+"/parameter%i/hp"%i][:]
+        hc_comparison = fp[model+"/parameter%i/hc"%i][:]
+
+        # only test data up to 90M past merger
+        # Currently not used (but keep in case this is reactivated)
+        # t_indx = np.argmin(np.abs(fp[model+"/parameter%i/time"%i][:] - 90) )
+        t_indx = fp[model+"/parameter%i/time"%i][:].shape[0]  # use all time points
+
+        # model-specific relative tolerances. This is needed because certain models
+        # have dependencies (e.g. GSL or sklearn) that will break our tests!
         if model == "NRHybSur3dq8":
-          local_rtol = rtol_gsl
+          local_rtol = rtol_NRHybSur3dq8
+        elif model == "NRHybSur3dq8Tidal":
+          local_rtol = rtol_NRHybSur3dq8Tidal
+        elif model == "SpEC_q1_10_NoSpin_linear_alt":
+          local_rtol = rtol_SpEC_q1_10_NoSpin_linear_alt 
         else:
-          local_rtol = rtol_gsl
-        err_msg="Failed: model %s"%(model)
-        np.testing.assert_allclose(hp_regression, hp_comparison, rtol=local_rtol, atol=atol, err_msg=err_msg)
-        np.testing.assert_allclose(hc_regression, hc_comparison, rtol=local_rtol, atol=atol, err_msg=err_msg)
+          local_rtol = rtol
+
+        print("Model %s uses a relative error tolerance of %e"%(model,local_rtol))
+
+        for j, mode in enumerate(fp[model+"/parameter%i/modes"%i][:]): # test mode-by-mode
+          err_msg="Failed: model %s for mode index %i (ell = %i,m = %i)"%(model,j,mode[0],mode[1])
+
+          # test hp and hc separately 
+          # Note: because hp and hc oscillate about 0, this test can easily fail (relative error check) 
+          # if hp/hc change by very small amounts
+          #np.testing.assert_allclose(hp_regression[j,:t_indx], hp_comparison[j,:t_indx], rtol=local_rtol, atol=atol, err_msg=err_msg)
+          #np.testing.assert_allclose(hc_regression[j,:t_indx], hc_comparison[j,:t_indx], rtol=local_rtol, atol=atol, err_msg=err_msg)
+
+          # test complexified h.
+          # This is a more robust relative-error test because the |h| does not pass through 0
+          h_regression = hp_regression[j,:t_indx] + 1.0j*hc_regression[j,:t_indx]
+          h_comparison = hp_comparison[j,:t_indx] + 1.0j*hc_comparison[j,:t_indx]
+          np.testing.assert_allclose(h_regression, h_comparison, rtol=local_rtol, atol=atol, err_msg=err_msg)
+
+
+        # when debugging the tests, it can be useful to dump the data
+        #np.save("hp_regression-%i.npy"%i,hp_regression)
+        #np.save("hp_comparison-%i.npy"%i,hp_comparison)
+        #np.save("hc_regression-%i.npy"%i,hc_regression)
+        #np.save("hc_comparison-%i.npy"%i,hc_comparison)
+
 
     # fails due to round-off error differences of different machines
     #fp_regression.close()
