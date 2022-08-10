@@ -66,6 +66,7 @@ def read_main_file(key):
             if key in line:
                 return line.split('"')[1]
 
+# define models to be used within pycbc
 entries = {"pycbc.waveform.td":
             ["GWS-NRHybSur3dq8 = gwsurrogate.pycbc:gws_td_gen",
              "GWS-NRSur7dq4 = gwsurrogate.pycbc:gws_td_gen",

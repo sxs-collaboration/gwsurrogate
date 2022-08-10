@@ -1,10 +1,16 @@
 """ Surrogate catalog. Information on all models available with gwsurrogate.
 
-Note: many surrogate data files come from zenodo. When a new record is
+NOTES: 
+
+(*) Many surrogate data files come from zenodo. When a new record is
 generated, a new URL will be too. However, the file contents may
 not be changed despite the new record. File similarity can be
 checked by computing the md5 hash and comparing with the value stored
-in the surrogate_info tuple. """
+in the surrogate_info tuple. 
+
+(*) If your model will be available to pycbc, please also edit
+setup.py.
+"""
 
 from __future__ import division # for python 2
 
