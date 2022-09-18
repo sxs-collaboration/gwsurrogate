@@ -902,9 +902,8 @@ Arguments:
             specifying the spins in the coorbital frame used in the
             surrogate papers.
 
-    fM_low:     Initial frequency in dimensionless units. Currently only
-                fM_low = 0 is allowed, in which case the full surrogate is
-                returned.
+    fM_low:     Initial frequency in dimensionless units. If fM_low = 0, the
+                full surrogate is returned.
     fM_ref:     Reference frequency in dimensionless units, at which the
                 reference frame and spins are defined.
     dtM:        Time step in dimensionless units.
@@ -1031,13 +1030,15 @@ Returns:
                 raise Exception("'times' starts before start of domain. Try"
                     " increasing initial value of times or reducing f_low.")
 
-        return_times = True
         if dtM is None and timesM is None:
+            do_interp = False
             # Use the sparse domain. Python normally copies numpy arrays by
             # reference, so we do a deep copy so as to not overwrite
             # self.t_coorb.
             timesM = np.copy(self.t_coorb)
-            do_interp = False
+            if t0 is not None:
+                # Truncate timesM if necessary
+                timesM = timesM[timesM >= t0]
         else:
             ## Interpolate onto uniform domain if needed
             do_interp = True
@@ -1049,8 +1050,6 @@ Returns:
                 tf = self.t_coorb[-1]
                 num_times = int(np.ceil((tf - t0)/dtM));
                 timesM = t0 + dtM*np.arange(num_times)
-            else:
-                return_times = False
 
 
         if do_interp:
