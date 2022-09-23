@@ -40,6 +40,7 @@ from .parametric_funcs import function_dict as my_funcs
 from .surrogateIO import H5Surrogate as _H5Surrogate
 from .surrogateIO import TextSurrogateRead as _TextSurrogateRead
 from .surrogateIO import TextSurrogateWrite as _TextSurrogateWrite
+from .surrogateIO import BHPTNRCalibValues as _BHPTNRCalibValues
 from gwsurrogate.new.surrogate import ParamDim, ParamSpace
 
 import warnings
@@ -48,6 +49,7 @@ import os
 from .new import surrogate as new_surrogate
 from .new import precessing_surrogate
 from . import catalog
+from .catalog import get_modelID_from_filename
 
 try:
   import matplotlib.pyplot as plt
@@ -113,12 +115,18 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       _H5Surrogate.__init__(self, file=path, mode='r', subdir=subdir, closeQ=closeQ)
     else:
       _TextSurrogateRead.__init__(self, path)
-
+    
+    if(self.surrogateID == 'BHPTNRSur1dq1e4'):
+        self.nrcalib = _BHPTNRCalibValues(file=path.filename)
+    
     # Interpolate columns of the empirical interpolant operator, B, using cubic spline
     if self.surrogate_mode_type  == 'waveform_basis':
       self.reB_spline_params = [_splrep(self.times, self.B[:,jj].real, k=deg) for jj in range(self.B.shape[1])]
       self.imB_spline_params = [_splrep(self.times, self.B[:,jj].imag, k=deg) for jj in range(self.B.shape[1])]
     elif self.surrogate_mode_type  == 'amp_phase_basis':
+      self.B1_spline_params = [_splrep(self.times, self.B_1[:,jj], k=deg) for jj in range(self.B_1.shape[1])]
+      self.B2_spline_params = [_splrep(self.times, self.B_2[:,jj], k=deg) for jj in range(self.B_2.shape[1])]
+    elif self.surrogate_mode_type  == 'coorb_waveform_basis':
       self.B1_spline_params = [_splrep(self.times, self.B_1[:,jj], k=deg) for jj in range(self.B_1.shape[1])]
       self.B2_spline_params = [_splrep(self.times, self.B_2[:,jj], k=deg) for jj in range(self.B_2.shape[1])]
     else:
@@ -158,6 +166,16 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
        An array of times can be passed along with its units. """
 
+    # obtain alpha and beta coeeficients
+    # evaluate alpha and beta at a given mass ratio
+    if(self.surrogateID == 'BHPTNRSur1dq1e4'):
+      alpha_coeffs_mode = self.nrcalib.alpha_coeffs[(float(self.mode[1]),float(self.mode[1]))]
+      beta_coeffs = self.nrcalib.beta_coeffs
+      self.alpha = my_funcs["BHPT_nrcalib_functional_form"](1/q, alpha_coeffs_mode[0], alpha_coeffs_mode[1], alpha_coeffs_mode[2], alpha_coeffs_mode[3])
+      self.beta = my_funcs["BHPT_nrcalib_functional_form"](1/q, beta_coeffs[0], beta_coeffs[1],\
+                                                         beta_coeffs[2], beta_coeffs[3])
+    print(self.alpha, self.beta)
+    
     # surrogate evaluations assumed dimensionless, physical modes are found from scalings
     if self.surrogate_units != 'dimensionless':
       raise ValueError('surrogate units is not supported')
@@ -167,7 +185,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
     if (M is not None) and (dist is not None) and (times is not None) and (units != 'mks'):
     	raise ValueError('passing values of M, dist, and times suggest mks units should be used!')
-
+    
     if(self.surrogateID == 'EMRISur1dq1e4'):
       # see Eq 4 of https://arxiv.org/abs/1910.10473
       # if alpha = 1 we have the "raw" waveform computed from
@@ -189,6 +207,9 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     # any model-specific amplitude scalings should go here
     if(self.surrogateID == 'EMRISur1dq1e4'):
       amp0 = alpha_emri * amp0
+    if(self.surrogateID == 'BHPTNRSur1dq1e4'):
+      amp0 = self.alpha * amp0
+
 
     ### evaluation times t: input times or times at which surrogate was built ###
     if (times is not None):
@@ -197,6 +218,8 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       t = self.time() # shallow copy of self.times
       if self.surrogateID == 'EMRISur1dq1e4':
         t = t * alpha_emri # this will deep copy, preserving data in self.times
+      elif self.surrogateID == 'BHPTNRSur1dq1e4':
+        t = t * self.beta
 
     ### if input times are dimensionless, convert to MKS if a physical surrogate is requested ###
     if units == 'dimensionless':
@@ -209,10 +232,12 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     # input time grid needs to be mapped back to "raw EMRI" time grid before evaluation
     if times is not None and self.surrogateID == 'EMRISur1dq1e4':
       times = times / alpha_emri
+    if times is not None and self.surrogateID == 'BHPTNRSur1dq1e4':
+      times = times / self.beta
 
     # convert from input to internal surrogate parameter values, and check within training region #
     x = self.get_surr_params_safe(q)
-
+    
     ### Evaluate dimensionless single mode surrogates ###
     hp, hc = self._h_sur(x, times=times)
 
@@ -656,6 +681,26 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     else:
       return np.array([ self.phase_fit_func(self.fitparams_phase[jj,:], x_0) for jj in range(self.fitparams_phase.shape[0]) ])
 
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def _coorb_re_eval(self, x_0):
+    """Evaluate set of coorbital real part of waveform fits at x_0, where x_0 is the mapped parameter value.
+
+       WARNING: this function should NEVER be called from outside the class."""
+
+    if self.fit_type_amp == 'fast_spline_real':
+      return self.amp_fit_func(self.fitparams_re, x_0)
+    else:
+      return np.array([ self.re_fit_func(self.fitparams_re[jj,:], x_0) for jj in range(self.fitparams_re.shape[0]) ])
+  
+  def _coorb_im_eval(self, x_0):
+    """Evaluate set of coorbital imag part of waveform fits at x_0, where x_0 is the mapped parameter value.
+
+       WARNING: this function should NEVER be called from outside the class."""
+
+    if self.fit_type_amp == 'fast_spline_real':
+      return self.amp_fit_func(self.fitparams_im, x_0)
+    else:
+      return np.array([ self.im_fit_func(self.fitparams_im[jj,:], x_0) for jj in range(self.fitparams_im.shape[0]) ])
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def _eim_coeffs(self, x, surrogate_mode_type):
@@ -675,8 +720,12 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     x_0 = self._affine_mapper(x)
 
     ### Evaluate amp/phase/norm fits ###
-    amp_eval   = self._amp_eval(x_0)
-    phase_eval = self._phase_eval(x_0)
+    if self.surrogate_mode_type  == 'coorb_waveform_basis':
+      re_eval = self._coorb_re_eval(x_0)
+      im_eval = self._coorb_im_eval(x_0)
+    else:
+      amp_eval   = self._amp_eval(x_0)
+      phase_eval = self._phase_eval(x_0)
     nrm_eval   = self._norm_eval(x_0)
 
     if self.surrogate_mode_type  == 'waveform_basis':
@@ -689,6 +738,10 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       if self.fit_type_amp == 'fast_spline_real':
         raise ValueError("invalid combination")
       return amp_eval, phase_eval, nrm_eval
+    elif self.surrogate_mode_type  == 'coorb_waveform_basis':
+      if self.fit_type_amp == 'fast_spline_real':
+        raise ValueError("invalid combination")
+      return re_eval, im_eval, nrm_eval
     else:
       raise ValueError('invalid surrogate type')
 
@@ -729,6 +782,18 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
       surrogate = nrm_eval * sur_A * np.exp(1j*sur_P)
 
+    elif self.surrogate_mode_type  == 'coorb_waveform_basis':
+
+      re_eval, im_eval, nrm_eval = self._eim_coeffs(x, 'amp_phase_basis')
+
+      if times is None:
+        sur_Re = np.dot(self.B_1, re_eval)
+        sur_Im = np.dot(self.B_2, im_eval)
+      else:
+        sur_Re = np.dot(self.resample_B_1(times), re_eval)
+        sur_Im = np.dot(self.resample_B_2(times), im_eval)
+      surrogate = nrm_eval * (sur_Re + 1j*sur_Im)
+    
 
     else:
       raise ValueError('invalid surrogate type')
@@ -889,6 +954,13 @@ class EvaluateSurrogate():
         are inferred from m>0 modes. If set to false no symmetry is assumed -- typical
         of precessing models. When False, fake_neg_modes must be false."""
 
+    surrogateID = get_modelID_from_filename(path)
+    if len(surrogateID) == 0 or len(surrogateID) > 1:
+      self.surrogateID = None
+      print("\n>>> Warning: No surrogate ID found. Could not deduce ID from file")
+    else:
+      self.surrogateID = surrogateID[0]
+    
     self.single_mode_dict = \
       CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, use_orbital_plane_symmetry)
 
@@ -966,21 +1038,21 @@ class EvaluateSurrogate():
        For circular orbits, the binary's orbital angular momentum is taken to
        be the z-axis. Theta and phi is location on the sphere relative to this
        coordinate system. """
-
-
+   
     if (not self.use_orbital_plane_symmetry) and fake_neg_modes:
       raise ValueError("if use_orbital_plane_symmetry is not assumed, it is not possible to fake m<0 modes")
 
     ### deduce single mode dictionary keys from ell, m and fake_neg_modes input ###
     modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
-
+    
     if mode_sum and (theta is None and phi is None) and len(modes_to_evaluate)!=1:
       raise ValueError('Trying to sum modes without theta and phi is a strange idea')
 
     ### if mode_sum false, return modes in a sensible way ###
     if not mode_sum:
-      modes_to_evaluate = self.sort_mode_list(modes_to_evaluate)
-
+      if self.surrogateID!='BHPTNRSur1dq1e4':
+        modes_to_evaluate = self.sort_mode_list(modes_to_evaluate)
+    
     # Modes actually modeled by the surrogate. We will fake negative m
     # modes later if needed.
     modeled_modes = self.all_model_modes(False)
@@ -990,6 +1062,58 @@ class EvaluateSurrogate():
       hp_full, hc_full = self._allocate_output_array(times,1,mode_sum)
     else:
       hp_full, hc_full = self._allocate_output_array(times,len(modes_to_evaluate),mode_sum)
+
+    ### loop over all evaluation modes ###
+    # TODO: internal workings are simplified if h used instead of (hc,hp)
+#     ii = 0
+#     for ell,m in modes_to_evaluate:
+
+#       ### if the mode is modelled, evaluate it. Otherwise its zero ###
+#       is_modeled = (ell,m) in modeled_modes
+#       neg_modeled = (ell,-m) in modeled_modes
+#       if is_modeled or (neg_modeled and fake_neg_modes):
+
+#         if is_modeled:
+#           t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,times,units,ell,m)
+#         else: # then we must have neg_modeled=True and fake_neg_modes=True
+#           t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,times,units,ell,m)
+            
+#         if z_rot is not None:
+#           h_tmp   = _gwtools.modify_phase(hp_mode+1.0j*hc_mode,z_rot*m)
+#           hp_mode = h_tmp.real
+#           hc_mode = h_tmp.imag
+        
+#         # TODO: should be faster. integrate this later on
+#         #if fake_neg_modes and m != 0:
+#         #  hp_mode_mm, hc_mode_mm = self._generate_minus_m_mode(hp_mode,hc_mode,ell,m)
+#         #  hp_mode_mm, hc_mode_mm = self.evaluate_on_sphere(ell,-m,theta,phi,hp_mode_mm,hc_mode_mm)
+
+#         hp_mode, hc_mode = self.evaluate_on_sphere(ell,m,theta,phi,hp_mode,hc_mode)
+        
+#         if mode_sum:
+#           hp_full = hp_full + hp_mode
+#           hc_full = hc_full + hc_mode
+#           #if fake_neg_modes and m != 0:
+#           #  hp_full = hp_full + hp_mode_mm
+#           #  hc_full = hc_full + hc_mode_mm
+#         else:
+#           if len(modes_to_evaluate)==1:
+#             hp_full[:] = hp_mode[:]
+#             hc_full[:] = hc_mode[:]
+#           else:
+#             hp_full[:,ii] = hp_mode[:]
+#             hc_full[:,ii] = hc_mode[:]
+#       else:
+#         warning_str = "Your mode (ell,m) = ("+str(ell)+","+str(m)+") is not available!"
+#         raise Warning(warning_str)
+
+
+#       ii+=1
+    
+#     if mode_sum:
+#       return t_mode, hp_full, hc_full #assumes all mode's have same temporal grid
+#     else: # helpful to have (l,m) list for understanding mode evaluations
+#       return modes_to_evaluate, t_mode, hp_full, hc_full
 
     ### loop over all evaluation modes ###
     # TODO: internal workings are simplified if h used instead of (hc,hp)
@@ -1004,20 +1128,36 @@ class EvaluateSurrogate():
         if is_modeled:
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,times,units,ell,m)
         else: # then we must have neg_modeled=True and fake_neg_modes=True
+        #if self.surrogateID!='BHPTNRSur1dq1e4':
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,times,units,ell,m)
-
+            
         if z_rot is not None:
           h_tmp   = _gwtools.modify_phase(hp_mode+1.0j*hc_mode,z_rot*m)
           hp_mode = h_tmp.real
           hc_mode = h_tmp.imag
-
+        
+        # BHPTNRSur1dq1e4 models the real and imag parts of the higher order modes 
+        # in the coorbital frame. We have to make sure we apply a frame transformation
+        # for this surrogate modes
+        if self.surrogateID=='BHPTNRSur1dq1e4':
+          if [ell,m] in [[2,2],[2,-2]]:
+            if [ell,m]==[2,2]:
+               orbital_phase = 0.5 * _gwtools.phase(hp_mode + 1j * hc_mode)
+          else:
+            if m>0:
+               h_tmp = self.coorbital_to_inertial(hp_mode, hc_mode, m, orbital_phase)
+            elif m<0:
+               h_tmp = self.coorbital_to_inertial(hp_mode, hc_mode, m, orbital_phase)
+            hp_mode = h_tmp.real
+            hc_mode = h_tmp.imag
+            
         # TODO: should be faster. integrate this later on
         #if fake_neg_modes and m != 0:
         #  hp_mode_mm, hc_mode_mm = self._generate_minus_m_mode(hp_mode,hc_mode,ell,m)
         #  hp_mode_mm, hc_mode_mm = self.evaluate_on_sphere(ell,-m,theta,phi,hp_mode_mm,hc_mode_mm)
 
         hp_mode, hc_mode = self.evaluate_on_sphere(ell,m,theta,phi,hp_mode,hc_mode)
-
+        
         if mode_sum:
           hp_full = hp_full + hp_mode
           hc_full = hc_full + hc_mode
@@ -1037,12 +1177,22 @@ class EvaluateSurrogate():
 
 
       ii+=1
-
+    
+        
     if mode_sum:
       return t_mode, hp_full, hc_full #assumes all mode's have same temporal grid
     else: # helpful to have (l,m) list for understanding mode evaluations
       return modes_to_evaluate, t_mode, hp_full, hc_full
 
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def coorbital_to_inertial(self,coorb_re, coorb_im, m, orbital_phase):
+    """ Takes the real and imaginary part of the waveform and
+    combine them to obtain the coorbital frame waveform;
+    then transform the wf into the inertial frame"""
+    
+    full_wf = (coorb_re+1j*coorb_im)*np.exp(1j*m*np.array(orbital_phase))
+    return full_wf
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def evaluate_on_sphere(self,ell,m,theta,phi,hp_mode,hc_mode):
