@@ -155,6 +155,27 @@ def q_to_logq(q):
   """
   return np.log(q)
 
+def q_to_log10q(q):
+  """ map from q to log10(q)
+  
+  Surrogates with this parameterization expect its user intput 
+  to be the mass ratio q. 
+  
+  The surrogate will map q to the internal surrogate's 
+  parameterization which is log10(q)
+  
+  The surrogates training interval is quoted in log10(q).
+  """
+  return np.log10(q)
+
+def BHPT_nrcalib_functional_form(x,a,b,c,d):
+    """
+    functional form of alpha and beta scaling factors in BHPTNRSur1dq1e4
+    for NR calibration in the comparable mass regime
+    """
+    return 1 + a*x + b*x**2 + c*x**3 + d*x**4
+
+#-
 ### dictionary of fitting functions ###
 function_dict = {
                  "polyval_1d": polyval_1d,
@@ -166,7 +187,9 @@ function_dict = {
                  "nuSingularPlusPolynomial": ampfitfn5_1d,
                  "nuSingular2TermsPlusPolynomial": ampfitfn6_1d,
                  "emri_normalization_logq":emri_normalization_logq,
+                 "BHPT_nrcalib_functional_form": BHPT_nrcalib_functional_form,
                  "q_to_q": q_to_q,
                  "q_to_nu": q_to_nu,
-                 "q_to_logq": q_to_logq
+                 "q_to_logq": q_to_logq,
+                 "q_to_log10q": q_to_log10q
                  }
