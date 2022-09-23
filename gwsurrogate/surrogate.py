@@ -116,6 +116,10 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     else:
       _TextSurrogateRead.__init__(self, path)
     
+    # For models that include the NR calibration info as one of the keys of the h5 file,
+    # we need to call the following class
+    # in future, when more BHPTNRSurrogates are available, we can replace the if statement
+    # to look for the phrase "BHPTNRSur"
     if(self.surrogateID == 'BHPTNRSur1dq1e4'):
         self.nrcalib = _BHPTNRCalibValues(file=path.filename)
     
@@ -166,15 +170,17 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
        An array of times can be passed along with its units. """
 
-    # obtain alpha and beta coeeficients
-    # evaluate alpha and beta at a given mass ratio
+    # For models with NR calibration information, we need to find the calibration values
+    # at a given value of parameter space
     if(self.surrogateID == 'BHPTNRSur1dq1e4'):
+      # obtain alpha and beta coefficients
       alpha_coeffs_mode = self.nrcalib.alpha_coeffs[(float(self.mode[1]),float(self.mode[1]))]
       beta_coeffs = self.nrcalib.beta_coeffs
+      # evaluate alpha and beta from polynomials
       self.alpha = my_funcs["BHPT_nrcalib_functional_form"](1/q, alpha_coeffs_mode[0], alpha_coeffs_mode[1], alpha_coeffs_mode[2], alpha_coeffs_mode[3])
       self.beta = my_funcs["BHPT_nrcalib_functional_form"](1/q, beta_coeffs[0], beta_coeffs[1],\
                                                          beta_coeffs[2], beta_coeffs[3])
-    print(self.alpha, self.beta)
+    
     
     # surrogate evaluations assumed dimensionless, physical modes are found from scalings
     if self.surrogate_units != 'dimensionless':
@@ -779,12 +785,12 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
         #sur_P = np.dot(np.array([_splev(times, self.B2_spline_params[jj],ext=1) for jj in range(self.B_2.shape[1])]).T, phase_eval)
         sur_A = np.dot(self.resample_B_1(times), amp_eval)
         sur_P = np.dot(self.resample_B_2(times), phase_eval)
-
+    
       surrogate = nrm_eval * sur_A * np.exp(1j*sur_P)
 
     elif self.surrogate_mode_type  == 'coorb_waveform_basis':
 
-      re_eval, im_eval, nrm_eval = self._eim_coeffs(x, 'amp_phase_basis')
+      re_eval, im_eval, nrm_eval = self._eim_coeffs(x, 'coorb_waveform_basis')
 
       if times is None:
         sur_Re = np.dot(self.B_1, re_eval)
@@ -792,6 +798,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       else:
         sur_Re = np.dot(self.resample_B_1(times), re_eval)
         sur_Im = np.dot(self.resample_B_2(times), im_eval)
+   
       surrogate = nrm_eval * (sur_Re + 1j*sur_Im)
     
 
@@ -954,6 +961,8 @@ class EvaluateSurrogate():
         are inferred from m>0 modes. If set to false no symmetry is assumed -- typical
         of precessing models. When False, fake_neg_modes must be false."""
 
+    # obtain the surrogate ID name from the datafile
+    # it is important for some of the if statements written later on
     surrogateID = get_modelID_from_filename(path)
     if len(surrogateID) == 0 or len(surrogateID) > 1:
       self.surrogateID = None
@@ -1042,6 +1051,14 @@ class EvaluateSurrogate():
     if (not self.use_orbital_plane_symmetry) and fake_neg_modes:
       raise ValueError("if use_orbital_plane_symmetry is not assumed, it is not possible to fake m<0 modes")
 
+    #for models where the higher modes have been modeled in the coorbital frame, 
+    # it is neceassary to have the [2,2] mode as the first index of modes_to_evaluate
+    # otherwise, we do not have the information regarding the orbital phase
+    # crucial to transform the higher modes from coorbital frame to inertial frame
+    # this line of code gurranties that [2,2] is always included in the modes to evaluate
+    if self.surrogateID=='BHPTNRSur1dq1e4':
+        ell, m = self.add_l2m2_mode_if_not_in_modelist(ell, m)
+        
     ### deduce single mode dictionary keys from ell, m and fake_neg_modes input ###
     modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
     
@@ -1050,6 +1067,12 @@ class EvaluateSurrogate():
 
     ### if mode_sum false, return modes in a sensible way ###
     if not mode_sum:
+      # For models where the higher modes have been modeled in the coorbital frame, 
+      # it is neceassary to have the [2,2] mode as the first index of modes_to_evaluate
+      # otherwise, we do not have the information regarding the orbital phase
+      # crucial to transform the higher modes from coorbital frame to inertial frame
+      # this line of code gurranties that [2,2] always comes first by not sorting
+      # as sorting makes [l,-m] the first mode in the array
       if self.surrogateID!='BHPTNRSur1dq1e4':
         modes_to_evaluate = self.sort_mode_list(modes_to_evaluate)
     
@@ -1128,7 +1151,6 @@ class EvaluateSurrogate():
         if is_modeled:
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,times,units,ell,m)
         else: # then we must have neg_modeled=True and fake_neg_modes=True
-        #if self.surrogateID!='BHPTNRSur1dq1e4':
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,times,units,ell,m)
             
         if z_rot is not None:
@@ -1144,12 +1166,7 @@ class EvaluateSurrogate():
             if [ell,m]==[2,2]:
                orbital_phase = 0.5 * _gwtools.phase(hp_mode + 1j * hc_mode)
           else:
-            if m>0:
-               h_tmp = self.coorbital_to_inertial(hp_mode, hc_mode, m, orbital_phase)
-            elif m<0:
-               h_tmp = self.coorbital_to_inertial(hp_mode, hc_mode, m, orbital_phase)
-            hp_mode = h_tmp.real
-            hc_mode = h_tmp.imag
+               hp_mode, hc_mode = self.coorbital_to_inertial(hp_mode, hc_mode, m, orbital_phase)
             
         # TODO: should be faster. integrate this later on
         #if fake_neg_modes and m != 0:
@@ -1184,15 +1201,33 @@ class EvaluateSurrogate():
     else: # helpful to have (l,m) list for understanding mode evaluations
       return modes_to_evaluate, t_mode, hp_full, hc_full
 
-
+            
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def coorbital_to_inertial(self,coorb_re, coorb_im, m, orbital_phase):
+  def coorbital_to_inertial(self, coorb_re, coorb_im, m, orbital_phase):
     """ Takes the real and imaginary part of the waveform and
     combine them to obtain the coorbital frame waveform;
     then transform the wf into the inertial frame"""
     
     full_wf = (coorb_re+1j*coorb_im)*np.exp(1j*m*np.array(orbital_phase))
-    return full_wf
+    return full_wf.real, full_wf.imag
+
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def add_l2m2_mode_if_not_in_modelist(self,ell, m):
+    """
+    adds the (2,2) mode if it is not in ell, m list
+    this is required for some models which evaulates coorbital frame waveform
+    for the higher modes
+    (2,2) mode info is required here
+    """
+    if 2 in ell and 2 in m:
+        pass
+    else:
+        ell_modes, m_modes = [2], [2]
+        for i in range(len(ell)):
+            ell_modes.append(ell[i])
+            m_modes.append(m[i])
+        ell, m = ell_modes, m_modes
+    return ell, m
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def evaluate_on_sphere(self,ell,m,theta,phi,hp_mode,hc_mode):

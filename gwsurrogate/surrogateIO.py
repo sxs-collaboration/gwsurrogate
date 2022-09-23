@@ -186,6 +186,7 @@ class SurrogateBaseIO:
 
   _eim_indices_txt       = 'eim_indices.txt'
   _eim_indices_h5        = 'eim_indices'       # .txt... text: eim_indices contains 2 vectors if amp/phase
+    
   _eim_indices_phase_h5  = 'eim_indices_phase' # rolled into eim_indices
   _eim_amp_h5            = 'eim_amp' # text analog? only used to plot 
   _eim_phase_h5          = 'eim_phase' # text analog? only used to plot
@@ -423,7 +424,8 @@ class H5Surrogate(SurrogateBaseIO):
         self.eim_indices = self.file[subdir+self._eim_indices_h5][:]
       except KeyError:
         print("Cannot load eim points...OK")
-    elif self.surrogate_mode_type == 'coorb_waveform_basis': #tousif made changes
+    # changes in code to allow for coorbital mode surrogates
+    elif self.surrogate_mode_type == 'coorb_waveform_basis':
       try:
         self.eim_indices_re = self.file[subdir+self._eim_indices_h5][:]
         self.eim_indices_im = self.file[subdir+self._eim_indices_im_h5][:]
@@ -438,7 +440,8 @@ class H5Surrogate(SurrogateBaseIO):
       self.B_2 = self.file[subdir+self._B_phase_h5][:]
     elif self.surrogate_mode_type  == 'waveform_basis':
       self.B = self.file[subdir+self._B_h5][:]	
-    elif self.surrogate_mode_type == 'coorb_waveform_basis': #tousif made changes
+    # changes in code to allow for coorbital mode surrogates
+    elif self.surrogate_mode_type == 'coorb_waveform_basis':
       self.B_1 = self.file[subdir+self._B_h5][:]
       self.B_2 = self.file[subdir+self._B_im_h5][:] 
     else:
@@ -449,6 +452,7 @@ class H5Surrogate(SurrogateBaseIO):
       self.affine_map = self.chars_to_string(self.file[subdir+self._affine_map_h5][()])
     else:
       self.affine_map = 'none'
+    # changes in code to allow for coorbital mode surrogates
     if self.surrogate_mode_type  == 'coorb_waveform_basis':
       self.fitparams_re = self.file[subdir+self._fitparams_re_h5][:]
       self.fitparams_im = self.file[subdir+self._fitparams_im_h5][:]
@@ -511,7 +515,13 @@ class H5Surrogate(SurrogateBaseIO):
         
       print("Special case: using spline for parametric model at each EI node")
         
+      ## NOTE :We need two if statements for the BHPTNRSur1dq1e4 because, the number of knots are not same
+      ## in different modes or even for different data pieces within the mode. This is because of the
+      ## smoothing we do in fitting. This demands some parts oft he code to be re-written.
+      ## Furtermore, we use different decomposition for 22 mode and higher order modes.
+      ## This should be done differently
       ## =====================================================================================
+      # for the 22 mode
       if self.surrogateID=="BHPTNRSur1dq1e4" and self.surrogate_mode_type  == 'amp_phase_basis':
          n_spline_knots_amp = self.file[subdir+'n_spline_knots_amp'][:]
          n_spline_knots_phase = self.file[subdir+'n_spline_knots_phase'][:]
@@ -538,7 +548,8 @@ class H5Surrogate(SurrogateBaseIO):
 
          self.amp_fit_func   = my_funcs[self.fit_type_amp]
          self.phase_fit_func = my_funcs[self.fit_type_phase]
-        
+      
+      # for the higher order modes
       elif self.surrogateID=="BHPTNRSur1dq1e4" and self.surrogate_mode_type  == 'coorb_waveform_basis':
          n_spline_knots_re = self.file[subdir+'n_spline_knots_re'][:]
          n_spline_knots_im = self.file[subdir+'n_spline_knots_im'][:]
@@ -567,6 +578,7 @@ class H5Surrogate(SurrogateBaseIO):
          self.im_fit_func = my_funcs[self.fit_type_phase]
       ##======================================================================================
     
+      # for all other models, it will take the usual route
       ## =====================================================================================
       else:
          n_spline_knots = self.file[subdir+'n_spline_knots'][:]
