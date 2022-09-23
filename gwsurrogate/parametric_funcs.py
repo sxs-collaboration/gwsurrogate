@@ -117,6 +117,15 @@ def emri_normalization_logq(coeffs,x):
   q = np.exp(x)
   return 1.0/q
 
+def BHPT_normalization_log10q(coeffs,x):
+  """ Teukolsky solver that generates EMRI data normalizes by q, since 
+  the BHPT surrogates use log10(q) parameterizaiton, we need to undo
+  the log and apply the q-dependent normalization. No coefficients are
+  needed, but we keep this structure for common API. """
+
+  q = 10**x
+  return 1.0/q
+
 ### these are for switching from (q,M) to surrogate's parameterization ###
 def q_to_q(q):
   """ identity map from q to q
@@ -187,6 +196,7 @@ function_dict = {
                  "nuSingularPlusPolynomial": ampfitfn5_1d,
                  "nuSingular2TermsPlusPolynomial": ampfitfn6_1d,
                  "emri_normalization_logq":emri_normalization_logq,
+                 "BHPT_normalization_log10q": BHPT_normalization_log10q,
                  "BHPT_nrcalib_functional_form": BHPT_nrcalib_functional_form,
                  "q_to_q": q_to_q,
                  "q_to_nu": q_to_nu,
