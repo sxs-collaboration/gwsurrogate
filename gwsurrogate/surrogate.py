@@ -173,13 +173,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     # For models with NR calibration information, we need to find the calibration values
     # at a given value of parameter space
     if(self.surrogateID == 'BHPTNRSur1dq1e4'):
-      # obtain alpha and beta coefficients
-      alpha_coeffs_mode = self.nrcalib.alpha_coeffs[(float(self.mode[1]),float(self.mode[1]))]
-      beta_coeffs = self.nrcalib.beta_coeffs
-      # evaluate alpha and beta from polynomials
-      self.alpha = my_funcs["BHPT_nrcalib_functional_form"](1/q, alpha_coeffs_mode[0], alpha_coeffs_mode[1], alpha_coeffs_mode[2], alpha_coeffs_mode[3])
-      self.beta = my_funcs["BHPT_nrcalib_functional_form"](1/q, beta_coeffs[0], beta_coeffs[1],\
-                                                         beta_coeffs[2], beta_coeffs[3])
+      self.alpha, self.beta = self.compute_BHPT_calibration_params(q)
     
     
     # surrogate evaluations assumed dimensionless, physical modes are found from scalings
@@ -267,6 +261,20 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     else:
   	  return t, hp, hc
 
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  def compute_BHPT_calibration_params(self, q):
+    """
+    computes alpha beta calibration parameters for a given mode and mass ratio
+    """
+    # obtain alpha and beta coefficients
+    alpha_coeffs_mode = self.nrcalib.alpha_coeffs[(float(self.mode[1]),float(self.mode[1]))]
+    beta_coeffs = self.nrcalib.beta_coeffs
+    # evaluate alpha and beta from polynomials
+    alpha = my_funcs["BHPT_nrcalib_functional_form"](1/q, alpha_coeffs_mode[0], alpha_coeffs_mode[1],\
+                                                        alpha_coeffs_mode[2], alpha_coeffs_mode[3])
+    beta = my_funcs["BHPT_nrcalib_functional_form"](1/q, beta_coeffs[0], beta_coeffs[1],\
+                                                     beta_coeffs[2], beta_coeffs[3])
+    return alpha, beta
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def find_instant_freq(self, hp, hc, t, f_low = None):
