@@ -887,7 +887,7 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, enforce_o
         for kk in fp.keys(): # Py2 list, Py3 iterator
           splitkk = kk.split('_')
           if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
-            ell = int(splitkk[0][1])
+            ell = int(splitkk[0][1:])
             emm = int(splitkk[1][1:])
             if not (ell, emm) in exc_modes:
               mode_keys.append((ell,emm))
@@ -977,7 +977,11 @@ class EvaluateSurrogate():
       print("\n>>> Warning: No surrogate ID found. Could not deduce ID from file")
     else:
       self.surrogateID = surrogateID[0]
-    
+
+    if self.surrogateID is 'BHPTNRSur1dq1e4':
+      msg = "co-orbital surrogate models must load the 22 mode data as other modes depend on it" 
+      assert (ell_m is None or (2,2) in ell_m), msg
+ 
     self.single_mode_dict = \
       CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, use_orbital_plane_symmetry)
 
