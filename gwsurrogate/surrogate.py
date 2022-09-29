@@ -1100,58 +1100,6 @@ class EvaluateSurrogate():
 
     ### loop over all evaluation modes ###
     # TODO: internal workings are simplified if h used instead of (hc,hp)
-#     ii = 0
-#     for ell,m in modes_to_evaluate:
-
-#       ### if the mode is modelled, evaluate it. Otherwise its zero ###
-#       is_modeled = (ell,m) in modeled_modes
-#       neg_modeled = (ell,-m) in modeled_modes
-#       if is_modeled or (neg_modeled and fake_neg_modes):
-
-#         if is_modeled:
-#           t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,times,units,ell,m)
-#         else: # then we must have neg_modeled=True and fake_neg_modes=True
-#           t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,times,units,ell,m)
-            
-#         if z_rot is not None:
-#           h_tmp   = _gwtools.modify_phase(hp_mode+1.0j*hc_mode,z_rot*m)
-#           hp_mode = h_tmp.real
-#           hc_mode = h_tmp.imag
-        
-#         # TODO: should be faster. integrate this later on
-#         #if fake_neg_modes and m != 0:
-#         #  hp_mode_mm, hc_mode_mm = self._generate_minus_m_mode(hp_mode,hc_mode,ell,m)
-#         #  hp_mode_mm, hc_mode_mm = self.evaluate_on_sphere(ell,-m,theta,phi,hp_mode_mm,hc_mode_mm)
-
-#         hp_mode, hc_mode = self.evaluate_on_sphere(ell,m,theta,phi,hp_mode,hc_mode)
-        
-#         if mode_sum:
-#           hp_full = hp_full + hp_mode
-#           hc_full = hc_full + hc_mode
-#           #if fake_neg_modes and m != 0:
-#           #  hp_full = hp_full + hp_mode_mm
-#           #  hc_full = hc_full + hc_mode_mm
-#         else:
-#           if len(modes_to_evaluate)==1:
-#             hp_full[:] = hp_mode[:]
-#             hc_full[:] = hc_mode[:]
-#           else:
-#             hp_full[:,ii] = hp_mode[:]
-#             hc_full[:,ii] = hc_mode[:]
-#       else:
-#         warning_str = "Your mode (ell,m) = ("+str(ell)+","+str(m)+") is not available!"
-#         raise Warning(warning_str)
-
-
-#       ii+=1
-    
-#     if mode_sum:
-#       return t_mode, hp_full, hc_full #assumes all mode's have same temporal grid
-#     else: # helpful to have (l,m) list for understanding mode evaluations
-#       return modes_to_evaluate, t_mode, hp_full, hc_full
-
-    ### loop over all evaluation modes ###
-    # TODO: internal workings are simplified if h used instead of (hc,hp)
     ii = 0
     for ell,m in modes_to_evaluate:
 
@@ -1204,9 +1152,7 @@ class EvaluateSurrogate():
         warning_str = "Your mode (ell,m) = ("+str(ell)+","+str(m)+") is not available!"
         raise Warning(warning_str)
 
-
       ii+=1
-    
         
     if mode_sum:
       return t_mode, hp_full, hc_full #assumes all mode's have same temporal grid
