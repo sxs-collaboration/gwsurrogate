@@ -167,7 +167,7 @@ to run some regression tests.
 ```
 >>> cd test                              # move into the folder test
 >>> python download_regression_models.py # download all surrogate models to test
->>> python test_model_regression.py      # (optional) generate regression data locally on your machine
+>>> python test_model_regression.py      # (optional - if developing a new test) generate regression data locally on your machine
 >>> cd ..                                # move back to the top-level folder
 >>> pytest                               # run all tests
 >>> pytest -v -s                         # run all tests with high verbosity
