@@ -264,14 +264,26 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def compute_BHPT_calibration_params(self, q):
     """
-    computes alpha beta calibration parameters for a given mode and mass ratio
+    Computes alpha and beta calibration parameters for a given mode and mass ratio.
+
+    These parameters are used to calibrate point-particle perturbation theory waveforms to NR.
+
+    Please see: https://arxiv.org/abs/2204.01972
+
     """
-    # obtain alpha and beta coefficients
-    alpha_coeffs_mode = self.nrcalib.alpha_coeffs[(float(self.mode[1]),float(self.mode[1]))]
-    beta_coeffs = self.nrcalib.beta_coeffs
+
     # evaluate alpha and beta from polynomials
-    alpha = my_funcs["BHPT_nrcalib_functional_form"](1/q, alpha_coeffs_mode[0], alpha_coeffs_mode[1],\
-                                                        alpha_coeffs_mode[2], alpha_coeffs_mode[3])
+
+    if self.mode_ell<=5:
+      # alpha calibration parameters from ell=m data applied to ell!=m
+      alpha_coeffs_mode = self.nrcalib.alpha_coeffs[(float(self.mode_ell),float(self.mode_ell))]
+      alpha = my_funcs["BHPT_nrcalib_functional_form"](1/q, alpha_coeffs_mode[0], alpha_coeffs_mode[1],\
+                                                      alpha_coeffs_mode[2], alpha_coeffs_mode[3])
+    else:
+      alpha = 1.0
+
+    # beta parameters independent of ell,m
+    beta_coeffs = self.nrcalib.beta_coeffs
     beta = my_funcs["BHPT_nrcalib_functional_form"](1/q, beta_coeffs[0], beta_coeffs[1],\
                                                      beta_coeffs[2], beta_coeffs[3])
     return alpha, beta
@@ -875,7 +887,7 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, enforce_o
         if 'EXCLUDED' in vv:
           splitkk = kk.split('_')
           if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
-            ell = int(splitkk[0][1])
+            ell = int(splitkk[0][1:])
             emm = int(splitkk[1][1:])
             if excluded == 'DEFAULT':
               exc_modes.append((ell,emm))
@@ -1062,28 +1074,31 @@ class EvaluateSurrogate():
    
     if (not self.use_orbital_plane_symmetry) and fake_neg_modes:
       raise ValueError("if use_orbital_plane_symmetry is not assumed, it is not possible to fake m<0 modes")
-
-    #for models where the higher modes have been modeled in the coorbital frame, 
-    # it is neceassary to have the [2,2] mode as the first index of modes_to_evaluate
-    # otherwise, we do not have the information regarding the orbital phase
-    # crucial to transform the higher modes from coorbital frame to inertial frame
-    # this line of code gurranties that [2,2] is always included in the modes to evaluate
-    if self.surrogateID=='BHPTNRSur1dq1e4':
-        ell, m = self.add_l2m2_mode_if_not_in_modelist(ell, m)
         
     ### deduce single mode dictionary keys from ell, m and fake_neg_modes input ###
     modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
-    
+
     if mode_sum and (theta is None and phi is None) and len(modes_to_evaluate)!=1:
       raise ValueError('Trying to sum modes without theta and phi is a strange idea')
+
+    # For models where the higher modes have been modeled in the coorbital frame, 
+    # it is necessary to have the (2,2) mode as the first index of modes_to_evaluate
+    # otherwise, we do not have the information regarding the orbital phase
+    # crucial to transform the higher modes from coorbital frame to inertial frame
+    # this line of code guarantees that 
+    #   (1) (2,2) is always included in the modes to evaluate
+    #   (2) (2,2) is the first mode in modes_to_evaluate
+    if self.surrogateID=='BHPTNRSur1dq1e4':
+      modes_to_evaluate = self.add_l2m2_mode_if_not_in_modelist(modes_to_evaluate)
+    
 
     ### if mode_sum false, return modes in a sensible way ###
     if not mode_sum:
       # For models where the higher modes have been modeled in the coorbital frame, 
-      # it is neceassary to have the [2,2] mode as the first index of modes_to_evaluate
+      # it is necessary to have the [2,2] mode as the first index of modes_to_evaluate
       # otherwise, we do not have the information regarding the orbital phase
       # crucial to transform the higher modes from coorbital frame to inertial frame
-      # this line of code gurranties that [2,2] always comes first by not sorting
+      # this line of code guarantees that [2,2] always comes first by not sorting
       # as sorting makes [l,-m] the first mode in the array
       if self.surrogateID!='BHPTNRSur1dq1e4':
         modes_to_evaluate = self.sort_mode_list(modes_to_evaluate)
@@ -1103,7 +1118,7 @@ class EvaluateSurrogate():
     ii = 0
     for ell,m in modes_to_evaluate:
 
-      ### if the mode is modelled, evaluate it. Otherwise its zero ###
+      ### if the mode is modeled, evaluate it. Otherwise its zero ###
       is_modeled = (ell,m) in modeled_modes
       neg_modeled = (ell,-m) in modeled_modes
       if is_modeled or (neg_modeled and fake_neg_modes):
@@ -1170,22 +1185,21 @@ class EvaluateSurrogate():
     return full_wf.real, full_wf.imag
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def add_l2m2_mode_if_not_in_modelist(self,ell, m):
+  def add_l2m2_mode_if_not_in_modelist(self, list_of_modes):
     """
-    adds the (2,2) mode if it is not in ell, m list
-    this is required for some models which evaulates coorbital frame waveform
-    for the higher modes
-    (2,2) mode info is required here
+    Adds the (2,2) mode if it is not in ell, m list. This is 
+    required for some models which evaluates coorbital frame waveform
+    for the higher modes (2,2) mode info is required here.
+
+    This routine also ensures (2,2) is the front of the list
     """
-    if 2 in ell and 2 in m:
-        pass
+    if (2,2) not in list_of_modes:
+      list_of_modes.insert(0, (2,2))  # prepend
     else:
-        ell_modes, m_modes = [2], [2]
-        for i in range(len(ell)):
-            ell_modes.append(ell[i])
-            m_modes.append(m[i])
-        ell, m = ell_modes, m_modes
-    return ell, m
+      where_is_22 = list_of_modes.index( (2,2) )
+      list_of_modes.insert(0, list_of_modes.pop(where_is_22) ) # move (2,2) to the front
+
+    return list_of_modes
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def evaluate_on_sphere(self,ell,m,theta,phi,hp_mode,hc_mode):
