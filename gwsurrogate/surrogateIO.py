@@ -101,6 +101,19 @@ surrogate_description = """* Description of tags:
                              matches B_2's columns."""
 
 
+# helper function 
+def extract_mode_from_string(mode_str):
+  ''' Each mode's data group name is of the form lELL_mEMM. This 
+  helper function will extract the numerical values ELL and EMM'''
+
+  splitkk = mode_str.split('_')
+  if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
+    ell = int(splitkk[0][1:])
+    emm = int(splitkk[1][1:])
+  else:
+    raise ValueError
+  return ell, emm
+
 ##############################################
 class SurrogateBaseIO:
   """
@@ -266,6 +279,11 @@ class H5Surrogate(SurrogateBaseIO):
         self.mode = subdir
     else:
       self.subdir = subdir
+
+    # having quick access to ell, m mode will be more efficient in some contexts
+    ell, emm = extract_mode_from_string(self.mode)
+    self.mode_ell = int(ell)
+    self.mode_emm = int(emm)
     
     ### Check file mode if specified ###
     if mode is not None:
