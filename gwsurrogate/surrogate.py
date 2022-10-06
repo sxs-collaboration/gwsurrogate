@@ -175,6 +175,8 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if(self.surrogateID == 'BHPTNRSur1dq1e4'):
       self.alpha, self.beta = self.compute_BHPT_calibration_params(q)
     
+    # Subsequent functions (e.g. code that checks evaluation point within training) assumes this
+    assert(q>=1)
     
     # surrogate evaluations assumed dimensionless, physical modes are found from scalings
     if self.surrogate_units != 'dimensionless':
@@ -1030,7 +1032,7 @@ class EvaluateSurrogate():
         raise ValueError('inconsistent single mode parameterizations')
     # common parameter interval and parameterization for all modes
     # use newer parameter space class for common interface
-    pd = ParamDim(name='unknown parmater',
+    pd = ParamDim(name='unknown parameter',
                   min_val=training_parameter_range[0],
                   max_val=training_parameter_range[1])
     self.param_space = ParamSpace(name='unknown', params=[pd])
