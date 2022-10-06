@@ -202,7 +202,8 @@ def test_model_regression(generate_regression_data=False):
       fp_regression = h5py.File("test/model_regression_data.h5",'r') 
     except IOError:
       print("Downloading regression data...")
-      os.system('wget --directory-prefix=test https://www.dropbox.com/s/vxqsr7fjoffxm5w/model_regression_data.h5')
+      # Old file (10/2022): https://www.dropbox.com/s/vxqsr7fjoffxm5w/model_regression_data.h5
+      os.system('wget --directory-prefix=test https://www.dropbox.com/s/4zcse4ja5aw3n6s/model_regression_data.h5')
       fp_regression = h5py.File("test/model_regression_data.h5",'r') 
     regression_hash = md5("test/model_regression_data.h5")
     print("hash of model_regression_data.h5 is ",regression_hash)
