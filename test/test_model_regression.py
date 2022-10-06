@@ -78,10 +78,10 @@ rtol_SpEC_q1_10_NoSpin_linear_alt = 3.e-8 # needed for (8,7) mode to pass. Other
 #       model-specific cases like below
 
 # Old surrogate interface
-surrogate_old_interface = ["SpEC_q1_10_NoSpin","EOBNRv2_tutorial","EOBNRv2","SpEC_q1_10_NoSpin_linear","EMRISur1dq1e4"]
+surrogate_old_interface = ["SpEC_q1_10_NoSpin","EOBNRv2_tutorial","EOBNRv2","SpEC_q1_10_NoSpin_linear","EMRISur1dq1e4","BHPTNRSur1dq1e4"]
 
 # news loader class
-surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal","NRSur7dq4","NRHybSur2d15"]
+surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal","NRSur7dq4","NRHybSur2dq15"]
 
 # Most models are randomly sampled, but in some cases its useful to provide 
 # test points to activate specific code branches. This is done by mapping 
@@ -143,6 +143,36 @@ def NRSur7dq4_samples(i):
 
 model_sampler["NRSur7dq4"] = NRSur7dq4_samples
 
+def BHPTNRSur1dq1e4_samples(i):
+  """ sample points for the BHPTNRSur1dq1e4 model """
+
+  assert i in [0,1,2]
+
+  if i==0:
+    return [3.0, [0,0,0],[0,0,0]], None, None
+  elif i==1:
+    return [100.0, [0,0,0],[0,0,0]], None, None
+  elif i==2:
+    return [10000.0, [0,0,0],[0,0,0]], None, None
+
+model_sampler["BHPTNRSur1dq1e4"] = BHPTNRSur1dq1e4_samples
+
+
+def NRHybSur2dq15_samples(i):
+  """ sample points for the NRHybSur2dq15 model """
+
+  assert i in [0,1,2]
+
+  if i==0:
+    return [2.0, [0,0,-.4],[0,0,0]], None, None
+  elif i==1:
+    return [11.0, [0,0,.7],[0,0,0]], None, None
+  elif i==2:
+    return [18.0, [0,0,.4],[0,0,0]], None, None
+
+model_sampler["NRHybSur2dq15"] = NRHybSur2dq15_samples
+
+
 def flatten_params(x):
   """ Convert [q, chiA, chiB] to [q, chiAx, chiAy, chiAz, chiBx, chiBy, chiBz].
 
@@ -178,7 +208,8 @@ def test_model_regression(generate_regression_data=False):
     print("hash of model_regression_data.h5 is ",regression_hash)
 
   # remove models if you don't have them
-  dont_test = ["NRHybSur2dq15",
+  dont_test = [#"NRHybSur2dq15",
+               #"BHPTNRSur1dq1e4",
                #"EMRISur1dq1e4",
                "NRSur4d2s_TDROM_grid12", # 10 GB file
                "NRSur4d2s_FDROM_grid12", # 10 GB file
@@ -191,6 +222,7 @@ def test_model_regression(generate_regression_data=False):
                #"NRHybSur3dq8Tidal",
                #"NRSur7dq4"
                ]
+
 
   # Common directory where all surrogates are assumed to be located
   surrogate_path = gws.catalog.download_path()
@@ -240,6 +272,9 @@ def test_model_regression(generate_regression_data=False):
 
     if model in surrogate_old_interface:
       sur = gws.EvaluateSurrogate(datafile)
+      # this is the surrogate's parameterization (e.g. log(q), \eta) region!
+      # Technically should be using q. For SpEC_q1_10_NoSpin, Scott manually 
+      # mapped eta to q, directly modifing the regression data file (10/5/2022)
       p_mins = sur.param_space.min_vals()
       p_maxs = sur.param_space.max_vals()
     elif model in surrogate_loader_interface:
@@ -258,8 +293,8 @@ def test_model_regression(generate_regression_data=False):
       p_maxs = sur.param_space.max_vals()
  
         
-    print("parameter minimum values",p_mins)
-    print("parameter maximum values",p_maxs)
+    print("parameter minimum values for model %s"%model,p_mins)
+    print("parameter maximum values for model %s"%model,p_maxs)
 
     param_samples = []
     if generate_regression_data: # pick new points to compute regression data at
