@@ -121,16 +121,15 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     # in future, when more BHPTNRSurrogates are available, we can replace the if statement
     # to look for the phrase "BHPTNRSur"
     if(self.surrogateID == 'BHPTNRSur1dq1e4'):
-        self.nrcalib = _BHPTNRCalibValues(file=path.filename)
+      self.nrcalib = _BHPTNRCalibValues(file=path.filename)
+    else:
+      self.nrcalib = None
     
     # Interpolate columns of the empirical interpolant operator, B, using cubic spline
     if self.surrogate_mode_type  == 'waveform_basis':
       self.reB_spline_params = [_splrep(self.times, self.B[:,jj].real, k=deg) for jj in range(self.B.shape[1])]
       self.imB_spline_params = [_splrep(self.times, self.B[:,jj].imag, k=deg) for jj in range(self.B.shape[1])]
-    elif self.surrogate_mode_type  == 'amp_phase_basis':
-      self.B1_spline_params = [_splrep(self.times, self.B_1[:,jj], k=deg) for jj in range(self.B_1.shape[1])]
-      self.B2_spline_params = [_splrep(self.times, self.B_2[:,jj], k=deg) for jj in range(self.B_2.shape[1])]
-    elif self.surrogate_mode_type  == 'coorb_waveform_basis':
+    elif self.surrogate_mode_type in ['amp_phase_basis', 'coorb_waveform_basis']:
       self.B1_spline_params = [_splrep(self.times, self.B_1[:,jj], k=deg) for jj in range(self.B_1.shape[1])]
       self.B2_spline_params = [_splrep(self.times, self.B_2[:,jj], k=deg) for jj in range(self.B_2.shape[1])]
     else:
@@ -170,11 +169,8 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
        An array of times can be passed along with its units. """
 
-    # For models with NR calibration information, we need to find the calibration values
-    # at a given value of parameter space
-    if(self.surrogateID == 'BHPTNRSur1dq1e4'):
-      self.alpha, self.beta = self.compute_BHPT_calibration_params(q)
-    
+
+
     # Subsequent functions (e.g. code that checks evaluation point within training) assumes this
     assert(q>=1)
     
@@ -187,6 +183,14 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
     if (M is not None) and (dist is not None) and (times is not None) and (units != 'mks'):
     	raise ValueError('passing values of M, dist, and times suggest mks units should be used!')
+
+
+    # For models with NR calibration information, we need to find the calibration values
+    # at a given value of parameter space. These calibration parameters will scale the 
+    # time and amplitude. Currently, these models use calibration:
+    # BHPTNRSur1dq1e4, EMRISur1dq1e4
+    if(self.surrogateID == 'BHPTNRSur1dq1e4'):
+      alpha_nr_calibration, beta_nr_calibration = self.compute_BHPT_calibration_params(q)
     
     if(self.surrogateID == 'EMRISur1dq1e4'):
       # see Eq 4 of https://arxiv.org/abs/1910.10473
@@ -210,7 +214,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if(self.surrogateID == 'EMRISur1dq1e4'):
       amp0 = alpha_emri * amp0
     if(self.surrogateID == 'BHPTNRSur1dq1e4'):
-      amp0 = self.alpha * amp0
+      amp0 = alpha_nr_calibration * amp0
 
 
     ### evaluation times t: input times or times at which surrogate was built ###
@@ -221,7 +225,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       if self.surrogateID == 'EMRISur1dq1e4':
         t = t * alpha_emri # this will deep copy, preserving data in self.times
       elif self.surrogateID == 'BHPTNRSur1dq1e4':
-        t = t * self.beta
+        t = t * beta_nr_calibration
 
     ### if input times are dimensionless, convert to MKS if a physical surrogate is requested ###
     if units == 'dimensionless':
@@ -235,7 +239,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if times is not None and self.surrogateID == 'EMRISur1dq1e4':
       times = times / alpha_emri
     if times is not None and self.surrogateID == 'BHPTNRSur1dq1e4':
-      times = times / self.beta
+      times = times / beta_nr_calibration
 
     # convert from input to internal surrogate parameter values, and check within training region #
     x = self.get_surr_params_safe(q)

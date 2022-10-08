@@ -157,7 +157,7 @@ class SurrogateBaseIO:
   _B_2_txt                  = 'B_2.txt'
   _B_h5                     = 'B' # B_1.txt
   _B_phase_h5               = 'B_phase' # B_2.txt
-  _B_im_h5               = 'B_im' # B_2.txt
+  _B_im_h5                  = 'B_im' # B_2.txt
 
 
   ## COULD BE OPTIONAL DATA (depends on surrogate type) ###
@@ -171,11 +171,11 @@ class SurrogateBaseIO:
   _fit_type_amp_txt         = 'fit_type_amp.txt'
   _fit_type_amp_h5          = 'fit_type_amp' # .txt
   
-  _fit_type_re_txt         = 'fit_type_re.txt'
-  _fit_type_re_h5          = 'fit_type_re' # .txt
+  _fit_type_re_txt          = 'fit_type_re.txt'
+  _fit_type_re_h5           = 'fit_type_re' # .txt
 
-  _fit_type_im_txt         = 'fit_type_im.txt'
-  _fit_type_im_h5          = 'fit_type_im' # .txt
+  _fit_type_im_txt          = 'fit_type_im.txt'
+  _fit_type_im_h5           = 'fit_type_im' # .txt
 
   _fit_type_norm_txt        = 'fit_type_norm.txt'
   _fit_type_norm_h5         = 'fit_type_norm' # .txt
@@ -186,8 +186,8 @@ class SurrogateBaseIO:
   _fitparams_amp_txt        = 'fitparams_amp.txt'   # switched from fit_coeff_amp.txt 11/9/2016
   _fitparams_amp_h5         = 'fitparams_amp'  # .txt
   
-  _fitparams_re_h5         = 'fitparams_re'  # .txt
-  _fitparams_im_h5         = 'fitparams_im'  # .txt
+  _fitparams_re_h5          = 'fitparams_re'  # .txt
+  _fitparams_im_h5          = 'fitparams_im'  # .txt
 
   _fitparams_norm_txt  = 'fitparams_norm.txt' # switched from fit_coeff_norm.txt 11/9/2016
   _fitparams_norm_h5   = 'fitparams_norm' # .txt
@@ -204,11 +204,11 @@ class SurrogateBaseIO:
   _eim_amp_h5            = 'eim_amp' # text analog? only used to plot 
   _eim_phase_h5          = 'eim_phase' # text analog? only used to plot
     
-  _eim_indices_im_h5  = 'eim_indices_im' # rolled into eim_indices
-  _eim_re_h5            = 'eim_re' # text analog? only used to plot 
-  _eim_im_h5          = 'eim_im' # text analog? only used to plot
+  _eim_indices_im_h5     = 'eim_indices_im' # rolled into eim_indices
+  _eim_re_h5             = 'eim_re' 
+  _eim_im_h5             = 'eim_im' 
 
-  _nr_calib_params_h5          = 'nr_calib_params' # text analog? only used to plot
+  _nr_calib_params_h5    = 'nr_calib_params' 
 
   _V_1_txt             = 'V_1.txt'
   _V_2_txt             = 'V_2.txt'
@@ -442,7 +442,6 @@ class H5Surrogate(SurrogateBaseIO):
         self.eim_indices = self.file[subdir+self._eim_indices_h5][:]
       except KeyError:
         print("Cannot load eim points...OK")
-    # changes in code to allow for coorbital mode surrogates
     elif self.surrogate_mode_type == 'coorb_waveform_basis':
       try:
         self.eim_indices_re = self.file[subdir+self._eim_indices_h5][:]
@@ -470,7 +469,6 @@ class H5Surrogate(SurrogateBaseIO):
       self.affine_map = self.chars_to_string(self.file[subdir+self._affine_map_h5][()])
     else:
       self.affine_map = 'none'
-    # changes in code to allow for coorbital mode surrogates
     if self.surrogate_mode_type  == 'coorb_waveform_basis':
       self.fitparams_re = self.file[subdir+self._fitparams_re_h5][:]
       self.fitparams_im = self.file[subdir+self._fitparams_im_h5][:]
@@ -522,7 +520,7 @@ class H5Surrogate(SurrogateBaseIO):
 
       self.amp_fit_func = amp_fit_func
 
-      # NOTE: this evaluates the imaginar part -- but its called phase to keep with naming convention -- terrible! (TODO):wq
+      # NOTE: this evaluates the imaginary part -- but its called phase to keep with naming convention -- terrible! (TODO)
       def phase_fit_func(coeffs,xvec):
         phase_eval = fast_tensor_spline_eval(xvec,self.ts_grid,coeffs)
         return phase_eval
@@ -535,96 +533,88 @@ class H5Surrogate(SurrogateBaseIO):
         
       ## NOTE :We need two if statements for the BHPTNRSur1dq1e4 because, the number of knots are not same
       ## in different modes or even for different data pieces within the mode. This is because of the
-      ## smoothing we do in fitting. This demands some parts oft he code to be re-written.
+      ## smoothing we do in fitting. This demands some parts of the code to be re-written.
       ## Furtermore, we use different decomposition for 22 mode and higher order modes.
       ## This should be done differently
       ## =====================================================================================
-      # for the 22 mode
-      if self.surrogateID=="BHPTNRSur1dq1e4" and self.surrogate_mode_type  == 'amp_phase_basis':
-         n_spline_knots_amp = self.file[subdir+'n_spline_knots_amp'][:]
-         n_spline_knots_phase = self.file[subdir+'n_spline_knots_phase'][:]
-            
-         spline_knots_amp = self.file[subdir+'spline_knots_amp'][:]
-         spline_knots_phase = self.file[subdir+'spline_knots_phase'][:]
+      if self.surrogateID=="BHPTNRSur1dq1e4":
+        if self.surrogate_mode_type  == 'amp_phase_basis': # BHPTNRSur1dq1e4's 22 mode is of type amp_phase_basis
+          n_spline_knots_amp = self.file[subdir+'n_spline_knots_amp'][:]
+          n_spline_knots_phase = self.file[subdir+'n_spline_knots_phase'][:]
 
-         # pack necessary data up so the spline function can be called
-         # as self.amp_fit_func(self.fitparams_amp[jj,:], x_0)
-         num_fits_amp = self.fitparams_amp.shape[0]
-         num_fits_phase = self.fitparams_phase.shape[0]
-         fitparams_amp = []
-         fitparams_phase = []
-         degree = int(self.file[subdir+'degree'][:]) # must be int for scipy (> 1.5.2) splev to work
-         for i in range(num_fits_amp):
+          spline_knots_amp = self.file[subdir+'spline_knots_amp'][:]
+          spline_knots_phase = self.file[subdir+'spline_knots_phase'][:]
+
+          # pack necessary data up so the spline function can be called
+          # as self.amp_fit_func(self.fitparams_amp[jj,:], x_0)
+          num_fits_amp = self.fitparams_amp.shape[0]
+          num_fits_phase = self.fitparams_phase.shape[0]
+          fitparams_amp = []
+          fitparams_phase = []
+          degree = int(self.file[subdir+'degree'][:]) # must be int for scipy (> 1.5.2) splev to work
+          for i in range(num_fits_amp):
             fitparams_amp.append([spline_knots_amp[i], self.fitparams_amp[i], degree])
-         for i in range(num_fits_phase):
+          for i in range(num_fits_phase):
             fitparams_phase.append([spline_knots_phase[i], self.fitparams_phase[i], degree])
-         self.fitparams_amp = np.array(fitparams_amp)
-         self.fitparams_phase = np.array(fitparams_phase)
-         
-         print("num_fits_amp = %i"%(num_fits_amp))
-         print("num_fits_phase = %i"%(num_fits_phase))
+          self.fitparams_amp = np.array(fitparams_amp)
+          self.fitparams_phase = np.array(fitparams_phase)
 
-         self.amp_fit_func   = my_funcs[self.fit_type_amp]
-         self.phase_fit_func = my_funcs[self.fit_type_phase]
-      
-      # for the higher order modes
-      elif self.surrogateID=="BHPTNRSur1dq1e4" and self.surrogate_mode_type  == 'coorb_waveform_basis':
-         n_spline_knots_re = self.file[subdir+'n_spline_knots_re'][:]
-         n_spline_knots_im = self.file[subdir+'n_spline_knots_im'][:]
-            
-         spline_knots_re = self.file[subdir+'spline_knots_re'][:]
-         spline_knots_im = self.file[subdir+'spline_knots_im'][:]
+          print("num_fits_amp = %i"%(num_fits_amp))
+          print("num_fits_phase = %i"%(num_fits_phase))
 
-         # pack necessary data up so the spline function can be called
-         # as self.amp_fit_func(self.fitparams_amp[jj,:], x_0)
-         num_fits_re = self.fitparams_re.shape[0]
-         num_fits_im = self.fitparams_im.shape[0]
-         fitparams_re = []
-         fitparams_im = []
-         degree = int(self.file[subdir+'degree'][:]) # must be int for scipy (> 1.5.2) splev to work
-         for i in range(num_fits_re):
+          self.amp_fit_func   = my_funcs[self.fit_type_amp]
+          self.phase_fit_func = my_funcs[self.fit_type_phase]
+        elif self.surrogate_mode_type  == 'coorb_waveform_basis':  # BHPTNRSur1dq1e4's higher order modes are coorb type
+          n_spline_knots_re = self.file[subdir+'n_spline_knots_re'][:]
+          n_spline_knots_im = self.file[subdir+'n_spline_knots_im'][:]
+
+          spline_knots_re = self.file[subdir+'spline_knots_re'][:]
+          spline_knots_im = self.file[subdir+'spline_knots_im'][:]
+
+          # pack necessary data up so the spline function can be called
+          # as self.amp_fit_func(self.fitparams_amp[jj,:], x_0)
+          num_fits_re = self.fitparams_re.shape[0]
+          num_fits_im = self.fitparams_im.shape[0]
+          fitparams_re = []
+          fitparams_im = []
+          degree = int(self.file[subdir+'degree'][:]) # must be int for scipy (> 1.5.2) splev to work
+          for i in range(num_fits_re):
             fitparams_re.append([spline_knots_re[i], self.fitparams_re[i], degree])
-         for i in range(num_fits_im):
+          for i in range(num_fits_im):
             fitparams_im.append([spline_knots_im[i], self.fitparams_im[i], degree])
-         self.fitparams_re = np.array(fitparams_re)
-         self.fitparams_im = np.array(fitparams_im)
-         
-         print("num_fits_re = %i"%(num_fits_re))
-         print("num_fits_im = %i"%(num_fits_im))
+          self.fitparams_re = np.array(fitparams_re)
+          self.fitparams_im = np.array(fitparams_im)
 
-         self.re_fit_func   = my_funcs[self.fit_type_amp]
-         self.im_fit_func = my_funcs[self.fit_type_phase]
-      ##======================================================================================
-    
-      # for all other models, it will take the usual route
-      ## =====================================================================================
-      else:
-         n_spline_knots = self.file[subdir+'n_spline_knots'][:]
-         spline_knots = self.file[subdir+'spline_knots'][:]
+          print("num_fits_re = %i"%(num_fits_re))
+          print("num_fits_im = %i"%(num_fits_im))
 
-         # pack necessary data up so the spline function can be called
-         # as self.amp_fit_func(self.fitparams_amp[jj,:], x_0)
-         num_fits = self.fitparams_amp.shape[0]
-         fitparams_amp = []
-         fitparams_phase = []
-         degree = int(self.file[subdir+'degree'][:]) # must be int for scipy (> 1.5.2) splev to work
-         for i in range(num_fits):
-           fitparams_amp.append([spline_knots, self.fitparams_amp[i,:], degree])
+          self.re_fit_func   = my_funcs[self.fit_type_amp]
+          self.im_fit_func = my_funcs[self.fit_type_phase]
+      else: # for all other models, it will take the usual route
+        n_spline_knots = self.file[subdir+'n_spline_knots'][:]
+        spline_knots = self.file[subdir+'spline_knots'][:]
+
+        # pack necessary data up so the spline function can be called
+        # as self.amp_fit_func(self.fitparams_amp[jj,:], x_0)
+        num_fits = self.fitparams_amp.shape[0]
+        fitparams_amp = []
+        fitparams_phase = []
+        degree = int(self.file[subdir+'degree'][:]) # must be int for scipy (> 1.5.2) splev to work
+        for i in range(num_fits):
+          fitparams_amp.append([spline_knots, self.fitparams_amp[i,:], degree])
            fitparams_phase.append([spline_knots, self.fitparams_phase[i,:], degree])
-         self.fitparams_amp = np.array(fitparams_amp)
-         self.fitparams_phase = np.array(fitparams_phase)
+        self.fitparams_amp = np.array(fitparams_amp)
+        self.fitparams_phase = np.array(fitparams_phase)
 
-         print("spline knots = %i, num_fits = %i"%(n_spline_knots,num_fits))
+        print("spline knots = %i, num_fits = %i"%(n_spline_knots,num_fits))
 
-         self.amp_fit_func   = my_funcs[self.fit_type_amp]
-         self.phase_fit_func = my_funcs[self.fit_type_phase]
-        
-       ## =====================================================================================
-      
+        self.amp_fit_func   = my_funcs[self.fit_type_amp]
+        self.phase_fit_func = my_funcs[self.fit_type_phase]
     
     else:
       self.amp_fit_func   = my_funcs[self.fit_type_amp]
       self.phase_fit_func = my_funcs[self.fit_type_phase]
+
 
     if self._fit_type_norm_h5 in self.keys:
       try:
@@ -894,11 +884,12 @@ class TextSurrogateRead(SurrogateBaseIO):
       self.modeled_data  = 1 # complexified waveform data
       self.fits_required = 2 # amp, phase fits
     elif self.surrogate_mode_type  == 'coorb_waveform_basis':
-      self.B   = B_1 + (1j)*B_2
-      self.B_1 = None
-      self.B_2 = None
-      self.modeled_data  = 1 # complexified waveform data
-      self.fits_required = 2 # amp, phase fits
+      raise ValueError('coorb_waveform_basis model not supported for text datafiles')
+      #self.B   = B_1 + (1j)*B_2
+      #self.B_1 = None
+      #self.B_2 = None
+      #self.modeled_data  = 1 # complexified waveform data
+      #self.fits_required = 2 # amp, phase fits
     else:
       raise ValueError('invalid surrogate type')
 
