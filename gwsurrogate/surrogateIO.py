@@ -602,7 +602,7 @@ class H5Surrogate(SurrogateBaseIO):
         degree = int(self.file[subdir+'degree'][:]) # must be int for scipy (> 1.5.2) splev to work
         for i in range(num_fits):
           fitparams_amp.append([spline_knots, self.fitparams_amp[i,:], degree])
-           fitparams_phase.append([spline_knots, self.fitparams_phase[i,:], degree])
+          fitparams_phase.append([spline_knots, self.fitparams_phase[i,:], degree])
         self.fitparams_amp = np.array(fitparams_amp)
         self.fitparams_phase = np.array(fitparams_phase)
 
