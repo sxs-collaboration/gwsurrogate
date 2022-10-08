@@ -184,6 +184,13 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     if (M is not None) and (dist is not None) and (times is not None) and (units != 'mks'):
     	raise ValueError('passing values of M, dist, and times suggest mks units should be used!')
 
+    if self.surrogate_mode_type == 'coorb_waveform_basis' and singlemode_call:
+      msg = 'directly calling a coorb_waveform_basis surrogate will return a waveform in the co-orbital frame.\n'
+      msg += 'Please use EvaluateSurrogate to evaluate co-orbital frame surrogates.\n'
+      msg += 'Use EvaluateSurrogate call method to evaluate in the inertial frame.\n'
+      msg += 'Use EvaluateSurrogate.evaluate_single_mode to evaluate in the co-orbital frame.\n' 
+      raise ValueError(msg)
+
 
     # For models with NR calibration information, we need to find the calibration values
     # at a given value of parameter space. These calibration parameters will scale the 
@@ -201,6 +208,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       alpha_emri = 1.0-1.352854*nu-1.223006*nu*nu+8.601968*nu*nu*nu-46.74562*nu*nu*nu*nu
     else:
       alpha_emri = None
+
 
     ### if (M,distance) provided, a physical mode in mks units is returned ###
     if( M is not None and dist is not None):
@@ -983,7 +991,7 @@ class EvaluateSurrogate():
         The default ('DEFAULT') excludes any modes with an 'EXCLUDED' dataset.
         Use [] or None to load these modes as well.
     use_orbital_plane_symmetry: If set to true (i) CreateManyEvaluateSingleModeSurrogates
-        will explictly check that m<0 do not exist in the data file and (ii) m<0 modes
+        will explicitly check that m<0 do not exist in the data file and (ii) m<0 modes
         are inferred from m>0 modes. If set to false no symmetry is assumed -- typical
         of precessing models. When False, fake_neg_modes must be false."""
 
@@ -1129,15 +1137,12 @@ class EvaluateSurrogate():
       neg_modeled = (ell,-m) in modeled_modes
       if is_modeled or (neg_modeled and fake_neg_modes):
 
+        # if model is BHPTNRSur1dq1e4 and mode not 22, hp/hc are in the coorbital frame
         if is_modeled:
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,times,units,ell,m)
         else: # then we must have neg_modeled=True and fake_neg_modes=True
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,times,units,ell,m)
-            
-        if z_rot is not None:
-          h_tmp   = _gwtools.modify_phase(hp_mode+1.0j*hc_mode,z_rot*m)
-          hp_mode = h_tmp.real
-          hc_mode = h_tmp.imag
+
         
         # BHPTNRSur1dq1e4 models the real and imag parts of the higher order modes 
         # in the coorbital frame. We have to make sure we apply a frame transformation
@@ -1148,7 +1153,13 @@ class EvaluateSurrogate():
                orbital_phase = 0.5 * _gwtools.phase(hp_mode + 1j * hc_mode)
           else:
                hp_mode, hc_mode = self.coorbital_to_inertial(hp_mode, hc_mode, m, orbital_phase)
-            
+
+
+        if z_rot is not None:
+          h_tmp   = _gwtools.modify_phase(hp_mode+1.0j*hc_mode,z_rot*m)
+          hp_mode = h_tmp.real
+          hc_mode = h_tmp.imag
+
         # TODO: should be faster. integrate this later on
         #if fake_neg_modes and m != 0:
         #  hp_mode_mm, hc_mode_mm = self._generate_minus_m_mode(hp_mode,hc_mode,ell,m)
@@ -1232,6 +1243,8 @@ class EvaluateSurrogate():
 
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  # TODO: this routine will evaluate m>0 to get the m<0 case!!! It would be much better
+  #       to simply use m>0 modes that were already evaluated (could be ~2x faster) 
   def evaluate_single_mode_by_symmetry(self,q, M, dist, f_low, times, units,ell,m):
     """ evaluate m<0 mode from m>0 mode and relationship between these"""
 
