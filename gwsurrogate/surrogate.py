@@ -1806,11 +1806,11 @@ class SurrogateEvaluator(object):
                 included. For nonprecessing, setting ellMax=None will
                 not return m<0 modes.
 
-    mode_list : A list of (ell, m) modes tuples to be included.
+    mode_list : A list of (ell, m) modes tuples to be included. Valid only
+                for nonprecessing models.
+
                 Example: mode_list = [(2,2),(2,1)].
                 Default: None, in which case all available modes are included.
-                The m<0 modes will not be included for nonprecessing models; 
-                please use ellMax instead.
 
                 At most one of ellMax and mode_list can be specified.
 
@@ -1819,6 +1819,15 @@ class SurrogateEvaluator(object):
                 indices of a given ell index mix with each other, so there is
                 no clear hierarchy. To get the individual modes just don't
                 specify inclination and a dictionary of modes will be returned.
+
+                Note: When the inclination is set, the m<0 modes are 
+                automatically included. For example, passing mode_list = [(2,2)] 
+                will include the (2,2) and (2,-2) modes in the computation of
+                the strain.
+
+                Note: When the inclination is None, the m<0 modes are never
+                generated. For example, passing mode_list = [(2,2),(2,-2)] 
+                will throw an error. 
 
     inclination : Inclination angle between the orbital angular momentum
                 direction at the reference epoch and the line-of-sight to the
@@ -2081,7 +2090,7 @@ class SurrogateEvaluator(object):
                 for mode in modes:
                     ell = mode[0]
                     m   = mode[1]
-                    if m > 0:
+                    if (m > 0) and ( (ell,-m) not in h.keys()):
                         h[(ell,-m)] = (-1)**ell * h[(ell,m)].conjugate()
 
         # Rescale domain to physical units
