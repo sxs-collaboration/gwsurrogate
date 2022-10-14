@@ -1799,15 +1799,20 @@ class SurrogateEvaluator(object):
                 using times/freqs. Default None.
 
     ellMax:     Maximum ell index for modes to include. All available m
-                indicies for each ell will be included automatically.
-                Default: None, in which case all available modes wll be
-                included.
+                indicies for each ell will be included automatically. The 
+                m<0 modes will automatically be included for nonprecessing
+                models. 
+                Default: None, in which case all available modes will be
+                included. For nonprecessing, setting ellMax=None will
+                not return m<0 modes.
 
     mode_list : A list of (ell, m) modes tuples to be included.
                 Example: mode_list = [(2,2),(2,1)].
                 Default: None, in which case all available modes are included.
-                The m<0 modes will automatically be included for nonprecessing
-                models. At most one of ellMax and mode_list can be specified.
+                The m<0 modes will not be included for nonprecessing models; 
+                please use ellMax instead.
+
+                At most one of ellMax and mode_list can be specified.
 
                 Note: mode_list is allowed only for nonprecessing models; for
                 precessing models use ellMax. For precessing systems, all m
@@ -2070,6 +2075,14 @@ class SurrogateEvaluator(object):
             # Follows the LAL convention (see help text)
             h = self._mode_sum(h, inclination, np.pi/2 - phi_ref,
                     fake_neg_modes=fake_neg_modes)
+        else: # if returning modes, check if m<0 modes need to be generated
+            if (ellMax is not None) and (not self.keywords['Precessing']):
+                modes = list(h.keys())
+                for mode in modes:
+                    ell = mode[0]
+                    m   = mode[1]
+                    if m > 0:
+                        h[(ell,-m)] = (-1)**ell * h[(ell,m)].conjugate()
 
         # Rescale domain to physical units
         if self._domain_type == 'Time':
