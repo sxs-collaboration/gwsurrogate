@@ -1091,6 +1091,14 @@ class EvaluateSurrogate():
         
     ### deduce single mode dictionary keys from ell, m and fake_neg_modes input ###
     modes_to_evaluate = self.generate_mode_eval_list(ell,m,fake_neg_modes)
+    # For models where the higher modes have been modeled in the coorbital frame, 
+    # it is necessary to have the (2,2) mode as the first index of modes_to_evaluate
+    # otherwise, we do not have the information regarding the orbital phase
+    # crucial to transform the higher modes from coorbital frame to inertial frame
+    # this line of code guarantees that if mode_sum is requested, (2,2) mode
+    # should always be in the modes_to_evaluate list
+    if self.surrogateID=="BHPTNRSur1dq1e4" and mode_sum:
+      assert (2,2) in modes_to_evaluate, "Must include 22 in mode_sum for the BHPTNRSur1dq1e4 model"
 
     if mode_sum and (theta is None and phi is None) and len(modes_to_evaluate)!=1:
       raise ValueError('Trying to sum modes without theta and phi is a strange idea')
@@ -1102,10 +1110,10 @@ class EvaluateSurrogate():
     # this line of code guarantees that 
     #   (1) (2,2) is always included in the modes to evaluate
     #   (2) (2,2) is the first mode in modes_to_evaluate
+    # The code will return the (2,2) mode along with the other modes requested
     if self.surrogateID=='BHPTNRSur1dq1e4':
       modes_to_evaluate = self.add_l2m2_mode_if_not_in_modelist(modes_to_evaluate)
     
-
     ### if mode_sum false, return modes in a sensible way ###
     if not mode_sum:
       # For models where the higher modes have been modeled in the coorbital frame, 
@@ -1143,7 +1151,6 @@ class EvaluateSurrogate():
         else: # then we must have neg_modeled=True and fake_neg_modes=True
           t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,times,units,ell,m)
 
-        
         # BHPTNRSur1dq1e4 models the real and imag parts of the higher order modes 
         # in the coorbital frame. We have to make sure we apply a frame transformation
         # for this surrogate modes
@@ -1153,7 +1160,6 @@ class EvaluateSurrogate():
                orbital_phase = 0.5 * _gwtools.phase(hp_mode + 1j * hc_mode)
           else:
                hp_mode, hc_mode = self.coorbital_to_inertial(hp_mode, hc_mode, m, orbital_phase)
-
 
         if z_rot is not None:
           h_tmp   = _gwtools.modify_phase(hp_mode+1.0j*hc_mode,z_rot*m)
