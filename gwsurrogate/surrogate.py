@@ -1621,8 +1621,7 @@ class SurrogateEvaluator(object):
                 m<0 modes will automatically be included for nonprecessing
                 models. 
                 Default: None, in which case all available modes will be
-                included. For nonprecessing, setting ellMax=None will
-                not return m<0 modes.
+                included. 
 
     mode_list : A list of (ell, m) modes tuples to be included. Valid only
                 for nonprecessing models.
@@ -1643,9 +1642,8 @@ class SurrogateEvaluator(object):
                 will include the (2,2) and (2,-2) modes in the computation of
                 the strain.
 
-                Note: When the inclination is None, the m<0 modes are never
-                generated. For example, passing mode_list = [(2,2),(2,-2)] 
-                will throw an error. 
+                Note: When the inclination is None, the m<0 modes are
+                automatically generated.
 
     inclination : Inclination angle between the orbital angular momentum
                 direction at the reference epoch and the line-of-sight to the
@@ -1902,8 +1900,8 @@ class SurrogateEvaluator(object):
             # Follows the LAL convention (see help text)
             h = self._mode_sum(h, inclination, np.pi/2 - phi_ref,
                     fake_neg_modes=fake_neg_modes)
-        else: # if returning modes, check if m<0 modes need to be generated
-            if (ellMax is not None) and (not self.keywords['Precessing']):
+        else: # if returning modes, check if m<0 modes need to be generated for nonprecessing systems
+            if not self.keywords['Precessing']:
                 modes = list(h.keys())
                 for mode in modes:
                     ell = mode[0]
