@@ -1620,7 +1620,7 @@ class SurrogateEvaluator(object):
                 indicies for each ell will be included automatically. The 
                 m<0 modes will automatically be included for nonprecessing
                 models. 
-                Default: None, in which case all available modes will be
+                Default: None, in which case all available ells will be
                 included. 
 
     mode_list : A list of (ell, m) modes tuples to be included. Valid only
