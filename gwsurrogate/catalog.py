@@ -137,6 +137,16 @@ _surrogate_world['NRSur7dq4'] = \
   '''https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.1.033015''',
   '8e033ba4e4da1534b3738ae51549fb98')
 
+_surrogate_world['NRSur7dq8'] = \
+  surrogate_info(\
+  'https://zenodo.org/record/3348115/files/NRSur7dq8.h5',
+  '''Surrogate model for precessing binary black holes with mass ratios q<=4
+  and spin magnitudes <=0.8. This model is presented in Varma et al. 2019,
+  arxiv:1905.09300. All ell<=4 modes are included. The spin and frame dynamics
+  are also modeled.''',
+  '''https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.1.033015''',
+  '8e033ba4e4da1534b3738ae51549fb98')
+
 _surrogate_world['NRHybSur3dq8Tidal'] = \
   surrogate_info(\
   'https://zenodo.org/record/3348115/files/NRHybSur3dq8.h5',

@@ -162,8 +162,14 @@ def _get_fit_settings():
 
      Values defined here are model-specific. These values are for NRSur7dq4.
     """
-    q_fit_offset = -0.9857019407834238
-    q_fit_slope = 1.4298059216576398
+    min_logq = -0.01
+    #max_logq = np.log(4+0.01)  #FIXME
+    max_logq = np.log(8+0.01)
+
+    # Solve y = m x + c, so that [min_logq, max_logq] maps to [-1, 1]
+    q_fit_slope = 2/(max_logq - min_logq)
+    q_fit_offset = 1 - q_fit_slope * max_logq
+
     q_max_bfOrder = 3
     chi_max_bfOrder = 2
     return q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder
@@ -176,6 +182,8 @@ def _get_fit_params(x):
         Both chiHat and chi_a always lie in range [-1, 1].
     """
 
+    #FIXME
+    """
     x = np.copy(x)
 
     q = float(x[0])
@@ -190,8 +198,30 @@ def _get_fit_params(x):
     x[0] = np.log(q)
     x[3] = chiHat
     x[6] = chi_a
-
     return x
+    """
+
+    x = np.copy(x)
+
+    q = float(x[0])
+    chi1x = float(x[1])
+    chi1y = float(x[2])
+    chi1z = float(x[3])
+    chi2x = float(x[4])
+    chi2y = float(x[5])
+    chi2z = float(x[6])
+    eta = q/(1.+q)**2
+    chi_wtAvg = (q*chi1z+chi2z)/(1+q)
+    chiHat = (chi_wtAvg - 38.*eta/113.*(chi1z + chi2z)) \
+        /(1. - 76.*eta/113.)
+    chi_a = (chi1z - chi2z)/2.
+    q_data = np.log(q)
+
+    fit_params = np.array([q_data,
+                           (chi1x + chi2x)/2, (chi1x - chi2x)/2, chiHat,
+                           (chi1y + chi2y)/2, (chi1y - chi2y)/2, chi1z])
+
+    return fit_params
 
 def _eval_scalar_fit(fit_data, fit_params):
     """ Evaluates a single scalar fit.
@@ -737,7 +767,7 @@ class CoorbitalWaveformSurrogate:
         for ell in range(2, self.ellMax+1):
             # m=0 is different
             self.mode_list.append( (ell,0) )
-            for reim in ['real', 'imag']:
+            for reim in ['Re', 'Im']:
                 group = h5file['hCoorb_%s_0_%s'%(ell, reim)]
                 self.data['%s_0_%s'%(ell, reim)] \
                         = _extract_component_data(group)
@@ -765,8 +795,10 @@ ellMax: The maximum ell mode to evaluate.
 
         for ell in range(2, ellMax+1):
             # m=0 is different
-            re = _eval_comp(self.data['%s_0_real'%(ell)], q, chiA, chiB)
-            im = _eval_comp(self.data['%s_0_imag'%(ell)], q, chiA, chiB)
+            #re = _eval_comp(self.data['%s_0_real'%(ell)], q, chiA, chiB)
+            #im = _eval_comp(self.data['%s_0_imag'%(ell)], q, chiA, chiB)
+            re = _eval_comp(self.data['%s_0_Re'%(ell)], q, chiA, chiB)
+            im = _eval_comp(self.data['%s_0_Im'%(ell)], q, chiA, chiB)
             modes[ell*(ell+1) - 4] = re + 1.j*im
 
             for m in range(1, ell+1):
@@ -849,6 +881,14 @@ filename: The hdf5 file containing the surrogate data."
 
         self.mode_list = self.coorb_sur.mode_list
 
+
+    def _get_fit_params(self, x):
+        """ Converts from x=[q, chi1x, chi1y, chi1z, chi2x, chi2y, chi2z]
+            to the params used in the fits. Needs to be defined for
+            each precessing surrogate. See NRSur7dq4_model.py for an
+            example.
+        """
+        raise NotImplementedError("Please override me")
 
     def _check_unused_opts(self, precessing_opts):
         """ Call this at the end of call module to check if all the
@@ -965,7 +1005,9 @@ Returns:
         self._check_unused_opts(precessing_opts)
 
         if ellMax is None:
-            ellMax = 4
+            #FIXME FIMXE
+            #ellMax = 4
+            ellMax = 2
         if ellMax > 4:
             raise ValueError("NRSur7dq4 only allows ellMax<=4.")
 
