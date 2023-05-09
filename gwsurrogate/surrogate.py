@@ -2102,11 +2102,11 @@ class SurrogateEvaluator(object):
         # Assuming times/freqs were specified, so they must be the same
         # when returning
         if (times is not None):
-            if not np.array_equal(domain, times):
+            if not np.allclose(domain, times):
                 raise Exception("times were given as input but returned "
                     "domain somehow does not match.")
         if (freqs is not None):
-            if not np.array_equal(domain, freqs):
+            if not np.allclose(domain, freqs):
                 raise Exception("freqs were given as input but returned "
                     "domain somehow does not match.")
 
