@@ -162,6 +162,18 @@ class ParamSpace(SimpleH5Object):
     """
     A helper class for all the parameter domain related information and
     functions.
+
+    NOTE: While all surrogate model's define an instance of the ParamSpace class,
+          not all models use it beyond storing information for the user's benefit.
+        
+          test_model_regression.py does query each model's ParamSpace instance
+          so all models must include it. 
+
+          Example: the NRHybSur3dq8{_CCE}'s  _sur_dimless object instantiates
+          ParamSpace, but it doesn't play a role in this surrogate model's 
+          evaluation. Rather, the parameter space mapping is handled by
+          the NRHybSur3dq8Fit class in nodeFunction.py.
+
     """
 
     def __init__(self, name='', params=[]):
@@ -693,7 +705,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         self._h5_data_keys.append('TaylorT3_t_ref')
 
     def _search_omega(self, omega22, omega_val):
-        """ Find closest index such taht omega22[index] = omega_val
+        """ Find closest index such that omega22[index] = omega_val
         """
         # find first index where omega22 > omega_val
         idx = np.where(omega22 > omega_val)[0][0]
