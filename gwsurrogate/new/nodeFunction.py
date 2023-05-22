@@ -99,7 +99,7 @@ class pySurrogateFit(SimpleH5Object):
 
 class NRHybSur3dq8Fit(pySurrogateFit):
     """
-    Evaluates fits for the NRHybSur3dq8 surrogate model.
+    Evaluates fits for the NRHybSur3dq8 and NRHybSur3dq8_CCE surrogate model.
 
     Transforms the input parameter to fit parameters before evaluating the fit.
     That is, maps from [q, chi1z, chi2z] to [np.log(q), chiHat, chi_a]
