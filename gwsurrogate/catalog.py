@@ -125,7 +125,7 @@ _surrogate_world['NRHybSur3dq8_CCE'] = \
   [(2,2), (2,1), (2,0), (3,3), (3,2), (3,0), (4,4), (4,3), (4,0), and (5,5)]. 
   The m<0 modes are deduced from the m>0 modes.''',
   '''FIXME''',
-  'f46bd38d2a02849ccb7953bfeb5f7cd1')
+  '11991fe267937795e6b0ab6c950bb9fe')
 
 _surrogate_world['NRHybSur2dq15'] = \
   surrogate_info(\

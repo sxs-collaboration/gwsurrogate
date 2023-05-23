@@ -81,7 +81,7 @@ rtol_SpEC_q1_10_NoSpin_linear_alt = 3.e-8 # needed for (8,7) mode to pass. Other
 surrogate_old_interface = ["SpEC_q1_10_NoSpin","EOBNRv2_tutorial","EOBNRv2","SpEC_q1_10_NoSpin_linear","EMRISur1dq1e4","BHPTNRSur1dq1e4"]
 
 # news loader class
-surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal","NRSur7dq4","NRHybSur2dq15"]
+surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal","NRSur7dq4","NRHybSur2dq15","NRHybSur3dq8_CCE"]
 
 # Most models are randomly sampled, but in some cases its useful to provide 
 # test points to activate specific code branches. This is done by mapping 
@@ -173,6 +173,21 @@ def NRHybSur2dq15_samples(i):
 model_sampler["NRHybSur2dq15"] = NRHybSur2dq15_samples
 
 
+def NRHybSur3dq8_CCE_samples(i):
+  """ sample points for the NRHybSur3dq8_CCE model """
+                       
+  assert i in [0,1,2]  
+    
+  if i==0:
+    return [2.0, [0,0,-.4],[0,0,0.5]], None, None
+  elif i==1:
+    return [7.0, [0,0,.7],[0,0,-0.8]], None, None
+  elif i==2:           
+    return [10.0, [0,0,0],[0,0,0.2]], None, None
+                       
+model_sampler["NRHybSur3dq8_CCE"] = NRHybSur3dq8_CCE_samples
+
+
 def flatten_params(x):
   """ Convert [q, chiA, chiB] to [q, chiAx, chiAy, chiAz, chiBx, chiBy, chiBz].
 
@@ -191,7 +206,7 @@ def test_model_regression(generate_regression_data=False):
   this regression file will be downloaded. """
 
   if generate_regression_data:
-    h5_file = "model_regression_data.h5"
+    h5_file = "model_regression_data_new.h5"
     print("Generating regression data file... Make sure this step is done BEFORE making any code changes!\n")
     print(os.path.exists(h5_file))
     if os.path.exists(h5_file):
@@ -212,12 +227,13 @@ def test_model_regression(generate_regression_data=False):
   dont_test = [#"NRHybSur2dq15",
                #"BHPTNRSur1dq1e4",
                #"EMRISur1dq1e4",
+               #"NRHybSur3dq8_CCE",
                "NRSur4d2s_TDROM_grid12", # 10 GB file
                "NRSur4d2s_FDROM_grid12", # 10 GB file
                #"SpEC_q1_10_NoSpin_linear_alt",
                #"SpEC_q1_10_NoSpin_linear",
                "EOBNRv2", #TODO: this is two surrogates in one. Break up?
-               #"SpEC_q1_10_NoSpin",
+               "SpEC_q1_10_NoSpin",
                #"EOBNRv2_tutorial",
                #"NRHybSur3dq8",
                #"NRHybSur3dq8Tidal",
@@ -292,7 +308,13 @@ def test_model_regression(generate_regression_data=False):
       sur.load(datafile)
       p_mins = sur.param_space.min_vals()
       p_maxs = sur.param_space.max_vals()
- 
+
+    # NOTE: NRHybSur3dq8_CCE and NRHybSur3dq8 will report different max/min
+    #       because NRHybSur3dq8 defines its interval in q while NRHybSur3dq8_CCE
+    #       defines its interval in log(q). This change in the hdf5 file's
+    #       behavior is due a change in convert_to_gwsurrogate.py (building code).
+    #       Neither NRHybSur3dq8_CCE nor NRHybSur3dq8 use 
+    #       sur._sur_dimless.param_space for model evaluations. See ParamSpace's docstring 
         
     print("parameter minimum values for model %s"%model,p_mins)
     print("parameter maximum values for model %s"%model,p_maxs)
@@ -406,7 +428,7 @@ def test_model_regression(generate_regression_data=False):
 
         # model-specific relative tolerances. This is needed because certain models
         # have dependencies (e.g. GSL or sklearn) that will break our tests!
-        if model in ["NRHybSur3dq8", "NRHybSur2dq15"]:
+        if model in ["NRHybSur3dq8", "NRHybSur2dq15","NRHybSur3dq8_CCE"]:  
           local_rtol = rtol_NRHybSur3dq8
         elif model == "NRHybSur3dq8Tidal":
           local_rtol = rtol_NRHybSur3dq8Tidal
