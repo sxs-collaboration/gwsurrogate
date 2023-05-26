@@ -117,7 +117,7 @@ _surrogate_world['NRHybSur3dq8'] = \
 
 _surrogate_world['NRHybSur3dq8_CCE'] = \
   surrogate_info(\
-  'https://www.dropbox.com/s/rssiiy266qm1kq2/NRHybSur3dq8_CCE.h5',
+  'https://www.dropbox.com/s/8mx4td1qemysayc/NRHybSur3dq8_CCE.h5',
   '''CCE Surrogate model for aligned-spin binary black holes with mass ratios q<=8
   and spin magnitudes <=0.8. The model is trained on NR (CCE) waveforms that have been
   hybridized using EOB/PN and spans the entire LIGO frequency band. This model
