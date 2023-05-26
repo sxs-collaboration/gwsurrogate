@@ -17,6 +17,7 @@ def md5(fname):
 
 models = ['SpEC_q1_10_NoSpin_linear_alt',
 'NRHybSur3dq8',
+'NRHybSur3dq8_CCE',
 'SpEC_q1_10_NoSpin',
 'SpEC_q1_10_NoSpin_linear',
 'NRSur7dq4',
