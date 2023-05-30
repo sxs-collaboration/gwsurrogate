@@ -2102,11 +2102,14 @@ class SurrogateEvaluator(object):
         # Assuming times/freqs were specified, so they must be the same
         # when returning
         if (times is not None):
-            if not np.allclose(domain, times):
+            # rtol=1e-05, atol=1e-08 were numpy v1.24 defaults. We have hardcoded
+            # them here to make the values transparent and guard against
+            # future changes to the defaults by numpy developers
+            if not np.allclose(domain, times, rtol=1e-05, atol=1e-08):
                 raise Exception("times were given as input but returned "
                     "domain somehow does not match.")
         if (freqs is not None):
-            if not np.allclose(domain, freqs):
+            if not np.allclose(domain, freqs, rtol=1e-05, atol=1e-08):
                 raise Exception("freqs were given as input but returned "
                     "domain somehow does not match.")
 
