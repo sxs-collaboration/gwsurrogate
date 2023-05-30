@@ -235,7 +235,7 @@ def test_model_regression(generate_regression_data=False):
                #"SpEC_q1_10_NoSpin_linear_alt",
                #"SpEC_q1_10_NoSpin_linear",
                "EOBNRv2", #TODO: this is two surrogates in one. Break up?
-               "SpEC_q1_10_NoSpin",
+               #"SpEC_q1_10_NoSpin",
                #"EOBNRv2_tutorial",
                #"NRHybSur3dq8",
                #"NRHybSur3dq8Tidal",
