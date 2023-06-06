@@ -2282,7 +2282,7 @@ See the __call__ method on how to evaluate waveforms.
         x = [q, chiA0[2], chiB0[2], Lambda1, Lambda2]
         return x
 
-class NRHybSur3dq8_CCE(SurrogateEvaluator):
+class NRHybSur3dq8_CCE(NRHybSur3dq8):
     """
 A class for the NRHybSur3dq8_CCE surrogate model presented in FIXME,
 arxiv:FIXME.
@@ -2308,50 +2308,7 @@ range.
 
 See the __call__ method on how to evaluate waveforms.
    """
-
-    def __init__(self, h5filename):
-        self.h5filename = h5filename
-        domain_type = 'Time'
-        keywords = {
-            'Precessing': False,
-            'Hybridized': True,
-            }
-        # soft_lims -> raise warning when outside lims
-        # hard_lim -> raise error when outside lims
-        # Format is [qMax, chiMax].
-        soft_param_lims = [8.01, 0.801]
-        hard_param_lims = [10.01, 1]
-        super(NRHybSur3dq8_CCE, self).__init__(self.__class__.__name__, \
-            domain_type, keywords, soft_param_lims, hard_param_lims)
-
-    def _load_dimless_surrogate(self):
-        """
-        This function, which must be overriden for each derived class of
-        SurrogateEvaluator, handles the loading of the dimensionless surrogate.
-        This should return the loaded surrogate.
-        The loaded surrogate should have a __call__ function that returns the
-        dimensionless time/frequency array and dimensionless waveform modes.
-        The return value of this functions will be stored as
-        self._sur_dimless()
-        The __call__ function of self._sur_dimless() should take all inputs
-        passed to self._sur_dimless() in the __call__ function of this class.
-        """
-        sur = new_surrogate.AlignedSpinCoOrbitalFrameSurrogate()
-        sur.load(self.h5filename)
-        return sur
-
-    def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,
-            tidal_opts, par_dict):
-        """
-        This function, which must be overriden for each derived class of
-        SurrogateEvaluator, puts all intrinsic parameters of the surrogate
-        into a single array.
-        For example, for NRHybSur3dq8: x = [q, chiAz, chiBz].
-        """
-        if par_dict is not None:
-            raise ValueError('Expected par_dict to be None.')
-        x = [q, chiA0[2], chiB0[2]]
-        return x
+    pass
 
 class NRHybSur2dq15(SurrogateEvaluator):
     """
