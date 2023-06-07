@@ -430,7 +430,7 @@ def test_model_regression(generate_regression_data=False):
 
         # model-specific relative tolerances. This is needed because certain models
         # have dependencies (e.g. GSL or sklearn) that will break our tests!
-        if model in ["NRHybSur3dq8", "NRHybSur2dq15"]:  
+        if model in ["NRHybSur3dq8", "NRHybSur2dq15"]:
           local_rtol = rtol_NRHybSur3dq8
         elif model == "NRHybSur3dq8_CCE":
           local_rtol = rtol_NRHybSur3dq8_CCE

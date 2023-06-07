@@ -121,10 +121,10 @@ _surrogate_world['NRHybSur3dq8_CCE'] = \
   '''CCE Surrogate model for aligned-spin binary black holes with mass ratios q<=8
   and spin magnitudes <=0.8. The model is trained on NR (CCE) waveforms that have been
   hybridized using EOB/PN and spans the entire LIGO frequency band. This model
-  is  presented in FIXME, arxiv:FIXME. Available modes are
+  is  presented in FIXME, arXiv:2306.03148. Available modes are
   [(2,2), (2,1), (2,0), (3,3), (3,2), (3,0), (4,4), (4,3), (4,0), and (5,5)]. 
   The m<0 modes are deduced from the m>0 modes.''',
-  '''FIXME''',
+  '''https://arxiv.org/abs/2306.03148''',
   '11991fe267937795e6b0ab6c950bb9fe')
 
 _surrogate_world['NRHybSur2dq15'] = \
