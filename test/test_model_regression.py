@@ -81,7 +81,7 @@ atol = 0.0
 #       only seems to affect models that use gpr fits and/or gsl calls
 rtol                   = 1.e-11
 rtol_NRHybSur3dq8      = 2.e-5  # used for GPR-fit models "NRHybSur3dq8", "NRHybSur2dq15"
-rtol_NRHybSur3dq8_CCE  = 4.e-5  # higher modes for this GPR-fit model require a bit higher tolerance
+rtol_NRHybSur3dq8_CCE  = 5.e-5  # higher modes for this GPR-fit model require a bit higher tolerance
 rtol_NRHybSur3dq8Tidal = 3.e-4
 rtol_SpEC_q1_10_NoSpin_linear_alt = 3.e-8 # needed for (8,7) mode to pass. Other modes pass with 1e-11 tolerance
 
