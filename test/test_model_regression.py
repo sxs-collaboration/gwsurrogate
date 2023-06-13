@@ -33,6 +33,16 @@ this is OK because the models themselves are not accurate to better than single 
 
 No regression on dynamics surrogate output. This is probably OK since coorb
 full surrogate uses dynamics output.
+
+(3) As of 6/2023, attempt to log versions of some key packages that are known
+    to impact regression data 
+
+
+    (i) NRHybSur3dq8_CCE
+            sklearn 1.2.2
+            numpy   1.24.3
+            GSL     2.4
+            python  3.11
 """
 
 
@@ -70,7 +80,7 @@ atol = 0.0
 #       largest relative errors seem to be post-merger
 #       only seems to affect models that use gpr fits and/or gsl calls
 rtol                   = 1.e-11
-rtol_NRHybSur3dq8      = 2.e-5  # used for GPR-fit models "NRHybSur3dq8", "NRHybSur2dq15"
+rtol_NRHybSur3dq8      = 2.e-5  # used for GPR-fit models "NRHybSur3dq8", "NRHybSur2dq15", "NRHybSur3dq8_CCE"
 rtol_NRHybSur3dq8_CCE  = 2.e-5
 #rtol_NRHybSur3dq8_CCE  = 6e-5
 rtol_NRHybSur3dq8Tidal = 3.e-4
@@ -221,7 +231,7 @@ def test_model_regression(generate_regression_data=False):
       print("Downloading regression data...")
       # Old file (10/2022): https://www.dropbox.com/s/vxqsr7fjoffxm5w/model_regression_data.h5
       # w/o CCE file (4/2023): https://www.dropbox.com/s/4zcse4ja5aw3n6s/model_regression_data.h5
-      os.system('wget --directory-prefix=test https://www.dropbox.com/s/copq3gx9a45ewy6/model_regression_data.h5')
+      os.system('wget --directory-prefix=test https://www.dropbox.com/s/kqtyhgiqqio8hgb/model_regression_data.h5')
       fp_regression = h5py.File("test/model_regression_data.h5",'r') 
     regression_hash = md5("test/model_regression_data.h5")
     print("hash of model_regression_data.h5 is ",regression_hash)
