@@ -1085,6 +1085,8 @@ Returns:
             dynamics = {
                 'chiA': chiA_inertial,
                 'chiB': chiB_inertial,
+                'chiA_copr': chiA_copr,
+                'chiB_copr': chiB_copr,
                 'q_copr': quat,
                 'orbphase': orbphase,
                 }
