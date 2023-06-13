@@ -118,7 +118,9 @@ notebooks.
 - [NRHybSur2dq15](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRHybSur2dq15.ipynb):
   For nonprecessing BBHs, trained on q≤15, chi1≤0.5, chi2=0. Paper:
   [arxiv:2203.10109](https://arxiv.org/abs/2203.10109).
-
+- [NRHybSur3dq8_CCE](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRHybSur3dq8_CCE.ipynb):
+  For nonprecessing BBHs, trained on CCE (Cauchy-characteristic evolution) waveforms of mass ratios q?~I?8. Paper:
+  [arxiv:2306.03148](https://arxiv.org/abs/2306.03148).
 
 ## Download surrogate data and load it
 Pick a model, let's say `NRSur7dq4` and download the data. Note this only
