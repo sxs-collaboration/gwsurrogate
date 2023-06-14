@@ -106,8 +106,8 @@ To get a list of all available surrogate models, do:
 >>> gwsurrogate.catalog.list(verbose=True)      # Use this for more details
 ```
 
-### Current models
-The most up-to-date models are listed below, along with links to example
+### Current NR models
+The most up-to-date models trained on numerical relativity data are listed below, along with links to example
 notebooks.
 - [NRSur7dq4](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRSur7dq4.ipynb):
   For generically precessing BBHs, trained on mass ratios q≤4. Paper:
@@ -119,8 +119,14 @@ notebooks.
   For nonprecessing BBHs, trained on q≤15, chi1≤0.5, chi2=0. Paper:
   [arxiv:2203.10109](https://arxiv.org/abs/2203.10109).
 - [NRHybSur3dq8_CCE](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRHybSur3dq8_CCE.ipynb):
-  For nonprecessing BBHs, trained on CCE (Cauchy-characteristic evolution) waveforms of mass ratios q≤8. Paper:
+  For nonprecessing BBHs, trained on CCE (Cauchy-characteristic evolution) waveforms of mass ratios q≤8. Unlike all of the other models, NRHybSur3dq8_CCE includes memory effects. Paper:
   [arxiv:2306.03148](https://arxiv.org/abs/2306.03148).
+  
+### Current point-particle blackhole perturbation theory models
+The most up-to-date models trained on point-particle blackhole perturbation data and calibrated to numerical relativity (NR) in the comparable mass regime.
+- [BHPTNRSur1dq1e4](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/BHPTNRSur1dq1e4.ipynb):
+  Nonspinning BBHs, trained on mass ratios q≤10000 and harmonics up to ell=10. Paper:
+  [arxiv:2204.01972](https://arxiv.org/abs/2204.01972).
 
 ## Download surrogate data and load it
 Pick a model, let's say `NRSur7dq4` and download the data. Note this only
