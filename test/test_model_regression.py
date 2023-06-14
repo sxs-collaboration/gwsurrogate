@@ -79,11 +79,13 @@ atol = 0.0
 #       note that regression data model_regression_data.h5 is saved in single precision (see above)
 #       largest relative errors seem to be post-merger
 #       only seems to affect models that use gpr fits and/or gsl calls
-rtol                   = 1.e-11
-rtol_NRHybSur3dq8      = 2.e-5  # used for GPR-fit models "NRHybSur3dq8", "NRHybSur2dq15"
-rtol_NRHybSur3dq8_CCE  = 6.e-5  # higher modes for this GPR-fit model require a bit higher tolerance
-rtol_NRHybSur3dq8Tidal = 3.e-4
-rtol_SpEC_q1_10_NoSpin_linear_alt = 3.e-8 # needed for (8,7) mode to pass. Other modes pass with 1e-11 tolerance
+rtol_default           = 1.e-11
+rtols = {'NRHybSur3dq8':  2.e-5,
+         'NRHybSur2dq15': 2.e-5,
+         'NRHybSur3dq8_CCE': 6.e-5,  # higher modes for this GPR-fit model require a bit higher tolerance
+         'NRHybSur3dq8Tidal': 3.e-4,
+         'SpEC_q1_10_NoSpin_linear_alt': 3.e-8, # needed for (8,7) mode to pass. Other modes pass with 1e-11 tolerance
+         }
 
 # TODO: new and old surrogate interfaces should be similar enough to avoid
 #       model-specific cases like below
@@ -440,16 +442,7 @@ def test_model_regression(generate_regression_data=False):
 
         # model-specific relative tolerances. This is needed because certain models
         # have dependencies (e.g. GSL or sklearn) that will break our tests!
-        if model in ["NRHybSur3dq8", "NRHybSur2dq15"]:
-          local_rtol = rtol_NRHybSur3dq8
-        elif model == "NRHybSur3dq8_CCE":
-          local_rtol = rtol_NRHybSur3dq8_CCE
-        elif model == "NRHybSur3dq8Tidal":
-          local_rtol = rtol_NRHybSur3dq8Tidal
-        elif model == "SpEC_q1_10_NoSpin_linear_alt":
-          local_rtol = rtol_SpEC_q1_10_NoSpin_linear_alt 
-        else:
-          local_rtol = rtol
+        local_rtol = rtols.get(model, rtol_default)
 
         print("Model %s uses a relative error tolerance of %e"%(model,local_rtol))
 
