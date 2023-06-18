@@ -1005,7 +1005,7 @@ class EvaluateSurrogate():
     else:
       self.surrogateID = surrogateID[0]
 
-    if self.surrogateID is 'BHPTNRSur1dq1e4':
+    if self.surrogateID == 'BHPTNRSur1dq1e4':
       msg = "co-orbital surrogate models must load the 22 mode data as other modes depend on it" 
       assert (ell_m is None or (2,2) in ell_m), msg
  
