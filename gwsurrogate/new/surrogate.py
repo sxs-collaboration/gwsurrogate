@@ -33,7 +33,7 @@ import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as _iuspline
 from gwtools.harmonics import sYlm as _sYlm
 
-if __package__ is "" or "None": # py2 and py3 compatible
+if __package__ == "" or "None": # py2 and py3 compatible
   print("setting __package__ to gwsurrogate.new so relative imports work")
   __package__="gwsurrogate.new"
 
