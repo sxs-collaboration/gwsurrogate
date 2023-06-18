@@ -534,7 +534,7 @@ class H5Surrogate(SurrogateBaseIO):
       ## NOTE :We need two if statements for the BHPTNRSur1dq1e4 because, the number of knots are not same
       ## in different modes or even for different data pieces within the mode. This is because of the
       ## smoothing we do in fitting. This demands some parts of the code to be re-written.
-      ## Furtermore, we use different decomposition for 22 mode and higher order modes.
+      ## Furthermore, we use different decomposition for 22 mode and higher order modes.
       ## This should be done differently
       ## =====================================================================================
       if self.surrogateID=="BHPTNRSur1dq1e4":
@@ -556,8 +556,13 @@ class H5Surrogate(SurrogateBaseIO):
             fitparams_amp.append([spline_knots_amp[i], self.fitparams_amp[i], degree])
           for i in range(num_fits_phase):
             fitparams_phase.append([spline_knots_phase[i], self.fitparams_phase[i], degree])
-          self.fitparams_amp = np.array(fitparams_amp)
-          self.fitparams_phase = np.array(fitparams_phase)
+          # due to different sizes of amp/phase fits, we cannot convert this 
+          # to a numpy array of numerical datatypes. Instead, it needs to be 
+          # saved as an object type, which appears to be an array of pointers
+          # to arrays. This could have some efficiency impact.
+          # https://stackoverflow.com/questions/29877508/what-does-dtype-object-mean-while-creating-a-numpy-array
+          self.fitparams_amp = np.array(fitparams_amp,dtype=object)
+          self.fitparams_phase = np.array(fitparams_phase,dtype=object)
 
           print("num_fits_amp = %i"%(num_fits_amp))
           print("num_fits_phase = %i"%(num_fits_phase))
@@ -582,8 +587,13 @@ class H5Surrogate(SurrogateBaseIO):
             fitparams_re.append([spline_knots_re[i], self.fitparams_re[i], degree])
           for i in range(num_fits_im):
             fitparams_im.append([spline_knots_im[i], self.fitparams_im[i], degree])
-          self.fitparams_re = np.array(fitparams_re)
-          self.fitparams_im = np.array(fitparams_im)
+          # due to different sizes of amp/phase fits, we cannot convert this 
+          # to a numpy array of numerical datatypes. Instead, it needs to be 
+          # saved as an object type, which appears to be an array of pointers
+          # to arrays. This could have some efficiency impact.
+          # https://stackoverflow.com/questions/29877508/what-does-dtype-object-mean-while-creating-a-numpy-array
+          self.fitparams_re = np.array(fitparams_re,dtype=object)
+          self.fitparams_im = np.array(fitparams_im,dtype=object)
 
           print("num_fits_re = %i"%(num_fits_re))
           print("num_fits_im = %i"%(num_fits_im))
@@ -977,7 +987,7 @@ class TextSurrogateWrite(SurrogateBaseIO):
   def __init__(self, sdir):
     """open single-mode surrogate, to be located in directory sdir, for writing"""
 
-    if( not(sdir[-1:] is '/') ):
+    if( sdir[-1:] != '/' ):
       raise Exception("path name should end in /")
     try:
       os.mkdir(sdir)

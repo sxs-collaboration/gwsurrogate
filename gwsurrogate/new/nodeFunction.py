@@ -28,7 +28,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-if __package__ is "" or "None": # py2 and py3 compatible
+if __package__ == "" or "None": # py2 and py3 compatible
   print("setting __package__ to gwsurrogate.new so relative imports work")
   __package__="gwsurrogate.new"
 from .saveH5Object import SimpleH5Object  # assumes unique global name
