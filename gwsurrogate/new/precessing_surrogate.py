@@ -798,6 +798,12 @@ def coorb_spins_from_copr_spins(chiA_copr, chiB_copr, orbphase):
     chiB_coorb = rotate_spin(chiB_copr, orbphase)
     return chiA_coorb, chiB_coorb
 
+def coprecessing_waveform_modes(orbphase, h_coorb):
+    """Rotates waveform in co-orbital frame to co-precessing."""
+    q_rot = np.array([np.cos(orbphase / 2.), 0. * orbphase,
+                      0. * orbphase, np.sin(orbphase / 2.)])
+    return rotateWaveform(q_rot, h_coorb)
+
 def inertial_waveform_modes(t, orbphase, quat, h_coorb):
     q_rot = np.array([np.cos(orbphase / 2.), 0. * orbphase,
                       0. * orbphase, np.sin(orbphase / 2.)])
@@ -877,7 +883,8 @@ filename: The hdf5 file containing the surrogate data."
 
     def __call__(self, x, fM_low=None, fM_ref=None, dtM=None,
             timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
-            precessing_opts=None, tidal_opts=None, par_dict=None):
+            precessing_opts=None, tidal_opts=None, par_dict=None,
+            frame='inertial'):
         """
 Evaluates a precessing surrogate model.
 
@@ -940,7 +947,8 @@ Arguments:
                                     }
     tidal_opts: Should be None for this model.
     par_dict: Should be None for this model.
-
+    frame: The frame of the returned waveform. Options are "inertial",
+        "co-precessing", or "co-orbital"; default is "inertial".
 
 Returns:
     domain, h, dynamics.
@@ -1019,8 +1027,15 @@ Returns:
                 ellMax=ellMax)
 
         # Transform the sparsely sampled waveform
-        h_inertial = inertial_waveform_modes(self.t_coorb, orbphase, quat,
-                h_coorb)
+        if frame == 'inertial':
+            h_array = inertial_waveform_modes(self.t_coorb, orbphase, quat,
+                                              h_coorb)
+        elif frame == 'co-precessing':
+            h_array = coprecessing_waveform_modes(orbphase, h_coorb)
+        elif frame == 'co-orbital':
+            h_array = h_coorb
+        else:
+            raise ValueError("unrecognized frame option {}".format(frame))
 
         if timesM is not None:
             if timesM[-1] > self.t_coorb[-1] + 0.01:
@@ -1053,16 +1068,16 @@ Returns:
 
 
         if do_interp:
-            hre = splinterp_many(timesM, self.t_coorb, np.real(h_inertial))
-            him = splinterp_many(timesM, self.t_coorb, np.imag(h_inertial))
-            h_inertial = hre + 1.j*him
+            hre = splinterp_many(timesM, self.t_coorb, np.real(h_array))
+            him = splinterp_many(timesM, self.t_coorb, np.imag(h_array))
+            h_array = hre + 1.j*him
 
         # Make mode dict
         h = {}
         i=0
         for ell in range(2, ellMax+1):
             for m in range(-ell, ell+1):
-                h[(ell, m)] = h_inertial[i]
+                h[(ell, m)] = h_array[i]
                 i += 1
 
         #  Transform and interpolate spins if needed

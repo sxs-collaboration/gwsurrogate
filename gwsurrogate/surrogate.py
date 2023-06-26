@@ -1719,7 +1719,7 @@ class SurrogateEvaluator(object):
     def __call__(self, q, chiA0, chiB0, M=None, dist_mpc=None, f_low=None,
         f_ref=None, dt=None, df=None, times=None, freqs=None,
         mode_list=None, ellMax=None, inclination=None, phi_ref=0,
-        precessing_opts=None, tidal_opts=None, par_dict=None,
+        precessing_opts=None, tidal_opts=None, par_dict=None, frame='inertial',
         units='dimensionless', skip_param_checks=False,
         taper_end_duration=None):
         """
@@ -1878,6 +1878,9 @@ class SurrogateEvaluator(object):
 
     par_dict:   A dictionary containing any additional parameters needed for a
                 particular surrogate model. Default: None.
+
+    frame: The frame of the returned waveform. Options are "inertial",
+        "co-precessing", or "co-orbital"; default is "inertial".
 
     units:      'dimensionless' or 'mks'. Default: 'dimensionless'.
                 If 'dimensionless': Any of f_low, f_ref, dt, df, times and
@@ -2057,7 +2060,7 @@ class SurrogateEvaluator(object):
             fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM,
             freqsM=freqsM, mode_list=mode_list, ellMax=ellMax,
             precessing_opts=precessing_opts, tidal_opts=tidal_opts,
-            par_dict=par_dict)
+            par_dict=par_dict, frame=frame)
 
         # taper the last portion of the waveform, regardless of whether or not
         # this corresponds to inspiral, merger, or ringdown.
