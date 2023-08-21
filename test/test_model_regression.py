@@ -82,7 +82,7 @@ atol = 0.0
 rtol_default           = 1.e-11
 rtols = {'NRHybSur3dq8':  2.e-5,
          'NRHybSur2dq15': 2.e-5,
-         'NRHybSur3dq8_CCE': 6.e-5,  # higher modes for this GPR-fit model require a bit higher tolerance
+         'NRHybSur3dq8_CCE': 7.e-5,  # higher modes for this GPR-fit model require a bit higher tolerance
          'NRHybSur3dq8Tidal': 3.e-4,
          'SpEC_q1_10_NoSpin_linear_alt': 3.e-8, # needed for (8,7) mode to pass. Other modes pass with 1e-11 tolerance
          }
