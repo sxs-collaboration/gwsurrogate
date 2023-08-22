@@ -50,6 +50,23 @@ Index). gwsurrogate can be installed to the standard location
 >>> pip install gwsurrogate
 ```
 
+If there is no binary/wheel package already available for your operating system, the installer will
+try to build the package from the sources. For that, you would need to have `gsl` installed already.
+The installer will look for `GSL` inside `/opt/local/`. You may provide additional paths with the
+`CPPFLAGS` and `LDFLAGS` environment variables. 
+
+In the case of an `homebrew` installation, you may install the package like this:
+
+```
+>>> export HOMEBREW_HOME=`brew --prefix`
+>>> 
+>>> export CPPFLAGS="-I$HOMEBREW_HOME/include/"
+>>> export LDFLAGS="-L$HOMEBREW_HOME/lib/"
+>>> pip install gwsurrogate
+```
+
+
+
 ## From conda ##
 
 `gwsurrogate` is [on conda-forge](https://anaconda.org/conda-forge/gwsurrogate), and can be installed with
