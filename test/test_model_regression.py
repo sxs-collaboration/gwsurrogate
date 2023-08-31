@@ -232,7 +232,7 @@ def test_model_regression(generate_regression_data=False):
       print("Downloading regression data...")
       # Old file (10/2022): https://www.dropbox.com/s/vxqsr7fjoffxm5w/model_regression_data.h5
       # w/o CCE file (4/2023): https://www.dropbox.com/s/copq3gx9a45ewy6/model_regression_data-OLD-CCE_delete-12-13-2023.h5
-      os.system('wget -O test/model_regression_data.h5 https://www.dropbox.com/scl/fi/ajhhrku5odfy43vsdenu1/model_regression_data.h5?rlkey=r58lpoyt6xu5rtg291cv9fnei&dl=0')
+      os.system('wget -O test/model_regression_data.h5 https://www.dropbox.com/scl/fi/ajhhrku5odfy43vsdenu1/model_regression_data.h5?rlkey=r58lpoyt6xu5rtg291cv9fnei')
       fp_regression = h5py.File("test/model_regression_data.h5",'r') 
     regression_hash = md5("test/model_regression_data.h5")
     print("hash of model_regression_data.h5 is ",regression_hash)
