@@ -24,7 +24,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: 3
+        python-version: 3.11
 
     - name: Install dependencies
       run: |
@@ -41,7 +41,7 @@ jobs:
     - name: Test with pytest
       run: |
         cd ..
-        pip install --no-build-isolation -e gwsurrogate
+        pip install -e gwsurrogate
         cd gwsurrogate
         pwd
         pip list
