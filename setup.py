@@ -2,14 +2,6 @@ import os
 
 from setuptools import setup, Extension
 
-# To render markdown. See https://github.com/pypa/pypi-legacy/issues/148
-try:
-    import pypandoc
-
-    long_description = pypandoc.convert_file("README.md", "rst")
-except ImportError as e:
-    long_description = open("README.md").read()
-
 # all extensions here
 extmods = []
 
@@ -100,7 +92,7 @@ setup(
     ],
     description="An easy to use interface to gravitational wave surrogate models",
     long_description_content_type="text/markdown",
-    long_description=long_description,
+    long_description=open("README.md").read(),
     # will start new downloads if these are installed in a non-standard location
     install_requires=[
         "numpy",
