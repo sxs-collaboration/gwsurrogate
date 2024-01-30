@@ -2,6 +2,8 @@ import os
 
 from setuptools import setup, Extension
 
+import numpy
+
 # all extensions here
 extmods = []
 
@@ -30,29 +32,11 @@ extmods.append(extmod)
 extmod = Extension(
     "gwsurrogate.precessing_utils._utils",
     sources=["gwsurrogate/precessing_utils/src/precessing_utils.c"],
-    include_dirs=["gwsurrogate/precessing_utils/include"],
+    include_dirs=["gwsurrogate/precessing_utils/include", numpy.get_include()],
     language="c",
     extra_compile_args=["-std=c99", "-fPIC", "-O3"],
 )
 extmods.append(extmod)
-
-# Workaround: Only import numpy once reqs have been imported
-# Thanks to https://stackoverflow.com/a/42163080/1695428
-from distutils.command.build_ext import build_ext
-
-
-class LateNumpyIncludeCommand(build_ext):
-    """build_ext command for use when numpy headers are needed."""
-
-    def run(self):
-        # Import numpy here, only when headers are needed
-        import numpy
-
-        # Add numpy headers to include_dirs
-        self.include_dirs.append(numpy.get_include())
-
-        # Call original build_ext command
-        build_ext.run(self)
 
 
 # Extract code version from surrogate.py
@@ -114,6 +98,5 @@ setup(
         "Topic :: Scientific/Engineering :: Physics",
     ],
     entry_points=entries,
-    cmdclass={"build_ext": LateNumpyIncludeCommand},
     ext_modules=extmods,
 )
