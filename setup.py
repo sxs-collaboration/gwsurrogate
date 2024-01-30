@@ -1,13 +1,6 @@
 import os
 
-try:
-    from setuptools import setup, Extension
-
-    setup
-except ImportError:  # currently not supported
-    raise ImportError("GWSurrogate requires setuptools")
-    # from distutils.core import setup # currently not supported
-    # setup
+from setuptools import setup, Extension
 
 # To render markdown. See https://github.com/pypa/pypi-legacy/issues/148
 try:
