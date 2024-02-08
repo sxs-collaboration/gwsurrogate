@@ -4,7 +4,6 @@ Regression data is stored in npz files.
 """
 
 from __future__ import division
-import nose
 import numpy as np
 import gwsurrogate as gws
 import os, sys
@@ -141,8 +140,10 @@ np.savez('data_notebook_basics_lesson4.npz',times=times,b_5=b_5,e_5=e_5,h_5=h_5,
   # basis orthogonality
   dt  = 1.0/2048.0 # found from surrogate *.dat file
   e_6 = EOBNRv2_sur.basis(5,'orthogonal')
-  nose.tools.assert_almost_equal(np.sum(e_5*np.conj(e_6)) * dt,0.0,places=14)
-  nose.tools.assert_almost_equal(np.sum(e_5*np.conj(e_5)) * dt,1.0,places=14)
+  orthogonal_test = np.sum(e_5*np.conj(e_6)) * dt
+  normalized_test = np.sum(e_5*np.conj(e_5)) * dt
+  assert( np.abs(orthogonal_test) < 1e-14 )
+  assert( np.abs(normalized_test-1.0) < 1e-14)
 
 #def test_notebook_basics_lesson5():
 #
