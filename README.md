@@ -75,12 +75,34 @@ In the case of an `homebrew` installation, you may install the package like this
 >>> conda install -c conda-forge gwsurrogate
 ```
 
-## From source ##
+## From source (pip) ##
 
-First, please make sure you have the necessary dependencies
-installed (see above). Next, Download and unpack gwsurrogate-X.X.tar.gz
-to any folder gws_folder of your choosing. The gwsurrogate module can
-be used immediately by adding
+First, please ensure you have the necessary dependencies
+installed (see above). Next, git clone this project, to any
+folder of your choosing. Then run
+
+```
+git submodule init
+git submodule update
+```
+
+For a "proper" installation, run the following commands from the top-level gwsurrogate folder containing setup.py
+
+```
+>>> python -m pip install .            # option 1
+>>> python -m pip install --editable . # option 2
+```
+
+where the "--editable" installs an editable (development) project with pip. This allows
+your local code edits to be automatically seen by the system-wide installation.
+
+
+## From source (tar.gz) ##
+
+Please note this is not the recommended installation strategy, and certain functionality  may not work.
+
+You can download and unpack gwsurrogate-X.X.tar.gz
+to any folder gws_folder of your choosing.  The gwsurrogate module can be used by adding
 
 ```
 import sys
@@ -96,22 +118,6 @@ Alternatively, if you are a bash or sh user, edit your .profile
 export PYTHONPATH=~absolute_path_to_gws_folder:$PYTHONPATH
 ```
 
-For a "proper" installation
-
-```
->>> python setup.py install    # option 1
->>> pip install -e gwsurrogate # option 2
-```
-
-where the "-e" installs an editable (development) project with pip. This allows
-your local code edits to be automatically seen by the system-wide installation.
-
-If you have git cloned this project, you must do
-
-```
-git submodule init
-git submodule update
-```
 
 # Usage #
 
