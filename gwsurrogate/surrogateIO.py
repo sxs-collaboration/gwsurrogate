@@ -613,8 +613,13 @@ class H5Surrogate(SurrogateBaseIO):
         for i in range(num_fits):
           fitparams_amp.append([spline_knots, self.fitparams_amp[i,:], degree])
           fitparams_phase.append([spline_knots, self.fitparams_phase[i,:], degree])
-        self.fitparams_amp = np.array(fitparams_amp)
-        self.fitparams_phase = np.array(fitparams_phase)
+        # due to different sizes of amp/phase fits, we cannot convert this 
+        # to a numpy array of numerical datatypes. Instead, it needs to be 
+        # saved as an object type, which appears to be an array of pointers
+        # to arrays. This could have some efficiency impact.
+        # https://stackoverflow.com/questions/29877508/what-does-dtype-object-mean-while-creating-a-numpy-array
+        self.fitparams_amp = np.array(fitparams_amp,dtype=object)
+        self.fitparams_phase = np.array(fitparams_phase,dtype=object)
 
         print("spline knots = %i, num_fits = %i"%(n_spline_knots,num_fits))
 
