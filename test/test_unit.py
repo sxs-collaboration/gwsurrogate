@@ -3,7 +3,6 @@ Simple unit tests.
 """
 
 from __future__ import division
-import nose
 import numpy as np
 import gwsurrogate as gws
 import os
