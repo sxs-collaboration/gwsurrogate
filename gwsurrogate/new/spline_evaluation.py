@@ -241,6 +241,7 @@ class TensorSplineGrid(SimpleH5Object):
 
         # Create 4^d hypercube of bspline products
         # Reduce uses left to right, transposes sound ugly, just reverse.
+        # TODO: It could be faster to use np.ravel(np.outer(...))
         eval_prods = reduce(
             lambda a, b: np.array([a * x for x in b]), spline_evals[::-1]
         )

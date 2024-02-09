@@ -142,8 +142,8 @@ np.savez('data_notebook_basics_lesson4.npz',times=times,b_5=b_5,e_5=e_5,h_5=h_5,
   e_6 = EOBNRv2_sur.basis(5,'orthogonal')
   orthogonal_test = np.sum(e_5*np.conj(e_6)) * dt
   normalized_test = np.sum(e_5*np.conj(e_5)) * dt
-  assert( np.abs(orthogonal_test) < 1e-14 )
-  assert( np.abs(normalized_test-1.0) < 1e-14)
+  np.testing.assert_allclose(orthogonal_test, 0, rtol=0, atol=1.e-14)
+  np.testing.assert_allclose(normalized_test, 1.0, rtol=0, atol=1.e-14)
 
 #def test_notebook_basics_lesson5():
 #

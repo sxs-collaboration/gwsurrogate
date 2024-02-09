@@ -556,9 +556,9 @@ class H5Surrogate(SurrogateBaseIO):
             fitparams_amp.append([spline_knots_amp[i], self.fitparams_amp[i], degree])
           for i in range(num_fits_phase):
             fitparams_phase.append([spline_knots_phase[i], self.fitparams_phase[i], degree])
-          # due to different sizes of amp/phase fits, we cannot convert this 
-          # to a numpy array of numerical datatypes. Instead, it needs to be 
-          # saved as an object type, which appears to be an array of pointers
+          # these are ragged structures, so we need to explicitly request dtype=object
+          # as it cannot be converted to an arrary with numerical datatypes
+          # Instead, it needs to be  saved as an object type, which appears to be an array of pointers
           # to arrays. This could have some efficiency impact.
           # https://stackoverflow.com/questions/29877508/what-does-dtype-object-mean-while-creating-a-numpy-array
           self.fitparams_amp = np.array(fitparams_amp,dtype=object)
@@ -587,9 +587,9 @@ class H5Surrogate(SurrogateBaseIO):
             fitparams_re.append([spline_knots_re[i], self.fitparams_re[i], degree])
           for i in range(num_fits_im):
             fitparams_im.append([spline_knots_im[i], self.fitparams_im[i], degree])
-          # due to different sizes of amp/phase fits, we cannot convert this 
-          # to a numpy array of numerical datatypes. Instead, it needs to be 
-          # saved as an object type, which appears to be an array of pointers
+          # these are ragged structures, so we need to explicitly request dtype=object
+          # as it cannot be converted to an arrary with numerical datatypes
+          # Instead, it needs to be  saved as an object type, which appears to be an array of pointers
           # to arrays. This could have some efficiency impact.
           # https://stackoverflow.com/questions/29877508/what-does-dtype-object-mean-while-creating-a-numpy-array
           self.fitparams_re = np.array(fitparams_re,dtype=object)
@@ -613,9 +613,9 @@ class H5Surrogate(SurrogateBaseIO):
         for i in range(num_fits):
           fitparams_amp.append([spline_knots, self.fitparams_amp[i,:], degree])
           fitparams_phase.append([spline_knots, self.fitparams_phase[i,:], degree])
-        # due to different sizes of amp/phase fits, we cannot convert this 
-        # to a numpy array of numerical datatypes. Instead, it needs to be 
-        # saved as an object type, which appears to be an array of pointers
+        # these are ragged structures, so we need to explicitly request dtype=object
+        # as it cannot be converted to an arrary with numerical datatypes
+        # Instead, it needs to be  saved as an object type, which appears to be an array of pointers
         # to arrays. This could have some efficiency impact.
         # https://stackoverflow.com/questions/29877508/what-does-dtype-object-mean-while-creating-a-numpy-array
         self.fitparams_amp = np.array(fitparams_amp,dtype=object)
