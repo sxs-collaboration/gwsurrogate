@@ -75,6 +75,8 @@ In the case of an `homebrew` installation, you may install the package like this
 >>> conda install -c conda-forge gwsurrogate
 ```
 
+Note: As of Feb 9th 2024, installation with Python 3.12 with conda doesn't work. Please use either use Python <= 3.11 or pip instead.
+
 ## From source (pip) ##
 
 First, please ensure you have the necessary dependencies
