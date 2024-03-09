@@ -915,7 +915,7 @@ filename: The hdf5 file containing the surrogate data."
         return quat_dyn, orbphase_dyn, chiA_copr_dyn, chiB_copr_dyn
 
 
-    def __call__(self, x, fM_low=None, fM_ref=None, dtM=None,
+    def __call__(self, x, fM_low=None, fM_ref=None, tM_ref=None, dtM=None,
             timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
             precessing_opts=None, tidal_opts=None, par_dict=None):
         """
@@ -1032,7 +1032,7 @@ Returns:
         ## Get dynamics
         quat_dyn, orbphase_dyn, chiA_copr_dyn, chiB_copr_dyn, t0 \
             = self.dynamics_sur(q, chiA0, chiB0, init_orbphase=init_orbphase, \
-            init_quat=init_quat, t_ref=None, omega_ref=omega_ref, \
+            init_quat=init_quat, t_ref=tM_ref, omega_ref=omega_ref, \
             omega_low=omega_low)
 
         # If init_orbphase != 0, chiA0 and chiB0 get transformed in

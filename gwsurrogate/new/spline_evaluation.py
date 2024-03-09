@@ -37,7 +37,7 @@ THE SOFTWARE.
 #print("__name__ = %s"%__name__)
 #print("__package__= %s"%__package__)
 
-if __package__ is "" or "None": # py2 and py3 compatible 
+if __package__ in ["",  "None"]: # py2 and py3 compatible 
   print("setting __package__ to gwsurrogate.new so relative imports work")
   __package__="gwsurrogate.new"
 
