@@ -53,9 +53,7 @@ The development of ``GWSurrogate`` is hosted on [GitHub](https://github.com/sxs-
 ``GWSurrogate`` is a Python package that provides an easy to use interface to gravitational wave surrogate models built 
 using the methods described in (ADD CITATIONS HERE). More specifically, ``GWSurrogate`` gravitational wave models provide evaluation of
 $$
-\begin{align}
  h_{\tt S}(t, \theta, \phi;{\bf \Lambda}) = \sum^{\infty}_{\ell=2} \sum_{m=-\ell}^{\ell} h_{\tt S}^{\ell,m}(t;{\bf \Lambda}) ~^{-2}Y_{\ell m}(\theta, \phi) \,,
-\end{align}
 $$
 where $^{-2}Y_{\ell m}$ are the spin$=-2$ weighted spherical harmonics and ${\bf \Lambda}$ describes the model's parameterization. The surrogate model provides fast evaluations for the modes, $h_{\tt S}^{\ell,m}$. As described more fully in the documentation, the high-level API allows users direct access to the modes $\{h_{\tt S}^{\ell,m}(t)\}$ (as a Python dictionary) or assembles the sum $h_{\tt S}(t, \theta, \phi)$ at a particular location $(\theta, \phi)$. The models implemented in ``GWSurrogate`` are intended to be used in production data analysis efforts. As such, computationally expensive operations (e.g., interpolation onto uniform time grids) are implemented by wrapping low-level C code for speed, whereas ``GWSurrogate`` provides a user-friendly interface to the higher-level waveform evaluation API. Models implemented in ``GWSurrogate`` also use the same waveform conventions of the LIGO-Virgo-Kagra collaboration, thus ensuring that downstream data analysis codes can use ``GWSurrogate`` models without needing to worry about pesky issues of matching conventions. ``GWSurrogate`` models can be directly evaluated in either physical units (as are often used in data analysis studies) and dimensionless units where all dimensioned quantities are expressed in terms of the system's total mass (as are often used in theoretical studies). 
 
