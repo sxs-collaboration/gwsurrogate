@@ -27,7 +27,7 @@ affiliations:
    index: 1
  - name: Department of Physics and Astronomy, The University of Mississippi, University, MS 38677, USA
    index: 2
-  - name: Department of XXX, The University of YYY, Arrakis
+- name: Department of XXX, The University of YYY, Arrakis
    index: 3
 date: 2 April 2024
 bibliography: paper.bib
