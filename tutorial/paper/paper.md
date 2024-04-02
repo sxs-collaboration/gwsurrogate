@@ -13,37 +13,35 @@ authors:
   - name: Vijay Varma
     orcid: 0000-0002-9994-1761
     affiliation: "1" # (Multiple affiliations must be quoted)
+  - name: Bhooshan Gadre
+    affiliation: "3"
+  - name: Tousif Islam
+    affiliation: "1, 3" # (Multiple affiliations must be quoted)
   - name: Leo C. Stein
     orcid: 0000-0001-7559-9597
     affiliation: "2" # (Multiple affiliations must be quoted)
+  - name: Jooheon Yoo
+    affiliation: "3"
 affiliations:
  - name: Department of Mathematics and Center for Scientific Computing \& Visualization Research, University of Massachusetts, Dartmouth, MA 02747
    index: 1
  - name: Department of Physics and Astronomy, The University of Mississippi, University, MS 38677, USA
    index: 2
-date: 27 March 2024
+  - name: Department of XXX, The University of YYY, Arrakis
+   index: 3
+date: 2 April 2024
 bibliography: paper.bib
 
 ---
 
-# TODOs (for paper writers)
-
-* Do we need a more formal documentation like Read the Docs?
-
-* Older models do not follow LVK conventions. Should this be updated before releasing the paper?
-
-* Do we want some splashy figure?
-
-* More citations (but lets not get too carried away as its not a review)
-
-* Any other high-level stuff to add to the paper?
+![Example gravitational wave prediction from a surrogate model compared with numerical relativity simulation for a precessing binary black hole. This particular numerical relativity simulation took 70,881 CPU-hours (about 1.75 months using 56 cores on the supercomputer Frontera), while the surrogate model can be evaluated in about 100 milliseconds. \label{fig:gws}](gwsurrogate.png)
 
 # Summary
 
 
 Gravitational waves are ripples in space-time caused by the motion of massive objects. One of the most astrophysically important sources of gravitational radiation is caused by two orbiting compact objects, such as black holes and neutron stars, that slowly inspiral and merge. The motion of these massive objects generates gravitational waves that radiate to the far field where gravitational-wave detectors can observe them. Complicated partial or ordinary differential equations govern the entire process. Traditionally, the dynamics of compact binary systems and the emitted gravitational waves have been computed by expensive simulation codes that can take days to months to run. A key simulation output is the gravitational wave signal for a particular set of parameter values describing the system, such as the black holes' masses and spins.  The computed signal is required for a diverse range of multiple-query applications, such as template bank generation for searches, parameter estimation, mock data analysis, studies of model bias, and tests of general relativity, to name a few. In such settings, the high-fidelity signal computed from differential equations is often too slow to be directly used.
 
-Surrogate models offer a practical way to dramatically accelerate model evaluation while retaining the high-fidelity accuracy of the expensive simulation code. Surrogate models can be constructed in various ways, but what separates these models from others is that they are primarily data-driven. Given a training set of gravitational waveform data sampling the parameter space, a model is built by following three steps: (i) Feature extraction: the waveform is decomposed into *data pieces* that are simple to model, (ii) Dimensionality reduction: each data piece is approximated by a low-dimensional vector space, which reduces the degrees of freedom we need to model, and (iii) regression techniques are applied to the low-dimensional representation of each data piece over the parameter space defining the model. These model-building steps result in an HDF5 file defining the surrogate model's data and structure, which is stored on Zenodo. The GWSurrogate code provides access to these HDF5 files through its catalog interface, and all available models and their HDF5 files can be found in `gwsurrogate.catalog.list()`. For a recent overview of surrogate modeling as used in gravitational wave astrophysics, please see Section 5 of @LISAConsortiumWaveformWorkingGroup:2023arg.
+Surrogate models offer a practical way to dramatically accelerate model evaluation while retaining the high-fidelity accuracy of the expensive simulation code; an example is shown in Fig.~\ref{fig:gws}. Surrogate models can be constructed in various ways, but what separates these models from others is that they are primarily data-driven. Given a training set of gravitational waveform data sampling the parameter space, a model is built by following three steps: (i) Feature extraction: the waveform is decomposed into *data pieces* that are simple to model, (ii) Dimensionality reduction: each data piece is approximated by a low-dimensional vector space, which reduces the degrees of freedom we need to model, and (iii) regression techniques are applied to the low-dimensional representation of each data piece over the parameter space defining the model. These model-building steps result in an HDF5 file defining the surrogate model's data and structure, which is stored on Zenodo. The GWSurrogate code provides access to these HDF5 files through its catalog interface, and all available models and their HDF5 files can be found in `gwsurrogate.catalog.list()`. For a recent overview of surrogate modeling as used in gravitational wave astrophysics, please see Section 5 of @LISAConsortiumWaveformWorkingGroup:2023arg.
 
 The development of ``GWSurrogate`` is hosted on [GitHub](https://github.com/sxs-collaboration/gwsurrogate) and distributed through both [PyPI](https://pypi.org/project/gwsurrogate/) and [Conda](https://anaconda.org/conda-forge/gwsurrogate/). Quick start guides are found on the project's [homepage](https://github.com/sxs-collaboration/gwsurrogate) while model-specific documentation is described through a collection of model-specific [Jupyter notebooks](https://github.com/sxs-collaboration/gwsurrogate/tree/master/tutorial). Automated testing is run on [GitHub Actions](https://github.com/sxs-collaboration/gwsurrogate/actions).
 
