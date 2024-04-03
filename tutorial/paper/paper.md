@@ -34,14 +34,14 @@ bibliography: paper.bib
 
 ---
 
-![Example gravitational wave prediction from a surrogate model compared with numerical relativity for a precessing binary black hole system. This particular numerical relativity simulation took 70,881 CPU-hours (about 1.75 months using 56 cores on the supercomputer Frontera), while the surrogate model can be evaluated in about 100 milliseconds. \label{fig:gws}](gwsurrogate.png)
-
 # Summary
 
 
 Gravitational waves are ripples in space-time caused by the motion of massive objects. One of the most astrophysically important sources of gravitational radiation is caused by two orbiting compact objects, such as black holes and neutron stars, that slowly inspiral and merge. The motion of these massive objects generates gravitational waves that radiate to the far field where gravitational-wave detectors can observe them. Complicated partial or ordinary differential equations govern the entire process. 
 
 Traditionally, the dynamics of compact binary systems and the emitted gravitational waves have been computed by expensive simulation codes that can take days to months to run. A key simulation output is the gravitational wave signal for a particular set of parameter values describing the system, such as the black holes' masses and spins. The computed signal is required for a diverse range of multiple-query applications, such as template bank generation for searches, parameter estimation, mock data analysis, studies of model bias, and tests of general relativity, to name a few. In such settings, the high-fidelity signal computed from differential equations is often too slow to be directly used.
+
+![Example gravitational wave prediction from a surrogate model compared with numerical relativity for a precessing binary black hole system. This particular numerical relativity simulation took 70,881 CPU-hours (about 1.75 months using 56 cores on the supercomputer Frontera), while the surrogate model can be evaluated in about 100 milliseconds. \label{fig:gws}](gwsurrogate.png)
 
 Surrogate models offer a practical way to dramatically accelerate model evaluation while retaining the high-fidelity accuracy of the expensive simulation code; an example is shown in Fig.\ref{fig:gws}. Surrogate models can be constructed in various ways, but what separates these models from other modeling frameworks is that they are primarily data-driven. Given a training set of gravitational waveform data sampling the parameter space, a model is built by following three steps:
 
@@ -71,7 +71,7 @@ Currently, there are 15 supported surrogate models (@Blackman:2015pia, @OShaughn
 
 # Acknowledgements
 
-We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Mike Boyle, Collin Capano, Raffi Enficiaud, Oliver Jennrich, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. This software has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496 and DMS-2309609.
+We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Mike Boyle, Collin Capano, Raffi Enficiaud, Oliver Jennrich, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. ``GWSurrogate`` has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496 and DMS-2309609.
 
 
 # References
