@@ -16,33 +16,40 @@ authors:
   - name: Jonathan Blackman
     affiliation: "4"
   - name: Bhooshan Gadre
+    orcid: 0000-0002-1534-9761
     affiliation: "3"
   - name: Chad R. Galley
     affiliation: "5"
   - name: Tousif Islam
-    affiliation: "1, 3" # (Multiple affiliations must be quoted)
+    orcid: 0000-0002-3434-0084
+    affiliation: "1, 3"
   - name: Gaurav Khanna
+    orcid: 0000-0002-2565-8170
     affiliation: "6, 1"
   - name: Keefe Mitman
+    orcid: 0000-0003-0276-3856
     affiliation: "7"
   - name: Michael Puerrer
+    orcid: 0000-0002-3329-9788
     affiliation: "6"
   - name: Mark A. Scheel
+    orcid: 0000-0001-6656-9134
     affiliation: "7"
   - name: Leo C. Stein
     orcid: 0000-0001-7559-9597
     affiliation: "2"
   - name: Jooheon Yoo
+    orcid: 0000-0002-3251-0924
     affiliation: "3"
 affiliations:
-  - name: Department of Mathematics and Center for Scientific Computing \& Visualization Research, University of Massachusetts, Dartmouth, MA 02747, USA
+  - name: Department of Mathematics and Center for Scientific Computing \& Data Science Research, University of Massachusetts, Dartmouth, MA 02747, USA
     index: 1
   - name: Department of Physics and Astronomy, The University of Mississippi, University, MS 38677, USA
-    index: 2
+    index: 4
   - name: Kavli Institute for Theoretical Physics, University of California Santa Barbara, CA 93106, USA
     index: 3
   - name: Theorem LP, San Mateo, California 94402, USA
-    index: 4
+    index: 2
   - name: Jet Propulsion Laboratory, California Institute of Technology, Pasadena, CA 91109, USA
     index: 5
   - name: Department of Physics and Center for Computational Research, East Hall, University of Rhode Island, Kingston, RI 02881
@@ -51,10 +58,6 @@ affiliations:
     index: 7
 date: 3 April 2024
 bibliography: paper.bib
-
-
-
-
 
 
 ---
