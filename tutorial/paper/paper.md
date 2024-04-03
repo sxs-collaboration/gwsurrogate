@@ -9,28 +9,53 @@ tags:
 authors:
   - name: Scott E. Field
     orcid: 0000-0002-6037-3277
-    affiliation: "1" # (Multiple affiliations must be quoted)
+    affiliation: "1, 6"
   - name: Vijay Varma
     orcid: 0000-0002-9994-1761
-    affiliation: "1" # (Multiple affiliations must be quoted)
+    affiliation: "1"
+  - name: Jonathan Blackman
+    affiliation: "4"
   - name: Bhooshan Gadre
     affiliation: "3"
+  - name: Chad R. Galley
+    affiliation: "5"
   - name: Tousif Islam
     affiliation: "1, 3" # (Multiple affiliations must be quoted)
+  - name: Gaurav Khanna
+    affiliation: "6, 1"
+  - name: Keefe Mitman
+    affiliation: "7"
+  - name: Michael Puerrer
+    affiliation: "6"
+  - name: Mark A. Scheel
+    affiliation: "7"
   - name: Leo C. Stein
     orcid: 0000-0001-7559-9597
-    affiliation: "2" # (Multiple affiliations must be quoted)
+    affiliation: "2"
   - name: Jooheon Yoo
     affiliation: "3"
 affiliations:
-  - name: Department of Mathematics and Center for Scientific Computing \& Visualization Research, University of Massachusetts, Dartmouth, MA 02747
+  - name: Department of Mathematics and Center for Scientific Computing \& Visualization Research, University of Massachusetts, Dartmouth, MA 02747, USA
     index: 1
   - name: Department of Physics and Astronomy, The University of Mississippi, University, MS 38677, USA
     index: 2
-  - name: Department of XXX, The University of YYY, Arrakis
+  - name: Kavli Institute for Theoretical Physics, University of California Santa Barbara, CA 93106, USA
     index: 3
-date: 2 April 2024
+  - name: Theorem LP, San Mateo, California 94402, USA
+    index: 4
+  - name: Jet Propulsion Laboratory, California Institute of Technology, Pasadena, CA 91109, USA
+    index: 5
+  - name: Department of Physics and Center for Computational Research, East Hall, University of Rhode Island, Kingston, RI 02881
+    index: 6
+  - name: Theoretical Astrophysics 350-17, California Institute of Technology, Pasadena, California 91125, USA
+    index: 7
+date: 3 April 2024
 bibliography: paper.bib
+
+
+
+
+
 
 ---
 
@@ -71,7 +96,6 @@ Currently, there are 15 supported surrogate models (@Blackman:2015pia, @OShaughn
 
 # Acknowledgements
 
-We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Mike Boyle, Collin Capano, Raffi Enficiaud, Oliver Jennrich, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. ``GWSurrogate`` has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496 and DMS-2309609.
-
+We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Mike Boyle, Collin Capano, Raffi Enficiaud, Oliver Jennrich, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. ``GWSurrogate`` has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496, PHY-2309301, and DMS-2309609.
 
 # References
