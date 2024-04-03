@@ -56,8 +56,7 @@ The development of ``GWSurrogate`` is hosted on [GitHub](https://github.com/sxs-
 
 # Statement of need
 
-``GWSurrogate`` is a Python package that provides an easy to use interface to gravitational wave surrogate models built 
-using the methods described in (ADD CITATIONS HERE). More specifically, ``GWSurrogate`` gravitational wave models provide evaluation of
+``GWSurrogate`` is a Python package that provides an easy to use interface to gravitational wave surrogate models. More specifically, ``GWSurrogate`` gravitational wave models provide evaluation of
 $$
  h_{\tt S}(t, \theta, \phi;\Lambda) = \sum^{\infty}_{\ell=2} \sum_{m=-\ell}^{\ell} h_{\tt S}^{\ell m}(t;\Lambda) ~^{-2}Y_{\ell m}(\theta, \phi) \,,
 $$
@@ -67,11 +66,12 @@ where $^{-2}Y_{\ell m}$ are the spin$=-2$ weighted spherical harmonics and $\Lam
 - models implemented in ``GWSurrogate`` follow the waveform convention choices of the LIGO-Virgo-Kagra collaboration, thus ensuring that downstream data analysis codes can use ``GWSurrogate`` models without needing to worry about different conventions, and
 - ``GWSurrogate`` models can be directly evaluated in either physical units (often used in data analysis studies) and dimensionless units (often used in theoretical studies) where all dimensioned quantities are expressed in terms of the system's total mass.
 
-Certain models allow for additional functionality such as returning the dynamics of the binary black hole; these special features are described further in model-specific [example notebooks](https://github.com/sxs-collaboration/gwsurrogate/tree/master/tutorial).
+Currently, there are 15 supported surrogate models [@Blackman:2015pia,@OShaughnessy:2017tak,@Blackman:2017dfb,@Varma:2018mmi,@Yoo:2023spi,@Yoo:2022erv,@Varma:2019csw,@Barkett:2019tus,@Rifat:2019ltp,@Islam:2022laz,@Field:2013cfa]. These models vary in their duration, included physical effects (e.g. nonlinear memory, tidal forces, harmonic modes retained, eccentricity, mass ratio extent, precession effects, etc), and underlying solution method (e.g. Effective One Body, numerical relativity, and black hole perturbation theory). Details about all models can be found by doing `gws.catalog.list(verbose=True)`, while the ``GWSurrogate`` [homepage](https://github.com/sxs-collaboration/gwsurrogate) summarizes the state-of-the-art models for each particular problem. Certain models allow for additional functionality such as returning the dynamics of the binary black hole; these special features are described further in model-specific [example notebooks](https://github.com/sxs-collaboration/gwsurrogate/tree/master/tutorial).
 
 
 # Acknowledgements
 
-We acknowledge... 
+We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Mike Boyle, Collin Capano, Raffi Enficiaud, Oliver Jennrich, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. This software has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496 and DMS-2309609.
+
 
 # References
