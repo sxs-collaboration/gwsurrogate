@@ -9,9 +9,11 @@ tags:
 authors:
   - name: Scott E. Field
     orcid: 0000-0002-6037-3277
+    equal-contrib: true
     affiliation: "1, 6"
   - name: Vijay Varma
     orcid: 0000-0002-9994-1761
+    equal-contrib: true
     affiliation: "1"
   - name: Jonathan Blackman
     affiliation: "4"
@@ -32,6 +34,8 @@ authors:
   - name: Michael Puerrer
     orcid: 0000-0002-3329-9788
     affiliation: "6"
+  - name: Adhrit Ravichandran
+    affiliation: "1"
   - name: Mark A. Scheel
     orcid: 0000-0001-6656-9134
     affiliation: "7"
