@@ -21,10 +21,10 @@ authors:
     orcid: 0000-0002-1534-9761
     affiliation: "3"
   - name: Chad R. Galley
-    affiliation: "5"
+    affiliation: "4"
   - name: Tousif Islam
     orcid: 0000-0002-3434-0084
-    affiliation: "1, 3"
+    affiliation: "1, 5"
   - name: Gaurav Khanna
     orcid: 0000-0002-2565-8170
     affiliation: "6, 1"
@@ -41,25 +41,29 @@ authors:
     affiliation: "7"
   - name: Leo C. Stein
     orcid: 0000-0001-7559-9597
-    affiliation: "4"
+    affiliation: "8"
   - name: Jooheon Yoo
     orcid: 0000-0002-3251-0924
-    affiliation: "3"
+    affiliation: "9"
 affiliations:
   - name: Department of Mathematics and Center for Scientific Computing \& Data Science Research, University of Massachusetts, Dartmouth, MA 02747, USA
     index: 1
-  - name: Department of Physics and Astronomy, The University of Mississippi, University, MS 38677, USA
-    index: 4
-  - name: Kavli Institute for Theoretical Physics, University of California Santa Barbara, CA 93106, USA
-    index: 3
   - name: Theorem LP, San Mateo, California 94402, USA
     index: 2
+  - name: Institute for Gravitational and Subatomic Physics (GRASP), Utrecht University, 3584 CC Utrecht, The Netherlands
+    index: 3
   - name: Jet Propulsion Laboratory, California Institute of Technology, Pasadena, CA 91109, USA
+    index: 4
+  - name: Kavli Institute for Theoretical Physics, University of California Santa Barbara, CA 93106, USA
     index: 5
   - name: Department of Physics and Center for Computational Research, East Hall, University of Rhode Island, Kingston, RI 02881
     index: 6
   - name: Theoretical Astrophysics 350-17, California Institute of Technology, Pasadena, California 91125, USA
     index: 7
+  - name: Department of Physics and Astronomy, The University of Mississippi, University, MS 38677, USA
+    index: 8
+  - name: Cornell Center for Astrophysics and Planetary Science, Cornell University, Ithaca, New York 14853, USA
+    index: 9
 date: 3 April 2024
 bibliography: paper.bib
 
