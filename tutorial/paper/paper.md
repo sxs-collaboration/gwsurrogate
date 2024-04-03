@@ -16,7 +16,7 @@ authors:
     equal-contrib: true
     affiliation: "1"
   - name: Jonathan Blackman
-    affiliation: "4"
+    affiliation: "2"
   - name: Bhooshan Gadre
     orcid: 0000-0002-1534-9761
     affiliation: "3"
@@ -41,7 +41,7 @@ authors:
     affiliation: "7"
   - name: Leo C. Stein
     orcid: 0000-0001-7559-9597
-    affiliation: "2"
+    affiliation: "4"
   - name: Jooheon Yoo
     orcid: 0000-0002-3251-0924
     affiliation: "3"
