@@ -46,19 +46,33 @@ from time import gmtime, strftime
 from glob import glob
 
 ### Naming convention: dictionary KEY should match file name KEY.tar.gz ###
-surrogate_info = namedtuple('surrogate_info', ['url', 'desc', 'refs', 'md5'])
+surrogate_info = namedtuple('surrogate_info', ['url', 'desc', 'refs', 'md5', 'bib'])
 
 ### dictionary of all known surrogates ###
 _surrogate_world = {}
 
 _surrogate_world['EOBNRv2'] = \
   surrogate_info('https://www.dropbox.com/s/uyliuy37uczu3ug/EOBNRv2.tar.gz',
-               ''' Collection of single mode surrogates from mass ratios 1 to 10,
+                 '''Collection of single mode surrogates from mass ratios 1 to 10,
                as long as 190000M and modes (2,1), (2,2), (3,3), (4,4), (5,5). This is not
                a true multi-mode surrogate, and relative time/phase information between the
                modes have not been preserved.''',
-               '''http://journals.aps.org/prx/abstract/10.1103/PhysRevX.4.031006''',
-               None)
+                 '''http://journals.aps.org/prx/abstract/10.1103/PhysRevX.4.031006''',
+               None,
+                 '''
+  @article{Field:2013cfa,
+      author = "Field, Scott E. and Galley, Chad R. and Hesthaven, Jan S. and Kaye, Jason and Tiglio, Manuel",
+      title = "{Fast prediction and evaluation of gravitational waveforms using surrogate models}",
+      eprint = "1308.3565",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      doi = "10.1103/PhysRevX.4.031006",
+      journal = "Phys. Rev. X",
+      volume = "4",
+      number = "3",
+      pages = "031006",
+      year = "2014"
+  }''')
 
 _surrogate_world['SpEC_q1_10_NoSpin'] = \
   surrogate_info('https://zenodo.org/record/3348115/files/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5',
@@ -66,22 +80,66 @@ _surrogate_world['SpEC_q1_10_NoSpin'] = \
                performed with SpEC.The surrogate covers mass ratios from 1 to 10, durations
                corresponding to about 15 orbits before merger, and many harmonic modes.''',
                  '''http://arxiv.org/abs/1502.07758''',
-                 '4d08862a85437e76a1634dae6d984fdb')
+                 '4d08862a85437e76a1634dae6d984fdb',
+                 '''
+  @article{Blackman:2015pia,
+      author = "Blackman, Jonathan and Field, Scott E. and Galley, Chad R. and Szil\'agyi, B\'ela and Scheel, Mark A. and Tiglio, Manuel and Hemberger, Daniel A.",
+      title = "{Fast and Accurate Prediction of Numerical Relativity Waveforms from Binary Black Hole Coalescences Using Surrogate Models}",
+      eprint = "1502.07758",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      doi = "10.1103/PhysRevLett.115.121102",
+      journal = "Phys. Rev. Lett.",
+      volume = "115",
+      number = "12",
+      pages = "121102",
+      year = "2015"
+  }''')
 
 _surrogate_world['SpEC_q1_10_NoSpin_linear'] = \
   surrogate_info('http://www.math.umassd.edu/~sfield/external/surrogates/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0_FastSplined_WithVandermonde.h5',
                  '''Linear surrogate (using fast splines) version of the SpEC_q1_10_NoSpin.
                  This surrogate is designed to be loaded with the original gws interface.''',
-                 '''http://iopscience.iop.org/article/10.1088/1361-6382/aa7649/meta''',
-                 '3f8bd987b0473ac068d91b284e7d3d2e')
+                 '''https://iopscience.iop.org/article/10.1088/1361-6382/aa7649''',
+                 '3f8bd987b0473ac068d91b284e7d3d2e',
+                 '''
+  @article{OShaughnessy:2017tak,
+      author = "O'Shaughnessy, Richard and Blackman, Jonathan and Field, Scott E.",
+      title = "{An architecture for efficient gravitational wave parameter estimation with multimodal linear surrogate models}",
+      eprint = "1701.01137",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      reportNumber = "LIGO-P1600309",
+      doi = "10.1088/1361-6382/aa7649",
+      journal = "Class. Quant. Grav.",
+      volume = "34",
+      number = "14",
+      pages = "144002",
+      year = "2017"
+  }''')
 
 _surrogate_world['SpEC_q1_10_NoSpin_linear_alt'] = \
   surrogate_info('http://www.math.umassd.edu/~sfield/external/surrogates/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0_FastSplined_WithVandermonde_NewInterface.h5',
                '''Linear surrogate (using fast splines) version of the SpEC_q1_10_NoSpin.
                This surrogate is designed to be loaded with an alternative (experimental)
                gws interface.''',
-               '''http://iopscience.iop.org/article/10.1088/1361-6382/aa7649/meta''',
-               '6ae4249bc2c420fa27553d07f4df62df')
+               '''https://iopscience.iop.org/article/10.1088/1361-6382/aa7649''',
+               '6ae4249bc2c420fa27553d07f4df62df',
+               '''
+  @article{OShaughnessy:2017tak,
+      author = "O'Shaughnessy, Richard and Blackman, Jonathan and Field, Scott E.",
+      title = "{An architecture for efficient gravitational wave parameter estimation with multimodal linear surrogate models}",
+      eprint = "1701.01137",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      reportNumber = "LIGO-P1600309",
+      doi = "10.1088/1361-6382/aa7649",
+      journal = "Class. Quant. Grav.",
+      volume = "34",
+      number = "14",
+      pages = "144002",
+      year = "2017"
+  }''')
 
 _surrogate_world['NRSur4d2s_TDROM_grid12'] = \
   surrogate_info('https://zenodo.org/record/3348115/files/NRSur4d2s_TDROM_grid12.h5',
@@ -92,7 +150,21 @@ _surrogate_world['NRSur4d2s_TDROM_grid12'] = \
                time-domain model. Additional tools for acceleration use splines (see the
                frequency-domain discussion of the refs)''',
                '''https://journals.aps.org/prd/abstract/10.1103/PhysRevD.95.104023''',
-               '44fba833b6b3a0f269fc788df181dfd4')
+               '44fba833b6b3a0f269fc788df181dfd4',
+               '''
+  @article{Blackman:2017dfb,
+      author = "Blackman, Jonathan and Field, Scott E. and Scheel, Mark A. and Galley, Chad R. and Hemberger, Daniel A. and Schmidt, Patricia and Smith, Rory",
+      title = "{A Surrogate Model of Gravitational Waveforms from Numerical Relativity Simulations of Precessing Binary Black Hole Mergers}",
+      eprint = "1701.00550",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      doi = "10.1103/PhysRevD.95.104023",
+      journal = "Phys. Rev. D",
+      volume = "95",
+      number = "10",
+      pages = "104023",
+      year = "2017"
+  }''')
 
 _surrogate_world['NRSur4d2s_FDROM_grid12'] = \
   surrogate_info('https://zenodo.org/record/3348115/files/NRSur4d2s_FDROM_grid12.h5',
@@ -100,7 +172,21 @@ _surrogate_world['NRSur4d2s_FDROM_grid12'] = \
                the black holes may be spinning, but the spins are restricted to a parameter
                subspace which includes some but not all precessing configurations.''',
                '''https://journals.aps.org/prd/abstract/10.1103/PhysRevD.95.104023''',
-               'ec8bf594c36ba76e1198dfc01ee1861f')
+               'ec8bf594c36ba76e1198dfc01ee1861f',
+               '''
+  @article{Blackman:2017dfb,
+      author = "Blackman, Jonathan and Field, Scott E. and Scheel, Mark A. and Galley, Chad R. and Hemberger, Daniel A. and Schmidt, Patricia and Smith, Rory",
+      title = "{A Surrogate Model of Gravitational Waveforms from Numerical Relativity Simulations of Precessing Binary Black Hole Mergers}",
+      eprint = "1701.00550",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      doi = "10.1103/PhysRevD.95.104023",
+      journal = "Phys. Rev. D",
+      volume = "95",
+      number = "10",
+      pages = "104023",
+      year = "2017"
+  }''')
 
 
 _surrogate_world['NRHybSur3dq8'] = \
@@ -113,7 +199,21 @@ _surrogate_world['NRHybSur3dq8'] = \
   [(2,2), (2,1), (2,0), (3,3), (3,2), (3,1), (3,0), (4,4), (4,3), (4,2) and
   (5,5)]. The m<0 modes are deduced from the m>0 modes.''',
   '''https://journals.aps.org/prd/abstract/10.1103/PhysRevD.99.064045''',
-  'b42cd577f497b1db3da14f1e4ee0ccd1')
+  'b42cd577f497b1db3da14f1e4ee0ccd1',
+  '''
+  @article{Varma:2018mmi,
+      author = "Varma, Vijay and Field, Scott E. and Scheel, Mark A. and Blackman, Jonathan and Kidder, Lawrence E. and Pfeiffer, Harald P.",
+      title = "{Surrogate model of hybridized numerical relativity binary black hole waveforms}",
+      eprint = "1812.07865",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      doi = "10.1103/PhysRevD.99.064045",
+      journal = "Phys. Rev. D",
+      volume = "99",
+      number = "6",
+      pages = "064045",
+      year = "2019"
+  }''')
 
 _surrogate_world['NRHybSur3dq8_CCE'] = \
   surrogate_info(\
@@ -126,7 +226,21 @@ _surrogate_world['NRHybSur3dq8_CCE'] = \
   [(2,2), (2,1), (2,0), (3,3), (3,2), (3,0), (4,4), (4,3), (4,0), and (5,5)]. 
   The m<0 modes are deduced from the m>0 modes.''',
   '''https://arxiv.org/abs/2306.03148''',
-  '58fa10c2b35d37d0269f9e4b7157c23a')
+  '58fa10c2b35d37d0269f9e4b7157c23a',
+  '''
+  @article{Yoo:2023spi,
+      author = "Yoo, Jooheon and others",
+      title = "{Numerical relativity surrogate model with memory effects and post-Newtonian hybridization}",
+      eprint = "2306.03148",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      doi = "10.1103/PhysRevD.108.064027",
+      journal = "Phys. Rev. D",
+      volume = "108",
+      number = "6",
+      pages = "064027",
+      year = "2023"
+  }''')
 
 _surrogate_world['NRHybSur2dq15'] = \
   surrogate_info(\
@@ -138,7 +252,21 @@ _surrogate_world['NRHybSur2dq15'] = \
   is  presented in arxiv:2203.10109. Available modes are
   [(2,2), (2,1), (3,3), (4,4), and (5,5)]. The m<0 modes are deduced from the m>0 modes.''',
   '''https://arxiv.org/abs/2203.10109''',
-  '140af07f2864e4e513eff648aaf8a7de')
+  '140af07f2864e4e513eff648aaf8a7de',
+  '''
+  @article{Yoo:2022erv,
+      author = "Yoo, Jooheon and Varma, Vijay and Giesler, Matthew and Scheel, Mark A. and Haster, Carl-Johan and Pfeiffer, Harald P. and Kidder, Lawrence E. and Boyle, Michael",
+      title = "{Targeted large mass ratio numerical relativity surrogate waveform model for GW190814}",
+      eprint = "2203.10109",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      doi = "10.1103/PhysRevD.106.044001",
+      journal = "Phys. Rev. D",
+      volume = "106",
+      number = "4",
+      pages = "044001",
+      year = "2022"
+  }''')
 
 _surrogate_world['NRSur7dq4'] = \
   surrogate_info(\
@@ -148,7 +276,20 @@ _surrogate_world['NRSur7dq4'] = \
   arxiv:1905.09300. All ell<=4 modes are included. The spin and frame dynamics
   are also modeled.''',
   '''https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.1.033015''',
-  '8e033ba4e4da1534b3738ae51549fb98')
+  '8e033ba4e4da1534b3738ae51549fb98',
+  '''
+  @article{Varma:2019csw,
+      author = "Varma, Vijay and Field, Scott E. and Scheel, Mark A. and Blackman, Jonathan and Gerosa, Davide and Stein, Leo C. and Kidder, Lawrence E. and Pfeiffer, Harald P.",
+      title = "{Surrogate models for precessing binary black hole simulations with unequal masses}",
+      eprint = "1905.09300",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      doi = "10.1103/PhysRevResearch.1.033015",
+      journal = "Phys. Rev. Research.",
+      volume = "1",
+      pages = "033015",
+      year = "2019"
+  }''')
 
 _surrogate_world['NRHybSur3dq8Tidal'] = \
   surrogate_info(\
@@ -164,7 +305,21 @@ _surrogate_world['NRHybSur3dq8Tidal'] = \
   (4,2) and (5,5)]. The m<0 modes are deduced from the m>0 modes. The same
   hdf5 file is used for both NRHybSur3dq8Tidal and NRHybSur3dq8 models. ''',
   '''https://arxiv.org/abs/1911.10440''',
-  'b42cd577f497b1db3da14f1e4ee0ccd1')
+  'b42cd577f497b1db3da14f1e4ee0ccd1',
+  '''
+  @article{Barkett:2019tus,
+      author = "Barkett, Kevin and Chen, Yanbei and Scheel, Mark A. and Varma, Vijay",
+      title = "{Gravitational waveforms of binary neutron star inspirals using post-Newtonian tidal splicing}",
+      eprint = "1911.10440",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      doi = "10.1103/PhysRevD.102.024031",
+      journal = "Phys. Rev. D",
+      volume = "102",
+      number = "2",
+      pages = "024031",
+      year = "2020"
+  }''')
 
 _surrogate_world['EMRISur1dq1e4'] = \
   surrogate_info(\
@@ -182,7 +337,21 @@ _surrogate_world['EMRISur1dq1e4'] = \
   the datasets in this hdf5 file are 32-bit (single) precision. Some are up-cast
   to double in SurrogateIO. This model has been superseded by BHPTNRSur1dq1e4.''',
   '''https://arxiv.org/abs/1910.10473''',
-  'd145958484738e0c7292e084a66a96fa')
+  'd145958484738e0c7292e084a66a96fa',
+  '''
+  @article{Rifat:2019ltp,
+      author = "Rifat, Nur E. M. and Field, Scott E. and Khanna, Gaurav and Varma, Vijay",
+      title = "{Surrogate model for gravitational wave signals from comparable and large-mass-ratio black hole binaries}",
+      eprint = "1910.10473",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      doi = "10.1103/PhysRevD.101.081502",
+      journal = "Phys. Rev. D",
+      volume = "101",
+      number = "8",
+      pages = "081502",
+      year = "2020"
+  }''')
 
 _surrogate_world['BHPTNRSur1dq1e4'] = \
   surrogate_info(\
@@ -196,7 +365,21 @@ _surrogate_world['BHPTNRSur1dq1e4'] = \
   (8,6),(8,7),(8,8),(9,7),(9,8),(9,9),(10,8),(10,9)]. The m<0 modes are deduced 
   from the m>0 modes. Model details can be found in Islam et al. 2022, arXiv:2204.01972.''',
   '''https://arxiv.org/abs/2204.01972''',
-  '58a3a75e8fd18786ecc88cf98f694d4a')
+  '58a3a75e8fd18786ecc88cf98f694d4a',
+  '''
+  @article{Islam:2022laz,
+      author = "Islam, Tousif and Field, Scott E. and Hughes, Scott A. and Khanna, Gaurav and Varma, Vijay and Giesler, Matthew and Scheel, Mark A. and Kidder, Lawrence E. and Pfeiffer, Harald P.",
+      title = "{Surrogate model for gravitational wave signals from nonspinning, comparable-to large-mass-ratio black hole binaries built on black hole perturbation theory waveforms calibrated to numerical relativity}",
+      eprint = "2204.01972",
+      archivePrefix = "arXiv",
+      primaryClass = "gr-qc",
+      doi = "10.1103/PhysRevD.106.104025",
+      journal = "Phys. Rev. D",
+      volume = "106",
+      number = "10",
+      pages = "104025",
+      year = "2022"
+  }''')
 
 # TODO: test function, and then use it whenever a file is loaded
 def is_file_recent(filename):
@@ -243,7 +426,8 @@ def list(verbose=False):
         print('  url: '+_surrogate_world[surr_key].url)
         print('  md5 hash: %s'%str(_surrogate_world[surr_key].md5))
         print("  Description: " + _surrogate_world[surr_key].desc)
-        print("  References: "+_surrogate_world[surr_key].refs+'\n')
+        print("  References: "+_surrogate_world[surr_key].refs)
+        print("  Cite: \n"+_surrogate_world[surr_key].bib+'\n\n')
 
 
 def get_modelID_from_filename(filename):
