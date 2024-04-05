@@ -48,7 +48,7 @@ authors:
 affiliations:
   - name: Department of Mathematics and Center for Scientific Computing \& Data Science Research, University of Massachusetts, Dartmouth, MA 02747, USA
     index: 1
-  - name: Theorem LP, San Mateo, California 94402, USA
+  - name: Theorem Partners LLC, San Mateo, California 94402, USA
     index: 2
   - name: Institute for Gravitational and Subatomic Physics (GRASP), Utrecht University, 3584 CC Utrecht, The Netherlands
     index: 3
@@ -64,7 +64,7 @@ affiliations:
     index: 8
   - name: Cornell Center for Astrophysics and Planetary Science, Cornell University, Ithaca, New York 14853, USA
     index: 9
-date: 3 April 2024
+date: 5 April 2024
 bibliography: paper.bib
 
 
@@ -107,6 +107,6 @@ Currently, there are 15 supported surrogate models (@Blackman:2015pia, @OShaughn
 
 # Acknowledgements
 
-We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Mike Boyle, Collin Capano, Raffi Enficiaud, Oliver Jennrich, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. ``GWSurrogate`` has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496, PHY-2309301, and DMS-2309609.
+We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Kevin Barkett, Mike Boyle, Collin Capano, Dwyer Deighan, Raffi Enficiaud, Oliver Jennrich, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. ``GWSurrogate`` has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496, PHY-2309301, and DMS-2309609.
 
 # References
