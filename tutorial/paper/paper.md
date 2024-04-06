@@ -25,13 +25,10 @@ authors:
   - name: Tousif Islam
     orcid: 0000-0002-3434-0084
     affiliation: "1, 5"
-  - name: Gaurav Khanna
-    orcid: 0000-0002-2565-8170
-    affiliation: "6, 1"
   - name: Keefe Mitman
     orcid: 0000-0003-0276-3856
     affiliation: "7"
-  - name: Michael Puerrer
+  - name: Michael P\"urrer
     orcid: 0000-0002-3329-9788
     affiliation: "6"
   - name: Adhrit Ravichandran
@@ -107,6 +104,6 @@ Currently, there are 15 supported surrogate models (@Blackman:2015pia, @OShaughn
 
 # Acknowledgements
 
-We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Kevin Barkett, Mike Boyle, Collin Capano, Dwyer Deighan, Raffi Enficiaud, Oliver Jennrich, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. ``GWSurrogate`` has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496, PHY-2309301, and DMS-2309609.
+We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Kevin Barkett, Mike Boyle, Collin Capano, Dwyer Deighan, Raffi Enficiaud, Oliver Jennrich, Gaurav Khanna, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. ``GWSurrogate`` has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496, PHY-2309301, and DMS-2309609.
 
 # References
