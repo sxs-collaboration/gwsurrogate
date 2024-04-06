@@ -28,7 +28,7 @@ authors:
   - name: Keefe Mitman
     orcid: 0000-0003-0276-3856
     affiliation: "7"
-  - name: Michael P\"urrer
+  - name: Michael Pürrer
     orcid: 0000-0002-3329-9788
     affiliation: "6"
   - name: Adhrit Ravichandran
