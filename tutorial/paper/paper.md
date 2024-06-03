@@ -104,6 +104,6 @@ Currently, there are 15 supported surrogate models (@Blackman:2015pia, @OShaughn
 
 # Acknowledgements
 
-We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Kevin Barkett, Mike Boyle, Collin Capano, Dwyer Deighan, Raffi Enficiaud, Oliver Jennrich, Gaurav Khanna, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. ``GWSurrogate`` has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496, PHY-2309301, and DMS-2309609.
+We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Kevin Barkett, Mike Boyle, Collin Capano, Dwyer Deighan, Raffi Enficiaud, Oliver Jennrich, Gaurav Khanna, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. ``GWSurrogate`` has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496, PHY-2309301, and DMS-2309609. This work was also supported in part by the Sherman Fairchild Foundation, by NSF Grants PHY-2207342 and OAC-2209655 at Cornell, and by NSF Grants PHY-2309211, PHY-2309231, and OAC-2209656 at Caltech.
 
 # References
