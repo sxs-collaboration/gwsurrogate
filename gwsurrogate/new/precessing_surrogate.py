@@ -1005,11 +1005,9 @@ Returns:
         self._check_unused_opts(precessing_opts)
 
         if ellMax is None:
-            #FIXME FIMXE
-            #ellMax = 4
-            ellMax = 2
+            ellMax = 4
         if ellMax > 4:
-            raise ValueError("NRSur7dq4 only allows ellMax<=4.")
+            raise ValueError(f"NRSur7dq4 only allows ellMax<=4, got ellMax={ellMax}")
 
         q, chiA0, chiB0 = x
 
