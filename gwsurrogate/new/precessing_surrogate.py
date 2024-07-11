@@ -3,9 +3,8 @@ A module for evaluating precessing surrogate models of gravitational waves
 from numerical relativity simulations of binary black hole mergers.
 
 
-NOTE: Currently, this code only works for the NRSur7dq4 model. Yet most
-of the routines are general purpose. The function _get_fit_settings
-provides settings for NRSur7dq4. A few other places may have hard-coded values.
+NOTE: Currently, this code only tested for the NRSur7dq4 model. Yet most
+of the routines are general purpose. A few places may have hard-coded values.
 
 NOTE: Many of these functions are borrowed from the NR7dq2 python package.
 """
@@ -152,41 +151,33 @@ coprecessing frame to the inertial frame.
 
 ###############################################################################
 # Functions related to fit evaluations
-
-def _get_fit_settings():
-    """
-     These are to rescale the mass ratio fit range
-     from [-0.01, np.log(4+0.01)] to [-1, 1]. The chi fits are already in
-     this range.
-
-
-     Values defined here are model-specific. These values are for NRSur7dq4.
-    """
-    q_fit_offset = -0.9857019407834238
-    q_fit_slope = 1.4298059216576398
-    q_max_bfOrder = 3
-    chi_max_bfOrder = 2
-    return q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder
-
-def _eval_scalar_fit(fit_data, fit_params):
+def _eval_scalar_fit(fit_data, fit_params, get_fit_settings):
     """ Evaluates a single scalar fit.
+
         fit_params should come from each surrogate model's
         self._get_fit_params()
+
+        get_fit_settings should come from each surrogate model's
+        self._get_fit_settings
     """
     q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder \
-        = _get_fit_settings()
+        = get_fit_settings()
     val = _utils.eval_fit(fit_data['bfOrders'], fit_data['coefs'], \
         fit_params, q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
     return val
 
-def _eval_vector_fit(fit_data, size, fit_params):
+def _eval_vector_fit(fit_data, size, fit_params, get_fit_settings):
     """ Evaluates a vector fit, where each element is a scalar fit.
+
         fit_params should come from each surrogate model's
         self._get_fit_params()
+
+        get_fit_settings should come from each surrogate model's
+        self._get_fit_settings
     """
     val = []
     for i in range(size):
-        val.append(_eval_scalar_fit(fit_data[i], fit_params))
+        val.append(_eval_scalar_fit(fit_data[i], fit_params, get_fit_settings))
     return np.array(val)
 
 ###############################################################################
@@ -217,14 +208,18 @@ prediction for:
 These time derivatives are given to the AB4 ODE solver.
     """
 
-    def __init__(self, h5file, get_fit_params):
+    def __init__(self, h5file, get_fit_params, get_fit_settings):
         """h5file is a h5py.File containing the surrogate data
 
         get_fit_params is a function that takes a numpy array x and returns
-        the fit  parameters are used to evaluate the surrogate fits."""
+        the fit  parameters are used to evaluate the surrogate fits.
+        
+        get_fit_settings is a function that provides information about
+        model-specific surrogate fits."""
         self.t = h5file['t_ds'][()]
 
         self._get_fit_params = get_fit_params
+        self._get_fit_settings = get_fit_settings
 
         self.fit_data = []
         for i in range(len(self.t)):
@@ -274,10 +269,10 @@ These time derivatives are given to the AB4 ODE solver.
 
         # Evaluate fits
         data = self.fit_data[i0]
-        ooxy_coorb = _eval_vector_fit(data['omega_orb'], 2, fit_params)
-        omega = _eval_scalar_fit(data['omega'], fit_params)
-        cAdot_coorb = _eval_vector_fit(data['chiA'], 3, fit_params)
-        cBdot_coorb = _eval_vector_fit(data['chiB'], 3, fit_params)
+        ooxy_coorb = _eval_vector_fit(data['omega_orb'], 2, fit_params, self._get_fit_settings)
+        omega = _eval_scalar_fit(data['omega'], fit_params, self._get_fit_settings)
+        cAdot_coorb = _eval_vector_fit(data['chiA'], 3, fit_params, self._get_fit_settings)
+        cBdot_coorb = _eval_vector_fit(data['chiB'], 3, fit_params, self._get_fit_settings)
 
         # Do rotations to the coprecessing frame, find dqdt, and append
         dydt = _utils.assemble_dydt(y, ooxy_coorb, omega,
@@ -311,7 +306,7 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
     def get_omega(self, i0, q, y):
         x = _utils.get_ds_fit_x(y, q)
         fit_params = self._get_fit_params(x)
-        omega = _eval_scalar_fit(self.fit_data[i0]['omega'], fit_params)
+        omega = _eval_scalar_fit(self.fit_data[i0]['omega'], fit_params, self._get_fit_settings)
         return omega
 
     def _get_t_from_omega(self, omega_ref, q, chiA0, chiB0, init_orbphase,
@@ -691,13 +686,18 @@ def _assemble_mode_pair(rep, rem, imp, imm):
 class CoorbitalWaveformSurrogate:
     """This surrogate models the waveform in the coorbital frame."""
 
-    def __init__(self, h5file, get_fit_params):
+    def __init__(self, h5file, get_fit_params, get_fit_settings):
         """h5file is a h5py.File containing the surrogate data
 
         get_fit_params is a function that takes a numpy array x and returns
-        the fit  parameters are used to evaluate the surrogate fits."""
+        the fit  parameters are used to evaluate the surrogate fits.
+        
+        
+        get_fit_settings is a function that provides information about
+        model-specific surrogate fits"""
 
         self._get_fit_params = get_fit_params
+        self._get_fit_settings = get_fit_settings
 
         self.ellMax = 2
         while 'hCoorb_%s_%s_Re+'%(self.ellMax+1, self.ellMax+1) in h5file.keys():
@@ -764,7 +764,7 @@ ellMax: The maximum ell mode to evaluate.
                 }
             x = np.append(q, np.append(chiA[ni], chiB[ni]))
             fit_params = self._get_fit_params(x)
-            nodes.append(_eval_scalar_fit(fit_data, fit_params))
+            nodes.append(_eval_scalar_fit(fit_data, fit_params, self._get_fit_settings))
 
         return np.array(nodes).dot(data['EI_basis'])
 
@@ -819,17 +819,19 @@ A wrapper class for the precessing surrogate models.
 See the __call__ method on how to evaluate waveforms.
     """
 
-    def __init__(self, filename, get_fit_params):
+    def __init__(self, filename, get_fit_params, get_fit_settings):
         """
 Loads the surrogate model data.
 
 filename: The hdf5 file containing the surrogate data.
 get_fit_params: A function that takes a numpy array x and returns the
                 parameters used by surrogate fits
+get_fit_settings: A function that provides information about
+                  model-specific surrogate fits
         """
         h5file = h5py.File(filename, 'r')
-        self.dynamics_sur = DynamicsSurrogate(h5file,get_fit_params)
-        self.coorb_sur = CoorbitalWaveformSurrogate(h5file,get_fit_params)
+        self.dynamics_sur = DynamicsSurrogate(h5file,get_fit_params,get_fit_settings)
+        self.coorb_sur = CoorbitalWaveformSurrogate(h5file,get_fit_params,get_fit_settings)
         self.t_coorb = self.coorb_sur.t
         self.tds = np.append(self.dynamics_sur.t[0:6:2], \
             self.dynamics_sur.t[6:])
