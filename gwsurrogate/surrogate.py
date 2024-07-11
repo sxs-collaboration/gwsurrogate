@@ -2435,7 +2435,35 @@ See the __call__ method on how to evaluate waveforms.
         passed to self._sur_dimless() in the __call__ function of this class.
         See NRHybSur3dq8 for an example.
         """
-        sur = precessing_surrogate.PrecessingSurrogate(self.h5filename)
+
+        # needed to convert user input x to parameters used by surrogate fits
+        def get_fit_params(x):
+            """ Converts from x=[q, chi1x, chi1y, chi1z, chi2x, chi2y, chi2z]
+                to x = [np.log(q), chi1x, chi1y, chiHat, chi2x, chi2y, chi_a]
+                chiHat is defined in Eq.(3) of 1508.07253.
+                chi_a = (chi1 - chi2)/2.
+                Both chiHat and chi_a always lie in range [-1, 1].
+            """
+
+            x = np.copy(x)
+            print("using new git fit params")
+
+            q = float(x[0])
+            chi1z = float(x[3])
+            chi2z = float(x[6])
+            eta = q/(1.+q)**2
+            chi_wtAvg = (q*chi1z+chi2z)/(1+q)
+            chiHat = (chi_wtAvg - 38.*eta/113.*(chi1z + chi2z)) \
+                /(1. - 76.*eta/113.)
+            chi_a = (chi1z - chi2z)/2.
+
+            x[0] = np.log(q)
+            x[3] = chiHat
+            x[6] = chi_a
+
+            return x
+
+        sur = precessing_surrogate.PrecessingSurrogate(self.h5filename,get_fit_params)
         return sur
 
     def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,

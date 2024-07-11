@@ -168,34 +168,10 @@ def _get_fit_settings():
     chi_max_bfOrder = 2
     return q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder
 
-def _get_fit_params(x):
-    """ Converts from x=[q, chi1x, chi1y, chi1z, chi2x, chi2y, chi2z]
-        to x = [np.log(q), chi1x, chi1y, chiHat, chi2x, chi2y, chi_a]
-        chiHat is defined in Eq.(3) of 1508.07253.
-        chi_a = (chi1 - chi2)/2.
-        Both chiHat and chi_a always lie in range [-1, 1].
-    """
-
-    x = np.copy(x)
-
-    q = float(x[0])
-    chi1z = float(x[3])
-    chi2z = float(x[6])
-    eta = q/(1.+q)**2
-    chi_wtAvg = (q*chi1z+chi2z)/(1+q)
-    chiHat = (chi_wtAvg - 38.*eta/113.*(chi1z + chi2z)) \
-        /(1. - 76.*eta/113.)
-    chi_a = (chi1z - chi2z)/2.
-
-    x[0] = np.log(q)
-    x[3] = chiHat
-    x[6] = chi_a
-
-    return x
-
 def _eval_scalar_fit(fit_data, fit_params):
     """ Evaluates a single scalar fit.
-        fit_params should come from _get_fit_params()
+        fit_params should come from each surrogate model's
+        self._get_fit_params()
     """
     q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder \
         = _get_fit_settings()
@@ -205,7 +181,8 @@ def _eval_scalar_fit(fit_data, fit_params):
 
 def _eval_vector_fit(fit_data, size, fit_params):
     """ Evaluates a vector fit, where each element is a scalar fit.
-        fit_params should come from _get_fit_params()
+        fit_params should come from each surrogate model's
+        self._get_fit_params()
     """
     val = []
     for i in range(size):
@@ -240,10 +217,14 @@ prediction for:
 These time derivatives are given to the AB4 ODE solver.
     """
 
-    def __init__(self, h5file):
-        """h5file is a h5py.File containing the surrogate data"""
+    def __init__(self, h5file, get_fit_params):
+        """h5file is a h5py.File containing the surrogate data
+
+        get_fit_params is a function that takes a numpy array x and returns
+        the fit  parameters are used to evaluate the surrogate fits."""
         self.t = h5file['t_ds'][()]
 
+        self._get_fit_params = get_fit_params
 
         self.fit_data = []
         for i in range(len(self.t)):
@@ -289,7 +270,7 @@ These time derivatives are given to the AB4 ODE solver.
     def get_time_deriv_from_index(self, i0, q, y):
         # Setup fit variables
         x = _utils.get_ds_fit_x(y, q)
-        fit_params = _get_fit_params(x)
+        fit_params = self._get_fit_params(x)
 
         # Evaluate fits
         data = self.fit_data[i0]
@@ -329,7 +310,7 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
 
     def get_omega(self, i0, q, y):
         x = _utils.get_ds_fit_x(y, q)
-        fit_params = _get_fit_params(x)
+        fit_params = self._get_fit_params(x)
         omega = _eval_scalar_fit(self.fit_data[i0]['omega'], fit_params)
         return omega
 
@@ -696,21 +677,6 @@ def _extract_component_data(h5_group):
                       for i in range(len(data['nodeIndices']))]
     return data
 
-def _eval_comp(data, q, chiA, chiB):
-    nodes = []
-    for orders, coefs, ni in zip(data['orders'], data['coefs'],
-            data['nodeIndices']):
-
-        fit_data = {
-            'bfOrders': orders,
-            'coefs': coefs,
-            }
-        x = np.append(q, np.append(chiA[ni], chiB[ni]))
-        fit_params = _get_fit_params(x)
-        nodes.append(_eval_scalar_fit(fit_data, fit_params))
-
-    return np.array(nodes).dot(data['EI_basis'])
-
 def _assemble_mode_pair(rep, rem, imp, imm):
     hplus = rep + 1.j*imp
     hminus = rem + 1.j*imm
@@ -725,7 +691,14 @@ def _assemble_mode_pair(rep, rem, imp, imm):
 class CoorbitalWaveformSurrogate:
     """This surrogate models the waveform in the coorbital frame."""
 
-    def __init__(self, h5file):
+    def __init__(self, h5file, get_fit_params):
+        """h5file is a h5py.File containing the surrogate data
+
+        get_fit_params is a function that takes a numpy array x and returns
+        the fit  parameters are used to evaluate the surrogate fits."""
+
+        self._get_fit_params = get_fit_params
+
         self.ellMax = 2
         while 'hCoorb_%s_%s_Re+'%(self.ellMax+1, self.ellMax+1) in h5file.keys():
             self.ellMax += 1
@@ -765,20 +738,35 @@ ellMax: The maximum ell mode to evaluate.
 
         for ell in range(2, ellMax+1):
             # m=0 is different
-            re = _eval_comp(self.data['%s_0_real'%(ell)], q, chiA, chiB)
-            im = _eval_comp(self.data['%s_0_imag'%(ell)], q, chiA, chiB)
+            re = self._eval_comp(self.data['%s_0_real'%(ell)], q, chiA, chiB)
+            im = self._eval_comp(self.data['%s_0_imag'%(ell)], q, chiA, chiB)
             modes[ell*(ell+1) - 4] = re + 1.j*im
 
             for m in range(1, ell+1):
-                rep = _eval_comp(self.data['%s_%s_Re+'%(ell, m)], q, chiA,chiB)
-                rem = _eval_comp(self.data['%s_%s_Re-'%(ell, m)], q, chiA,chiB)
-                imp = _eval_comp(self.data['%s_%s_Im+'%(ell, m)], q, chiA,chiB)
-                imm = _eval_comp(self.data['%s_%s_Im-'%(ell, m)], q, chiA,chiB)
+                rep = self._eval_comp(self.data['%s_%s_Re+'%(ell, m)], q, chiA,chiB)
+                rem = self._eval_comp(self.data['%s_%s_Re-'%(ell, m)], q, chiA,chiB)
+                imp = self._eval_comp(self.data['%s_%s_Im+'%(ell, m)], q, chiA,chiB)
+                imm = self._eval_comp(self.data['%s_%s_Im-'%(ell, m)], q, chiA,chiB)
                 h_posm, h_negm = _assemble_mode_pair(rep, rem, imp, imm)
                 modes[ell*(ell+1) - 4 + m] = h_posm
                 modes[ell*(ell+1) - 4 - m] = h_negm
 
         return modes
+    
+    def _eval_comp(self, data, q, chiA, chiB):
+        nodes = []
+        for orders, coefs, ni in zip(data['orders'], data['coefs'],
+                data['nodeIndices']):
+
+            fit_data = {
+                'bfOrders': orders,
+                'coefs': coefs,
+                }
+            x = np.append(q, np.append(chiA[ni], chiB[ni]))
+            fit_params = self._get_fit_params(x)
+            nodes.append(_eval_scalar_fit(fit_data, fit_params))
+
+        return np.array(nodes).dot(data['EI_basis'])
 
 ##############################################################################
 # Utility functions
@@ -831,15 +819,17 @@ A wrapper class for the precessing surrogate models.
 See the __call__ method on how to evaluate waveforms.
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, get_fit_params):
         """
 Loads the surrogate model data.
 
-filename: The hdf5 file containing the surrogate data."
+filename: The hdf5 file containing the surrogate data.
+get_fit_params: A function that takes a numpy array x and returns the
+                parameters used by surrogate fits
         """
         h5file = h5py.File(filename, 'r')
-        self.dynamics_sur = DynamicsSurrogate(h5file)
-        self.coorb_sur = CoorbitalWaveformSurrogate(h5file)
+        self.dynamics_sur = DynamicsSurrogate(h5file,get_fit_params)
+        self.coorb_sur = CoorbitalWaveformSurrogate(h5file,get_fit_params)
         self.t_coorb = self.coorb_sur.t
         self.tds = np.append(self.dynamics_sur.t[0:6:2], \
             self.dynamics_sur.t[6:])
