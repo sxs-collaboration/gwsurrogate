@@ -2446,7 +2446,6 @@ See the __call__ method on how to evaluate waveforms.
             """
 
             x = np.copy(x)
-            print("using new git fit params")
 
             q = float(x[0])
             chi1z = float(x[3])
@@ -2462,8 +2461,25 @@ See the __call__ method on how to evaluate waveforms.
             x[6] = chi_a
 
             return x
+        
+        # needed to evaluate model-specific surrogate fits
+        def get_fit_settings():
+            """
+            These are to rescale the mass ratio fit range
+            from [-0.01, np.log(4+0.01)] to [-1, 1]. The chi fits are already in
+            this range.
 
-        sur = precessing_surrogate.PrecessingSurrogate(self.h5filename,get_fit_params)
+
+            Values defined here are model-specific. These values are for NRSur7dq4.
+            """
+
+            q_fit_offset = -0.9857019407834238
+            q_fit_slope = 1.4298059216576398
+            q_max_bfOrder = 3
+            chi_max_bfOrder = 2
+            return q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder
+
+        sur = precessing_surrogate.PrecessingSurrogate(self.h5filename,get_fit_params,get_fit_settings)
         return sur
 
     def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,
