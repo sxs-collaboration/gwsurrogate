@@ -45,6 +45,7 @@ from gwsurrogate.new.surrogate import ParamDim, ParamSpace
 
 import warnings
 import os
+import copy
 
 from .new import surrogate as new_surrogate
 from .new import precessing_surrogate
@@ -1970,6 +1971,11 @@ class SurrogateEvaluator(object):
 
         chiA0 = np.array(chiA0)
         chiB0 = np.array(chiB0)
+
+        # copy dictionary input to avoid modifying them
+        precessing_opts = copy.deepcopy(precessing_opts)
+        tidal_opts = copy.deepcopy(tidal_opts)
+        par_dict = copy.deepcopy(par_dict)
 
         # Sanity checks
         if not skip_param_checks:
