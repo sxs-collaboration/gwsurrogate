@@ -208,18 +208,24 @@ prediction for:
 These time derivatives are given to the AB4 ODE solver.
     """
 
-    def __init__(self, h5file, get_fit_params, get_fit_settings):
+    def __init__(self, h5file, get_fit_params, get_fit_settings,
+                 omega_ref_max_model):
+        
         """h5file is a h5py.File containing the surrogate data
 
         get_fit_params is a function that takes a numpy array x and returns
         the fit  parameters are used to evaluate the surrogate fits.
         
         get_fit_settings is a function that provides information about
-        model-specific surrogate fits."""
+        model-specific surrogate fits.
+        
+        omega_ref_max_model is the maximium allowable reference dimensionless
+        orbital angular frequency supported by the surrogate model."""
         self.t = h5file['t_ds'][()]
 
         self._get_fit_params = get_fit_params
         self._get_fit_settings = get_fit_settings
+        self.omega_ref_max_model = omega_ref_max_model
 
         self.fit_data = []
         for i in range(len(self.t)):
@@ -312,9 +318,9 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
     def _get_t_from_omega(self, omega_ref, q, chiA0, chiB0, init_orbphase,
             init_quat):
 
-        if omega_ref > 0.201:
-            raise Exception("Got omega_ref = %0.4f > 0.2, too "
-                    "large for the NRSur7dq4 model!"%(omega_ref))
+        if omega_ref > self.omega_ref_max_model:
+            raise Exception("Got omega_ref = %0.4f > %0.4f, too "
+                    "large for the model!"%(omega_ref,self.omega_ref_max_model))
 
         y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
                 np.append(chiA0, chiB0))
@@ -819,7 +825,8 @@ A wrapper class for the precessing surrogate models.
 See the __call__ method on how to evaluate waveforms.
     """
 
-    def __init__(self, filename, get_fit_params, get_fit_settings):
+    def __init__(self, filename, get_fit_params, get_fit_settings,
+                 ellMax_model,omega_ref_max_model):
         """
 Loads the surrogate model data.
 
@@ -828,9 +835,20 @@ get_fit_params: A function that takes a numpy array x and returns the
                 parameters used by surrogate fits
 get_fit_settings: A function that provides information about
                   model-specific surrogate fits
+ellMax_model: The maximum ell mode supported by the surrogate model
+omega_ref_max_model: The maximium allowable reference dimensionless
+                     orbital angular frequency supported by the surrogate model
         """
-        h5file = h5py.File(filename, 'r')
-        self.dynamics_sur = DynamicsSurrogate(h5file,get_fit_params,get_fit_settings)
+        if isinstance(filename, h5py._hl.group.Group) or isinstance(filename, h5py._hl.files.File):
+            print("You have passed an h5py group or open file to PrecessingSurrogate. "+
+                  "Will load data from this group.")
+            h5file = filename
+        else:
+            h5file = h5py.File(filename, 'r')
+
+        self.ellMax_model = ellMax_model
+        self.omega_ref_max_model = omega_ref_max_model
+        self.dynamics_sur = DynamicsSurrogate(h5file,get_fit_params,get_fit_settings,omega_ref_max_model)
         self.coorb_sur = CoorbitalWaveformSurrogate(h5file,get_fit_params,get_fit_settings)
         self.t_coorb = self.coorb_sur.t
         self.tds = np.append(self.dynamics_sur.t[0:6:2], \
@@ -958,8 +976,8 @@ Returns:
 
         if ellMax is None:
             ellMax = 4
-        if ellMax > 4:
-            raise ValueError("NRSur7dq4 only allows ellMax<=4.")
+        if ellMax > self.ellMax_model:
+            raise ValueError("Model only allows ellMax<=%i."%self.ellMax_model)
 
         q, chiA0, chiB0 = x
 
