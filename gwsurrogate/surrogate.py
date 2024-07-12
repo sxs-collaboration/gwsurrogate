@@ -2472,11 +2472,11 @@ See the __call__ method on how to evaluate waveforms.
         def get_fit_settings():
             """
             These are to rescale the mass ratio fit range
-            from [-0.01, np.log(4+0.01)] to [-1, 1]. The chi fits are already in
-            this range.
+            from [-0.01, np.log(4+0.01)] to [-1, 1]. The chi fits are already
+            in this range.
 
 
-            Values defined here are model-specific. These values are for NRSur7dq4.
+            Values defined here are model-specific. These are for NRSur7dq4.
             """
 
             q_fit_offset = -0.9857019407834238
@@ -2485,7 +2485,13 @@ See the __call__ method on how to evaluate waveforms.
             chi_max_bfOrder = 2
             return q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder
 
-        sur = precessing_surrogate.PrecessingSurrogate(self.h5filename,get_fit_params,get_fit_settings)
+        # largest ell in the surrogate
+        ellMax_NRSur7dq4 = 4
+        # max allowable reference dimensionless orbital angular frequency
+        omega_ref_max_NRSur7dq4 = 0.201
+
+        sur = precessing_surrogate.PrecessingSurrogate(self.h5filename,
+                 get_fit_params,get_fit_settings,ellMax_NRSur7dq4,omega_ref_max_NRSur7dq4)
         return sur
 
     def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,
