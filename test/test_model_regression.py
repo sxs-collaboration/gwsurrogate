@@ -94,7 +94,7 @@ rtols = {'NRHybSur3dq8':  2.e-5,
 surrogate_old_interface = ["SpEC_q1_10_NoSpin","EOBNRv2_tutorial","EOBNRv2","SpEC_q1_10_NoSpin_linear","EMRISur1dq1e4","BHPTNRSur1dq1e4"]
 
 # news loader class
-surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal","NRSur7dq4","NRHybSur2dq15","NRHybSur3dq8_CCE"]
+surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal","NRSur7dq4","NRHybSur2dq15","NRHybSur3dq8_CCE","SEOBNRv4PHMSur"]
 
 # Most models are randomly sampled, but in some cases its useful to provide 
 # test points to activate specific code branches. This is done by mapping 
@@ -238,7 +238,8 @@ def test_model_regression(generate_regression_data=False):
     print("hash of model_regression_data.h5 is ",regression_hash)
 
   # remove models if you don't have them
-  dont_test = [#"NRHybSur2dq15",
+  dont_test = ["SEOBNRv4PHMSur",
+               #"NRHybSur2dq15",
                #"BHPTNRSur1dq1e4",
                #"EMRISur1dq1e4",
                #"NRHybSur3dq8_CCE",
