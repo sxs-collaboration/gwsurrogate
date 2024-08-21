@@ -150,6 +150,18 @@ _surrogate_world['NRSur7dq4'] = \
   '''https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.1.033015''',
   '8e033ba4e4da1534b3738ae51549fb98')
 
+_surrogate_world['SEOBNRv4PHMSur'] = \
+  surrogate_info(\
+  'SEOBNRv4PHMSur.h5',
+  '''Surrogate model for the time domain precessing EOB waveform model
+  SEOBNRv4PHM (). The model is valid for mass ratio <= 20 and spin
+  magnitudes upto 0.8. Extrapolation for spins works reasonably well till
+  0.9 and maybe till 0.95 for q < 5. The model has (2,2), (2,1), (3,3),
+  (4,4) and (5,5) modes in coorbital frame. So one can choose ellMax <=5
+  for inertial frame waveforms. Surrogate is 5000M long.''',
+  '''https://arxiv.org/abs/2203.00381''',
+  '2ce450b06ca29d24d538dc86e81a31d4')
+
 _surrogate_world['NRHybSur3dq8Tidal'] = \
   surrogate_info(\
   'https://zenodo.org/record/3348115/files/NRHybSur3dq8.h5',

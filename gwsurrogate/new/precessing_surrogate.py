@@ -714,21 +714,29 @@ class CoorbitalWaveformSurrogate:
         self.data = {}
         self.mode_list = []
         for ell in range(2, self.ellMax+1):
-            # m=0 is different
-            self.mode_list.append( (ell,0) )
-            for reim in ['real', 'imag']:
-                group = h5file['hCoorb_%s_0_%s'%(ell, reim)]
-                self.data['%s_0_%s'%(ell, reim)] \
-                        = _extract_component_data(group)
+            # m=0 has a different file naming convention
+            # If there are no modes, skip. Assumes if group "*_real" exists, then 
+            # "*_imag" exists as well.
+            if self._check_h5group_exists(h5file,'hCoorb_%s_0_real'%ell): 
+                #print("Loading (ell=%s,0) mode"%(ell))
+                self.mode_list.append( (ell,0) )
+                for reim in ['real', 'imag']:
+                    group = h5file['hCoorb_%s_0_%s'%(ell, reim)]
+                    self.data['%s_0_%s'%(ell, reim)] \
+                            = _extract_component_data(group)
 
             for m in range(1, ell+1):
-                self.mode_list.append( (ell,m) )
-                self.mode_list.append( (ell,-m) )
-                for reim in ['Re', 'Im']:
-                    for pm in ['+', '-']:
-                        group = h5file['hCoorb_%s_%s_%s%s'%(ell, m, reim, pm)]
-                        tmp_data = _extract_component_data(group)
-                        self.data['%s_%s_%s%s'%(ell, m, reim, pm)] = tmp_data
+                # If there are no modes, skip. Assumes if group "*_Re+" exists, then
+                # "*_Re-", "*_Im+", and "_Im-" exists as well.
+                if self._check_h5group_exists(h5file,'hCoorb_%s_%s_Re+'%(ell, m)): 
+                    #print("Loading (ell=%s,m=\pm%s) modes"%(ell, m))
+                    self.mode_list.append( (ell,m) )
+                    self.mode_list.append( (ell,-m) )
+                    for reim in ['Re', 'Im']:
+                        for pm in ['+', '-']:
+                            group = h5file['hCoorb_%s_%s_%s%s'%(ell, m, reim, pm)]
+                            tmp_data = _extract_component_data(group)
+                            self.data['%s_%s_%s%s'%(ell, m, reim, pm)] = tmp_data
 
 
     def __call__(self, q, chiA, chiB, ellMax=4):
@@ -743,19 +751,30 @@ ellMax: The maximum ell mode to evaluate.
         modes = 1.j*np.zeros((nmodes, len(self.t)))
 
         for ell in range(2, ellMax+1):
-            # m=0 is different
-            re = self._eval_comp(self.data['%s_0_real'%(ell)], q, chiA, chiB)
-            im = self._eval_comp(self.data['%s_0_imag'%(ell)], q, chiA, chiB)
-            modes[ell*(ell+1) - 4] = re + 1.j*im
+            
+            # NOTE: modes is populated with zeros, so skipping means 
+            #       "set to zero". This is required for inertial_waveform_modes,
+            #       which maps from coorb to inertial frame modes. 
+            # m=0 has a different evaluation pattern
+            if (ell,0) in self.mode_list:
+                re = self._eval_comp(self.data['%s_0_real'%(ell)], q, chiA, chiB)
+                im = self._eval_comp(self.data['%s_0_imag'%(ell)], q, chiA, chiB)
+                modes[ell*(ell+1) - 4] = re + 1.j*im
+                #print("evaluation ell=%s, m=0"%ell)
 
+            # NOTE: modes is populated with zeros, so skipping means 
+            # "set to zero". This is required for inertial_waveform_modes,
+            # which maps from coorb to inertial frame modes. 
             for m in range(1, ell+1):
-                rep = self._eval_comp(self.data['%s_%s_Re+'%(ell, m)], q, chiA,chiB)
-                rem = self._eval_comp(self.data['%s_%s_Re-'%(ell, m)], q, chiA,chiB)
-                imp = self._eval_comp(self.data['%s_%s_Im+'%(ell, m)], q, chiA,chiB)
-                imm = self._eval_comp(self.data['%s_%s_Im-'%(ell, m)], q, chiA,chiB)
-                h_posm, h_negm = _assemble_mode_pair(rep, rem, imp, imm)
-                modes[ell*(ell+1) - 4 + m] = h_posm
-                modes[ell*(ell+1) - 4 - m] = h_negm
+                if (ell,m) in self.mode_list:                
+                    rep = self._eval_comp(self.data['%s_%s_Re+'%(ell, m)], q, chiA,chiB)
+                    rem = self._eval_comp(self.data['%s_%s_Re-'%(ell, m)], q, chiA,chiB)
+                    imp = self._eval_comp(self.data['%s_%s_Im+'%(ell, m)], q, chiA,chiB)
+                    imm = self._eval_comp(self.data['%s_%s_Im-'%(ell, m)], q, chiA,chiB)
+                    h_posm, h_negm = _assemble_mode_pair(rep, rem, imp, imm)
+                    modes[ell*(ell+1) - 4 + m] = h_posm
+                    modes[ell*(ell+1) - 4 - m] = h_negm
+                    #print("evaluation ell=%s, m=%s"%(ell,m))
 
         return modes
     
@@ -773,6 +792,20 @@ ellMax: The maximum ell mode to evaluate.
             nodes.append(_eval_scalar_fit(fit_data, fit_params, self._get_fit_settings))
 
         return np.array(nodes).dot(data['EI_basis'])
+    
+    def _check_h5group_exists(self, h5file, group_name):
+        """ Check if h5 group GROUP_NAME has valid data to load. """
+
+        try:
+            group_keys = h5file[group_name].keys()
+            if len(group_keys) == 0: # no data in group
+                return False
+            else:
+                return True
+        except KeyError: # cannot open group -- doesn't exist
+            return False
+
+
 
 ##############################################################################
 # Utility functions
@@ -840,8 +873,6 @@ omega_ref_max_model: The maximium allowable reference dimensionless
                      orbital angular frequency supported by the surrogate model
         """
         if isinstance(filename, h5py._hl.group.Group) or isinstance(filename, h5py._hl.files.File):
-            print("You have passed an h5py group or open file to PrecessingSurrogate. "+
-                  "Will load data from this group.")
             h5file = filename
         else:
             h5file = h5py.File(filename, 'r')
@@ -975,7 +1006,7 @@ Returns:
         self._check_unused_opts(precessing_opts)
 
         if ellMax is None:
-            ellMax = 4
+            ellMax = self.ellMax_model
         if ellMax > self.ellMax_model:
             raise ValueError("Model only allows ellMax<=%i."%self.ellMax_model)
 
@@ -1104,3 +1135,197 @@ Returns:
             dynamics = None
 
         return timesM, h, dynamics
+
+class PrecessingSurrogateMultiDomain(object):
+    """
+A wrapper class for multiple precessing surrogate models
+built over multiple paramater subdomains domains.
+
+See the __call__ method on how to evaluate waveforms.
+    """
+
+    def __init__(self, filename, get_fit_params, get_fit_settings,
+                 ellMax_model,omega_ref_max_model, get_subdomain_ID, 
+                 num_subdomains):
+        """Loads the surrogate model data.
+
+filename: The hdf5 file containing the surrogate data.
+get_fit_params: A function that takes a numpy array x and returns the
+                parameters used by surrogate fits
+get_fit_settings: A function that provides information about
+                  model-specific surrogate fits
+ellMax_model: The maximum ell mode supported by the surrogate model
+omega_ref_max_model: The maximium allowable reference dimensionless
+                     orbital angular frequency supported by the surrogate model
+get_subdomain_ID: A function that takes the evaluation point (q, chi1z, chi2z) and returns
+                  the surrogate's subdomain ID number.
+num_subdomains: The total number of subdomains in the surrogate model.
+        """
+
+        self.precessing_sur_dict = {}
+
+        h5fl = h5py.File(filename, 'r')
+
+        self.ellMax_model = ellMax_model
+        self.omega_ref_max_model = omega_ref_max_model
+        self.num_subdomains = num_subdomains
+
+        # Create a list of functions with each function capturing the current value of `i`
+        # Each function in this list provides the fit settings for a specific subdomain
+        self._get_fit_settings_list = [lambda i=i: get_fit_settings(i) for i in range(14)]
+        self._get_subdomain_ID = get_subdomain_ID
+
+        assert(len(h5fl.keys())==self.num_subdomains)
+        for case_id, k in enumerate(h5fl.keys()):
+            domain_name = 'dom_{}'.format(case_id)
+            h5file = h5fl[domain_name]
+            self.precessing_sur_dict[case_id] = PrecessingSurrogate(h5file,get_fit_params,self._get_fit_settings_list[case_id],ellMax_model,omega_ref_max_model)
+
+        self.mode_list = self.precessing_sur_dict[0].coorb_sur.mode_list
+        
+        # check each subdomain has the same common data
+        common_t_coorb = True
+        common_tds     = True
+        coorb_t_dom0   = self.precessing_sur_dict[0].coorb_sur.t
+        tds_dom0       = np.append(self.precessing_sur_dict[0].dynamics_sur.t[0:6:2],
+                          self.precessing_sur_dict[0].dynamics_sur.t[6:])
+        for subdomain_id in range(self.num_subdomains):
+            assert( self.mode_list == self.precessing_sur_dict[subdomain_id].coorb_sur.mode_list )
+    
+            try:
+                diff = coorb_t_dom0 - self.precessing_sur_dict[subdomain_id].coorb_sur.t
+                if np.max(np.abs(diff)) != 0:
+                    common_t_coorb = False
+            except ValueError: # different shapes -> different times
+                common_t_coorb = False
+
+            tmp = np.append(self.precessing_sur_dict[subdomain_id].dynamics_sur.t[0:6:2],
+                            self.precessing_sur_dict[subdomain_id].dynamics_sur.t[6:])
+            try:
+                diff = tds_dom0 - tmp
+                if np.max(np.abs(diff)) != 0:
+                    common_tds = False
+            except ValueError: # different shapes -> different times
+                common_tds = False
+
+        if common_t_coorb:
+            self.t_coorb = self.precessing_sur_dict[0].coorb_sur.t
+        else:
+            self.t_coorb = "Each subdomain has its own t_coorb"
+
+        if common_tds:
+            self.tds = np.append(self.precessing_sur_dict[0].dynamics_sur.t[0:6:2],
+                    self.precessing_sur_dict[0].dynamics_sur.t[6:])
+            self.t_0 = self.t_coorb[0]
+            self.t_f = self.t_coorb[-1]
+        else:
+            self.tds = "Each subdomain has its own tds"
+            self.t_0 = "Each subdomain has its own t_0"
+            self.t_f = "Each subdomain has its own t_f"
+
+    def get_dynamics(self, q, chiA0, chiB0, init_quat=None, \
+            init_orbphase=0.0, t_ref=None, omega_ref=None):
+        """Wrapper for self.dynamics_sur()"""
+
+        case_id = self._get_subdomain_ID(q, chiA0[2], chiB0[2])
+
+        quat_dyn, orbphase_dyn, chiA_copr_dyn, chiB_copr_dyn, t0 \
+            = self.precessing_sur_dict[case_id].dynamics_sur(q, chiA0, chiB0, init_orbphase=init_orbphase, \
+            init_quat=init_quat, t_ref=t_ref, omega_ref=omega_ref)
+        return quat_dyn, orbphase_dyn, chiA_copr_dyn, chiB_copr_dyn
+
+
+    def get_min_omega(q, chiA0, chiB0, init_quat=None, init_orbphase=0.0):
+
+        case_id = self._get_subdomain_ID(q, chiA0[2], chiB0[2])
+
+        y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
+                np.append(chiA0, chiB0))
+        if init_quat is not None:
+            y0[:4] = init_quat
+        return self.precessing_sur_dict[case_id].dynamics_sur.get_omega(0, q, y0)
+
+
+    def __call__(self, x, fM_low=None, fM_ref=None, dtM=None,
+            timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
+            precessing_opts=None, tidal_opts=None, par_dict=None):
+        """
+Evaluates a precessing surrogate model.
+
+
+Arguments:
+    x:  Parameters, x = q, chiA0, chiB0. Where,
+        q: The mass ratio mA/mB, where A (B) refers to the heavier BH.
+        chiA0, chiB0:  The initial dimensionless spins given in the
+                coprecessing frame. They should be length 3 lists or numpy
+                arrays.  These are $\\vec{\chi_{1,2}^\mathrm{copr}(t_0)$ in
+                THE PAPER.
+
+        chiA0: The chiA vector at the reference time.
+        chiB0: The chiB vector at the reference time.
+        The above spins use lalsimulation conventions, where
+            \chi_z = \chi \cdot \hat{L}, where L is the orbital angular
+                momentum vector at the epoch.
+            \chi_x = \chi \cdot \hat{n}, where n = body2 -> body1 is the
+                separation vector at the epoch. body1 is the heavier body.
+            \chi_y = \chi \cdot \hat{L \cross n}.
+            These spin components are frame-independent as they are
+            defined using vector inner products. This is equivalent to
+            specifying the spins in the coorbital frame used in the
+            surrogate papers.
+
+    fM_low:     Initial frequency in dimensionless units. Currently only
+                fM_low = 0 is allowed, in which case the full surrogate is
+                returned.
+    fM_ref:     Reference frequency in dimensionless units, at which the
+                reference frame and spins are defined.
+    dtM:        Time step in dimensionless units.
+    timesM:     Dimensionless times at which the output should be sampled.
+                Give at most one of dtM and timesM. If neither is given
+                returns the results sampled at self.t_coorb.
+    dfM, freqsM: These should be None, as we only have time domain models so
+                far.
+    mode_list:  This should be None, use ellMax instead.
+    ellMax:     The maximum ell modes to use. The NRSur7dq4 surrogate model
+                contains modes up to L=4. Using ellMax=2 or ellMax=3 reduces
+                the evaluation time.
+
+    precessing_opts:
+                A dictionary containing optional parameters for a precessing
+                surrogate model. Default: None.
+                Allowed keys are:
+                init_orbphase: The orbital phase in the coprecessing frame
+                    at the reference epoch.
+                    Default: None, in which case the coorbital frame and
+                    coprecessing frame are the same.
+                init_quat: The unit quaternion (length 4 vector) giving the
+                    rotation from the coprecessing frame to the inertial frame
+                    at the reference epoch.
+                    Default: None, in which case the coprecessing frame is the
+                    same as the inertial frame.
+                return_dynamics:
+                    Return the frame dynamics and spin evolution along with
+                    the waveform. Default: False.
+                Example: precessing_opts = {
+                                    'init_orbphase': 0,
+                                    'init_quat': [1,0,0,0],
+                                    'return_dynamics': True
+                                    }
+    tidal_opts: Should be None for this model.
+    par_dict: Should be None for this model.
+
+
+Returns:
+    domain, h, dynamics.
+        """
+
+        # NOTE: checking input correctness is handled by the precessing surrogate
+        #       objects in the dictionary self.precessing_sur_dict
+
+        q, chiA0, chiB0 = x
+
+        case_id = self._get_subdomain_ID(q, chiA0[2], chiB0[2])
+        
+        return self.precessing_sur_dict[case_id](x, fM_low=fM_low, fM_ref=fM_ref, dtM=dtM,
+            timesM=timesM, dfM=dfM, freqsM=freqsM, mode_list=mode_list, ellMax=ellMax,
+            precessing_opts=precessing_opts, tidal_opts=tidal_opts, par_dict=par_dict)
