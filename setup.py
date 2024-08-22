@@ -79,7 +79,7 @@ setup(
     long_description=open("README.md").read(),
     # will start new downloads if these are installed in a non-standard location
     install_requires=[
-        "numpy",
+        "numpy<2.0",
         "scipy",
         "h5py",
         "scikit-learn",
