@@ -1157,7 +1157,7 @@ get_fit_settings: A function that provides information about
 ellMax_model: The maximum ell mode supported by the surrogate model
 omega_ref_max_model: The maximium allowable reference dimensionless
                      orbital angular frequency supported by the surrogate model
-get_subdomain_ID: A function that takes the evaluation point (q, chi1z, chi2z) and returns
+get_subdomain_ID: A function that takes the evaluation point (q, chiA0, chiB0) and returns
                   the surrogate's subdomain ID number.
 num_subdomains: The total number of subdomains in the surrogate model.
         """
@@ -1227,7 +1227,7 @@ num_subdomains: The total number of subdomains in the surrogate model.
             init_orbphase=0.0, t_ref=None, omega_ref=None):
         """Wrapper for self.dynamics_sur()"""
 
-        case_id = self._get_subdomain_ID(q, chiA0[2], chiB0[2])
+        case_id = self._get_subdomain_ID(q, chiA0, chiB0)
 
         quat_dyn, orbphase_dyn, chiA_copr_dyn, chiB_copr_dyn, t0 \
             = self.precessing_sur_dict[case_id].dynamics_sur(q, chiA0, chiB0, init_orbphase=init_orbphase, \
@@ -1237,7 +1237,7 @@ num_subdomains: The total number of subdomains in the surrogate model.
 
     def get_min_omega(q, chiA0, chiB0, init_quat=None, init_orbphase=0.0):
 
-        case_id = self._get_subdomain_ID(q, chiA0[2], chiB0[2])
+        case_id = self._get_subdomain_ID(q, chiA0, chiB0)
 
         y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
                 np.append(chiA0, chiB0))
@@ -1324,7 +1324,7 @@ Returns:
 
         q, chiA0, chiB0 = x
 
-        case_id = self._get_subdomain_ID(q, chiA0[2], chiB0[2])
+        case_id = self._get_subdomain_ID(q, chiA0, chiB0)
         
         return self.precessing_sur_dict[case_id](x, fM_low=fM_low, fM_ref=fM_ref, dtM=dtM,
             timesM=timesM, dfM=dfM, freqsM=freqsM, mode_list=mode_list, ellMax=ellMax,

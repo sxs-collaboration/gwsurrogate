@@ -2616,8 +2616,18 @@ In the __call__ method, x must have format x = [q, chi1, chi2].
             chi_max_bfOrder = 2
             return q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder
 
-        def get_subdomain_ID(q, chi1z, chi2z):
-            """ Get the surrogate subdomain ID for evaluation point (q, chi1z, chi2z)"""
+        def get_subdomain_ID(q, chiA0, chiB0):
+            """ Get the surrogate subdomain ID for evaluation point in
+             parameter space. 
+             
+            INPUT
+            =====
+            q :         Mass ratio, mA/mB >= 1.
+            chiA0:      Dimensionless spin vector of the heavier black hole.
+            chiB0:      Dimensionless spin vector of the lighter black hole.
+            """
+            chi1z = chiA0[2]
+            chi2z = chiB0[2]
             chi_eff = (q*chi1z + chi2z) / (q + 1.)
             # print("q, chi_eff: ", q, chi_eff)
             if q <= 2.:
