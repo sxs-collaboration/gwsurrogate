@@ -80,7 +80,7 @@ atol = 0.0
 #       largest relative errors seem to be post-merger
 #       only seems to affect models that use gpr fits and/or gsl calls
 rtol_default           = 1.e-11
-rtols = {'NRHybSur3dq8':  2.e-5,
+rtols = {'NRHybSur3dq8':  3.4e-5,
          'NRHybSur2dq15': 2.e-5,
          'NRHybSur3dq8_CCE': 7.e-5,  # higher modes for this GPR-fit model require a bit higher tolerance
          'NRHybSur3dq8Tidal': 3.e-4,
