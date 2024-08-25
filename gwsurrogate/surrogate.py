@@ -2528,6 +2528,23 @@ NR waveforms in that range.
 
 See the __call__ method on how to evaluate waveforms.
 In the __call__ method, x must have format x = [q, chi1, chi2].
+
+
+IMPORTANT NOTES:
+===============
+
+The original SEOBNRv4PHM model (arXiv:2004.09442) parameterizes the 
+direction of the BH spins relative to the Newtonian orbital angular momentum
+vector of the binary in the co-precessing frame. The SEOBNRv4PHMSur model, 
+however, parameterizes the spins relative to the direction where the radiation
+is always strongest along the z-axis, and the (ell,m)= (2, ±2) modes are dominant.
+This is the same convention used in the NRSur7dq4 surrogate model.
+
+These two frames are different for non-precessing systems. Hence, specifying
+the spins in the SEOBNRv4PHM-frame (e.g. when called through LALSimulation)
+will not give a physically equivalent waveform when these same spin directions
+are used in the SEOBNRv4PHMSur surrogate model. Ref. arXiv:2203.00381 provides
+further discussion on this point.
     """
 
     def __init__(self, h5filename):
