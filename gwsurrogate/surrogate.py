@@ -2531,7 +2531,7 @@ In the __call__ method, x must have format x = [q, chi1, chi2].
 
 
 IMPORTANT NOTES:
-===============
+================
 
 The original SEOBNRv4PHM model (arXiv:2004.09442) parameterizes the 
 direction of the BH spins relative to the Newtonian orbital angular momentum
@@ -2642,6 +2642,18 @@ further discussion on this point.
             q :         Mass ratio, mA/mB >= 1.
             chiA0:      Dimensionless spin vector of the heavier black hole.
             chiB0:      Dimensionless spin vector of the lighter black hole.
+
+            IMPORTANT NOTES:
+            ================
+
+            Subdomains are defined based on the effective spin parameter 
+            as computed in the early inspiral. While the effective spin
+            parameter is nearly constant throughout the inspiral it can change 
+            by small amounts. Surrogates built in each subdomain are valid over
+            a larger region of the parameter space than the subdomain itself,
+            which helps in ensuring the model is accurate when evaluated
+            on a subdomain boundary and with spins specified at different
+            times/frequencies throughout the inspiral.
             """
             chi1z = chiA0[2]
             chi2z = chiB0[2]
