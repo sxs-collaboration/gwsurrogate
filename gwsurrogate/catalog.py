@@ -61,7 +61,7 @@ _surrogate_world['EOBNRv2'] = \
                None)
 
 _surrogate_world['SpEC_q1_10_NoSpin'] = \
-  surrogate_info('https://zenodo.org/record/3348115/files/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5',
+  surrogate_info('https://zenodo.org/records/13376190/files/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5',
                  '''A multimode surrogate model built from numerical relativity simulations
                performed with SpEC.The surrogate covers mass ratios from 1 to 10, durations
                corresponding to about 15 orbits before merger, and many harmonic modes.''',
@@ -84,7 +84,7 @@ _surrogate_world['SpEC_q1_10_NoSpin_linear_alt'] = \
                '6ae4249bc2c420fa27553d07f4df62df')
 
 _surrogate_world['NRSur4d2s_TDROM_grid12'] = \
-  surrogate_info('https://zenodo.org/record/3348115/files/NRSur4d2s_TDROM_grid12.h5',
+  surrogate_info('https://zenodo.org/records/13376190/files/NRSur4d2s_TDROM_grid12.h5',
                '''Fast time-domain surrogate model for binary black hole mergers where the
                black holes may be spinning, but the spins are restricted to a parameter
                subspace which includes some but not all precessing configurations.
@@ -95,7 +95,7 @@ _surrogate_world['NRSur4d2s_TDROM_grid12'] = \
                '44fba833b6b3a0f269fc788df181dfd4')
 
 _surrogate_world['NRSur4d2s_FDROM_grid12'] = \
-  surrogate_info('https://zenodo.org/record/3348115/files/NRSur4d2s_FDROM_grid12.h5',
+  surrogate_info('https://zenodo.org/records/13376190/files/NRSur4d2s_FDROM_grid12.h5',
                '''Fast frequency-domain surrogate model for binary black hole mergers where
                the black holes may be spinning, but the spins are restricted to a parameter
                subspace which includes some but not all precessing configurations.''',
@@ -105,7 +105,7 @@ _surrogate_world['NRSur4d2s_FDROM_grid12'] = \
 
 _surrogate_world['NRHybSur3dq8'] = \
   surrogate_info(\
-  'https://zenodo.org/record/3348115/files/NRHybSur3dq8.h5',
+  'https://zenodo.org/records/13376190/files/NRHybSur3dq8.h5',
   '''Surrogate model for aligned-spin binary black holes with mass ratios q<=8
   and spin magnitudes <=0.8. The model is trained on NR waveforms that have been
   hybridized using EOB/PN and spans the entire LIGO frequency band. This model
@@ -117,7 +117,7 @@ _surrogate_world['NRHybSur3dq8'] = \
 
 _surrogate_world['NRHybSur3dq8_CCE'] = \
   surrogate_info(\
-  'https://zenodo.org/record/8246990/files/NRHybSur3dq8_CCE.h5',
+  'https://zenodo.org/records/13376190/files/NRHybSur3dq8_CCE.h5',
   '''CCE Surrogate model for aligned-spin binary black holes with mass ratios q<=8
   and spin magnitudes <=0.8. The model is trained on NR (CCE) waveforms that have been
   hybridized using EOB/PN and spans the entire LIGO frequency band.
@@ -130,7 +130,7 @@ _surrogate_world['NRHybSur3dq8_CCE'] = \
 
 _surrogate_world['NRHybSur2dq15'] = \
   surrogate_info(\
-  'https://zenodo.org/record/6726994/files/NRHybSur2dq15.h5',
+  'https://zenodo.org/records/13376190/files/NRHybSur2dq15.h5',
   '''Surrogate model for aligned-spin binary black holes with mass ratios q<=15,
   primary spin magnitudes <=0.5, and zero spin on secondary. 
   The model is trained on NR waveforms that have been
@@ -142,7 +142,7 @@ _surrogate_world['NRHybSur2dq15'] = \
 
 _surrogate_world['NRSur7dq4'] = \
   surrogate_info(\
-  'https://zenodo.org/record/3348115/files/NRSur7dq4.h5',
+  'https://zenodo.org/records/13376190/files/NRSur7dq4.h5',
   '''Surrogate model for precessing binary black holes with mass ratios q<=4
   and spin magnitudes <=0.8. This model is presented in Varma et al. 2019,
   arxiv:1905.09300. All ell<=4 modes are included. The spin and frame dynamics
@@ -152,7 +152,7 @@ _surrogate_world['NRSur7dq4'] = \
 
 _surrogate_world['SEOBNRv4PHMSur'] = \
   surrogate_info(\
-  'SEOBNRv4PHMSur.h5',
+  'https://zenodo.org/records/13376190/files/SEOBNRv4PHMSur.h5',
   '''Surrogate model for the time domain precessing EOB waveform model
   SEOBNRv4PHM (). The model is valid for mass ratio <= 20 and spin
   magnitudes upto 0.8. Extrapolation for spins works reasonably well till
@@ -164,7 +164,7 @@ _surrogate_world['SEOBNRv4PHMSur'] = \
 
 _surrogate_world['NRHybSur3dq8Tidal'] = \
   surrogate_info(\
-  'https://zenodo.org/record/3348115/files/NRHybSur3dq8.h5',
+  'https://zenodo.org/records/13376190/files/NRHybSur3dq8.h5',
   '''Surrogate model 'NRHybSur3dq8' modified by splicing in PN tidal
   approximants for aligned-spin binary neutron stars/black hole-neutron star
   systems with mass ratio q<=8 and spin magnitudes <=.7; please see the
@@ -180,7 +180,7 @@ _surrogate_world['NRHybSur3dq8Tidal'] = \
 
 _surrogate_world['EMRISur1dq1e4'] = \
   surrogate_info(\
-  'https://zenodo.org/record/7125742/files/EMRISur1dq1e4.h5',
+  'https://zenodo.org/records/13340319/files/EMRISur1dq1e4.h5',
   '''Surrogate model 'EMRISur1dq1e4' for non-spinning black hole binary
   systems with mass-ratios varying from 3 to 10000. This surrogate model
   is trained on waveform data generated by point-particle black hole
@@ -198,7 +198,7 @@ _surrogate_world['EMRISur1dq1e4'] = \
 
 _surrogate_world['BHPTNRSur1dq1e4'] = \
   surrogate_info(\
-  'https://zenodo.org/record/7125742/files/BHPTNRSur1dq1e4.h5',
+  'https://zenodo.org/records/13340319/files/BHPTNRSur1dq1e4.h5',
   '''Surrogate model 'BHPTNRSur1dq1e4' for non-spinning black hole binary
   systems with mass-ratios varying from 2.5 to 10000. This surrogate model
   is trained on waveform data generated by point-particle black hole
