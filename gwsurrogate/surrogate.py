@@ -2485,14 +2485,14 @@ See the __call__ method on how to evaluate waveforms.
             chi_max_bfOrder = 2
             return q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder
 
-        # largest ell mode in the surrogate
-        ellMax_NRSur7dq4 = 4
+        # largest ell mode for NRSur7dq4
+        ellMax = 4
 
-        # max allowable reference dimensionless orbital angular frequency
-        omega_ref_max_NRSur7dq4 = 0.201
+        # max allowable reference dimensionless orbital angular frequency for NRSur7dq4
+        omega_ref_max = 0.201
 
         sur = precessing_surrogate.PrecessingSurrogate(self.h5filename,
-                 get_fit_params,get_fit_settings,ellMax_NRSur7dq4,omega_ref_max_NRSur7dq4)
+                 get_fit_params,get_fit_settings,ellMax,omega_ref_max)
         return sur
 
     def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,
@@ -2691,19 +2691,18 @@ further discussion on this point.
             raise ValueError("Domain not found for q={}, chi1z={}, chi2z={}".format(q, chi1z, chi2z))
 
 
-        # largest ell mode in the surrogate
-        ellMax_SEOBNRv4PHMSur = 5
+        # largest ell mode for SEOBNRv4PHMSur
+        ellMax = 5
 
-        # max allowable reference dimensionless orbital angular frequency
-        omega_ref_max_SEOBNRv4PHMSur = 0.21
+        # max allowable reference dimensionless orbital angular frequency for SEOBNRv4PHMSur
+        omega_ref_max = 0.21
 
-        # number of subdomains (should be maximum possible return of get_subdomain_ID + 1)
-        num_subdomains_SEOBNRv4PHMSur = 14
+        # number of subdomains for SEOBNRv4PHMSur (should be maximum possible return of get_subdomain_ID + 1)
+        num_subdomains = 14
 
         sur = precessing_surrogate.PrecessingSurrogateMultiDomain(self.h5filename,
-              get_fit_params, get_fit_settings, ellMax_SEOBNRv4PHMSur,
-              omega_ref_max_SEOBNRv4PHMSur, get_subdomain_ID,
-              num_subdomains_SEOBNRv4PHMSur)
+              get_fit_params, get_fit_settings, ellMax, omega_ref_max,
+              get_subdomain_ID, num_subdomains)
         return sur
 
     def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,
