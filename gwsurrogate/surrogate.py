@@ -2795,8 +2795,6 @@ class LoadSurrogate(object):
                     raise Exception("Surrogate data not found. Do"
                         " gwsurrogate.catalog.pull(NRHybSur3dq8)")
                 #return NRHybSur3dq8Tidal(surrogate_h5file)
-            elif (surrogate_name=='SEOBNRv4PHMSur'):
-                surrogate_h5file = '%s/SEOBNRv4PHMSur.h5'%(catalog.download_path())
             else:
                 surrogate_h5file = '%s/%s.h5'%(catalog.download_path(), \
                     surrogate_name)
