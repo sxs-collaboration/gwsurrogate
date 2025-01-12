@@ -154,11 +154,23 @@ coprecessing frame to the inertial frame.
 def _eval_scalar_fit(fit_data, fit_params, get_fit_settings):
     """ Evaluates a single scalar fit.
 
-        fit_params should come from each surrogate model's
-        self._get_fit_params()
+        Arguments: 
+        ==========
+        fit_data: fit data for each specific datapiece
+        fit_params: function that takes a numpy array x and returns
+                    the fit parameters used to evaluate the surrogate fits.
+                    Example: The NRSur7dq4 model converts
+                       x=[q, chi1x, chi1y, chi1z, chi2x, chi2y, chi2z]
+                       to 
+                       x=[np.log(q), chi1x, chi1y, chiHat, chi2x, chi2y, chi_a]
+        get_fit_settings: function that provides information about
+                          surrogate fits for each specific datapiece.
 
-        get_fit_settings should come from each surrogate model's
-        self._get_fit_settings
+        Notes:
+        ======
+        fit_params and get_fit_settings should come from each surrogate model's
+        class definition. For example, for the NRSur7dq4 model, these are defined
+        in NRSur7dq4(SurrogateEvaluator)
     """
     q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder \
         = get_fit_settings()
@@ -169,11 +181,23 @@ def _eval_scalar_fit(fit_data, fit_params, get_fit_settings):
 def _eval_vector_fit(fit_data, size, fit_params, get_fit_settings):
     """ Evaluates a vector fit, where each element is a scalar fit.
 
-        fit_params should come from each surrogate model's
-        self._get_fit_params()
+        Arguments: 
+        ==========
+        fit_data: fit data for each specific datapiece
+        fit_params: function that takes a numpy array x and returns
+                    the fit parameters used to evaluate the surrogate fits.
+                    Example: The NRSur7dq4 model converts
+                       x=[q, chi1x, chi1y, chi1z, chi2x, chi2y, chi2z]
+                       to 
+                       x=[np.log(q), chi1x, chi1y, chiHat, chi2x, chi2y, chi_a]
+        get_fit_settings: function that provides information about
+                          surrogate fits for each specific datapiece.
 
-        get_fit_settings should come from each surrogate model's
-        self._get_fit_settings
+        Notes:
+        ======
+        fit_params and get_fit_settings should come from each surrogate model's
+        class definition. For example, for the NRSur7dq4 model, these are defined
+        in NRSur7dq4(SurrogateEvaluator)
     """
     val = []
     for i in range(size):
@@ -762,9 +786,7 @@ ellMax: The maximum ell mode to evaluate.
                 modes[ell*(ell+1) - 4] = re + 1.j*im
                 #print("evaluation ell=%s, m=0"%ell)
 
-            # NOTE: modes is populated with zeros, so skipping means 
-            # "set to zero". This is required for inertial_waveform_modes,
-            # which maps from coorb to inertial frame modes. 
+            # NOTE: similar to previous for-loop, skipping means "set mode to zero".
             for m in range(1, ell+1):
                 if (ell,m) in self.mode_list:                
                     rep = self._eval_comp(self.data['%s_%s_Re+'%(ell, m)], q, chiA,chiB)
