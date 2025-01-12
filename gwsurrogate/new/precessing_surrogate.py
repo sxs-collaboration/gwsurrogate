@@ -792,19 +792,13 @@ ellMax: The maximum ell mode to evaluate.
             nodes.append(_eval_scalar_fit(fit_data, fit_params, self._get_fit_settings))
 
         return np.array(nodes).dot(data['EI_basis'])
-    
+
     def _check_h5group_exists(self, h5file, group_name):
-        """ Check if h5 group GROUP_NAME has valid data to load. """
-
-        try:
-            group_keys = h5file[group_name].keys()
-            if len(group_keys) == 0: # no data in group
-                return False
-            else:
-                return True
-        except KeyError: # cannot open group -- doesn't exist
-            return False
-
+        """ Check if h5 group GROUP_NAME has valid data to load. 
+        
+        Returns true or False """
+        
+        return group_name in h5file
 
 
 ##############################################################################
