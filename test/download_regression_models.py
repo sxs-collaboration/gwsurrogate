@@ -21,7 +21,8 @@ models = ['SpEC_q1_10_NoSpin_linear_alt',
 'SpEC_q1_10_NoSpin',
 'SpEC_q1_10_NoSpin_linear',
 'NRSur7dq4',
-'NRHybSur2dq15'
+'NRHybSur2dq15',
+'SEOBNRv4PHMSur'
 ]
 
 for model in models:
