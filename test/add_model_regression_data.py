@@ -6,7 +6,6 @@ Here are the steps for doing this (the last step is running this script)
 
 First make sure the current tests run on your laptop
 ====================================================
-
 Download all model data
 
 >>>  python download_regression_models.py  # run from tests folder
@@ -42,12 +41,23 @@ regression data.
 
 >>> python add_model_regression_data.py
 
-After running this step, model_regression_data.h5 should have the new model's
-regression data. 
+After running this step (Note: make sure to change the value
+of NEW_MODEL in this script), model_regression_data.h5 
+should have the new model's regression data. 
 
 3) model_regression_data_new.h5 can be deleted
 4) run check_model_regression_data.py to confirm that your data has been 
 correctly added and the old data is unchanged.
+
+
+History of model regression data files
+======================================
+model_regression_data.h5 files, newest first...
+
+* Added SEOBNRv4PHMSur model (current)
+  md5sum: e7f4cbca43b8a8a6e914153cfbcc9aea
+* Added NRHybSur3dq8_CCE model (used until around 1/13/2024)
+  md5sum: 4616a1e661e643f51acc857cb0534156
 """
 
 import h5py
@@ -56,7 +66,7 @@ import shutil
 
 original_regression_data = "model_regression_data.h5"
 extra_regression_data    = "model_regression_data_new.h5"
-new_model = "NRHybSur3dq8_CCE" # name of new model with regression data in fp_new but not fp_old
+new_model = "SEOBNRv4PHMSur" # name of new model with regression data in fp_new but not fp_old
 
 shutil.copyfile(original_regression_data, "model_regression_data-original.h5")
 

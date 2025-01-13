@@ -156,6 +156,40 @@ def NRSur7dq4_samples(i):
 
 model_sampler["NRSur7dq4"] = NRSur7dq4_samples
 
+def SEOBNRv4PHMSur_samples(i):
+  """ sample points for the SEOBNRv4PHMSur model
+  the ith sample point to evaluate the model at
+  samples are returned as [q, chiA, chiB], precessingOpts """
+
+  assert i in [0,1,2]
+
+  if i==0:
+    chiA = [-0.2, 0.4, 0.1]
+    chiB = [-0.5, 0.2, -0.4]
+    precessing_opts = {'init_quat': [1,0,0,0],
+                       'return_dynamics': True,
+                       'init_orbphase': 0.0}
+                       #'use_lalsimulation_conventions': True}
+    return [2., chiA, chiB], None, precessing_opts
+  elif i==1:
+    chiA = [-0.2, 0.4, 0.1]
+    chiB = [-0.5, 0.2, -0.8]
+    precessing_opts = {'init_quat': [1,0,0,0],
+                       'return_dynamics': True,
+                       'init_orbphase': 1.0}
+                       #'use_lalsimulation_conventions': False}
+    return [14., chiA, chiB], None, precessing_opts
+  elif i==2:
+    chiA = [-0.2, 0.4, 0.1]
+    chiB = [-0.5, 0.2, -0.4]
+    precessing_opts = {'init_quat': [1,0,0,0],
+                       'return_dynamics': True,
+                       'init_orbphase': 0.0}
+                       #'use_lalsimulation_conventions': True}
+    return [20., chiA, chiB], None, precessing_opts
+
+model_sampler["SEOBNRv4PHMSur"] = SEOBNRv4PHMSur_samples
+
 def BHPTNRSur1dq1e4_samples(i):
   """ sample points for the BHPTNRSur1dq1e4 model """
 
@@ -238,7 +272,7 @@ def test_model_regression(generate_regression_data=False):
     print("hash of model_regression_data.h5 is ",regression_hash)
 
   # remove models if you don't have them
-  dont_test = ["SEOBNRv4PHMSur",
+  dont_test = [#"SEOBNRv4PHMSur",
                #"NRHybSur2dq15",
                #"BHPTNRSur1dq1e4",
                #"EMRISur1dq1e4",
@@ -247,7 +281,7 @@ def test_model_regression(generate_regression_data=False):
                "NRSur4d2s_FDROM_grid12", # 10 GB file
                #"SpEC_q1_10_NoSpin_linear_alt",
                #"SpEC_q1_10_NoSpin_linear",
-               "EOBNRv2", #TODO: this is two surrogates in one. Break up?
+               #"EOBNRv2", #TODO: this is two surrogates in one. Break up?
                #"SpEC_q1_10_NoSpin",
                #"EOBNRv2_tutorial",
                #"NRHybSur3dq8",
