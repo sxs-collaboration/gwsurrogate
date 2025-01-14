@@ -51,7 +51,7 @@ import numpy as np
 import gwsurrogate as gws
 from gwsurrogate.new import surrogate 
 import h5py, os, subprocess, time, warnings
-
+import requests
 
 import hashlib
 
@@ -265,7 +265,23 @@ def test_model_regression(generate_regression_data=False):
     except IOError:
       print("Downloading regression data...")
       # Historical information on h5 files in add_model_regression_data.py
-      os.system('wget -O test/model_regression_data.h5 https://www.dropbox.com/scl/fi/g12562mas9x4ujxdcdu6e/model_regression_data.h5?rlkey=l21gsvokca5svtjy4nod2dysq')
+      #os.system('wget -O test/model_regression_data.h5 https://www.dropbox.com/scl/fi/g12562mas9x4ujxdcdu6e/model_regression_data.h5?rlkey=l21gsvokca5svtjy4nod2dysq')
+      
+      # URL to download the file and file path where the downloaded file will be saved
+      # NOTE: Dropbox links default to "dl=0" which is a preview page. Append "dl=1" to download file directly
+      url = "https://www.dropbox.com/scl/fi/g12562mas9x4ujxdcdu6e/model_regression_data.h5?rlkey=l21gsvokca5svtjy4nod2dysq&dl=1"
+      output_path = "test/model_regression_data.h5"
+
+      # Make the GET request with streaming
+      response = requests.get(url, stream=True)
+      response.raise_for_status()  # Raise an exception if the request fails
+
+      # Save the content to the file in chunks
+      with open(output_path, "wb") as file:
+        for chunk in response.iter_content(chunk_size=8192):
+          if chunk:  # Ensure no empty chunks
+            file.write(chunk)
+
       fp_regression = h5py.File("test/model_regression_data.h5",'r') 
     regression_hash = md5("test/model_regression_data.h5")
     print("hash of model_regression_data.h5 is ",regression_hash)

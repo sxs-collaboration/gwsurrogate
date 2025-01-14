@@ -40,7 +40,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-import os
+import os, requests
 from collections import namedtuple
 from time import gmtime, strftime
 from glob import glob
@@ -308,7 +308,13 @@ def pull(surr_name,sdir=download_path()):
             print('There are a lot of backup files in %s, consider removing'
                 ' some.'%backup_dir)
 
-    os.system('wget -q --directory-prefix='+sdir+' '+surr_url)
+    # download the surrogate
+    filename = surr_url.split("/")[-1]
+    output_path = os.path.join(sdir, filename)
+    with requests.get(surr_url, stream=True) as r, open(output_path, "wb") as f:
+      r.raise_for_status()
+      f.writelines(r.iter_content(chunk_size=8192))
+    #os.system('wget -q --directory-prefix='+sdir+' '+surr_url)
   else:
     raise ValueError("No surrogate package exits")
 
