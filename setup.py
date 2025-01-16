@@ -82,6 +82,7 @@ setup(
         "numpy",
         "scipy",
         "h5py",
+        "pytest",
         "scikit-learn",
         "gwtools",
         "matplotlib",
