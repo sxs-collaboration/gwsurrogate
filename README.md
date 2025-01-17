@@ -167,16 +167,19 @@ sur = gwsurrogate.LoadSurrogate('NRSur7dq4')
 
 ## Evaluate the surrogate
 ```python
-q = 4           # mass ratio, mA/mB >= 1.
+q = 4                           # mass ratio, mA/mB >= 1.
 chiA = [-0.2, 0.4, 0.1]         # Dimensionless spin of heavier BH
 chiB = [-0.5, 0.2, -0.4]        # Dimensionless of lighter BH
 dt = 0.1                        # timestep size, Units of total mass M
-f_low = 0                # initial frequency, f_low=0 returns the full surrogate
+f_low = 0                       # initial frequency, f_low=0 returns the full surrogate
+
+# optional parameters for a precessing surrogate models
+precessing_opts = {'return_dynamics': True}
 
 # h is dictionary of spin-weighted spherical harmonic modes
 # t is the corresponding time array in units of M
 # dyn stands for dynamics, do dyn.keys() to see contents
-t, h, dyn = sur(q, chiA, chiB, dt=dt, f_low=f_low)
+t, h, dyn = sur(q, chiA, chiB, dt=dt, f_low=f_low, precessing_opts=precessing_opts)
 ```
 
 There are many more options, such as using MKS units, returning the
