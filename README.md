@@ -120,6 +120,13 @@ Alternatively, if you are a bash or sh user, edit your .profile
 export PYTHONPATH=~absolute_path_to_gws_folder:$PYTHONPATH
 ```
 
+# Documentation
+ 
+ Explore our [Jupyter Notebooks](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website) for a comprehensive overview of individual models and the user-level API. For an introductory explanation of the surrogate modeling methodology used in GWSurrogate, check out these videos:
+
+  - [Introduction to the GWSurrogate package](https://icerm.brown.edu/video_archive/2413)
+  - [Overview of surrogate modeling methodology](https://icerm.brown.edu/video_archive/2412)
+
 
 # Usage #
 
@@ -208,6 +215,24 @@ to run some regression tests.
 >>> pytest                               # run all tests
 >>> pytest -v -s                         # run all tests with high verbosity
 ```
+
+# Contributing
+
+We welcome contributions! Here's how you can get involved:
+
+1. **Report Bugs or Suggest Enhancements**:  
+   Use the [GitHub issue tracker](https://github.com/sxs-collaboration/gwsurrogate/issues) to report bugs or suggest new features. Before submitting, consider browsing through existing issues to see if your concern has already been addressed. A developer will respond to issues that are opened on GitHub.
+
+2. **Contribute Code**:  
+   We use the [fork and pull request model](https://help.github.com/articles/creating-a-pull-request-from-a-fork/) for code contributions. Fork the repository, make your changes, and submit a pull request.
+
+Please ensure you follow our [Code of Conduct](https://github.com/sxs-collaboration/gwsurrogate?tab=coc-ov-file) when contributing. 
+
+
+
+
+
+
 
 # NSF Support #
 
