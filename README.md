@@ -99,27 +99,6 @@ where the "--editable" installs an editable (development) project with pip. This
 your local code edits to be automatically seen by the system-wide installation.
 
 
-## From source (tar.gz) ##
-
-Please note this is not the recommended installation strategy, and certain functionality  may not work.
-
-You can download and unpack gwsurrogate-X.X.tar.gz
-to any folder gws_folder of your choosing.  The gwsurrogate module can be used by adding
-
-```
-import sys
-sys.path.append('absolute_path_to_gws_folder')
-```
-
-at the beginning of any script/notebook which uses gwsurrogate.
-
-Alternatively, if you are a bash or sh user, edit your .profile
-(or .bash_profile) file and add the line
-
-```
-export PYTHONPATH=~absolute_path_to_gws_folder:$PYTHONPATH
-```
-
 # Documentation
  
  Explore our [Jupyter Notebooks](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website) for a comprehensive overview of individual models and the user-level API. For an introductory explanation of the surrogate modeling methodology used in GWSurrogate, check out these videos:
@@ -227,11 +206,6 @@ We welcome contributions! Here's how you can get involved:
    We use the [fork and pull request model](https://help.github.com/articles/creating-a-pull-request-from-a-fork/) for code contributions. Fork the repository, make your changes, and submit a pull request.
 
 Please ensure you follow our [Code of Conduct](https://github.com/sxs-collaboration/gwsurrogate?tab=coc-ov-file) when contributing. 
-
-
-
-
-
 
 
 # NSF Support #
