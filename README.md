@@ -99,26 +99,12 @@ where the "--editable" installs an editable (development) project with pip. This
 your local code edits to be automatically seen by the system-wide installation.
 
 
-## From source (tar.gz) ##
+# Documentation
+ 
+ Explore our [Jupyter Notebooks](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website) for a comprehensive overview of individual models and the user-level API. For an introductory explanation of the surrogate modeling methodology used in GWSurrogate, check out these videos:
 
-Please note this is not the recommended installation strategy, and certain functionality  may not work.
-
-You can download and unpack gwsurrogate-X.X.tar.gz
-to any folder gws_folder of your choosing.  The gwsurrogate module can be used by adding
-
-```
-import sys
-sys.path.append('absolute_path_to_gws_folder')
-```
-
-at the beginning of any script/notebook which uses gwsurrogate.
-
-Alternatively, if you are a bash or sh user, edit your .profile
-(or .bash_profile) file and add the line
-
-```
-export PYTHONPATH=~absolute_path_to_gws_folder:$PYTHONPATH
-```
+  - [Introduction to the GWSurrogate package](https://icerm.brown.edu/video_archive/2413)
+  - [Overview of surrogate modeling methodology](https://icerm.brown.edu/video_archive/2412)
 
 
 # Usage #
@@ -167,16 +153,19 @@ sur = gwsurrogate.LoadSurrogate('NRSur7dq4')
 
 ## Evaluate the surrogate
 ```python
-q = 4           # mass ratio, mA/mB >= 1.
+q = 4                           # mass ratio, mA/mB >= 1.
 chiA = [-0.2, 0.4, 0.1]         # Dimensionless spin of heavier BH
 chiB = [-0.5, 0.2, -0.4]        # Dimensionless of lighter BH
 dt = 0.1                        # timestep size, Units of total mass M
-f_low = 0                # initial frequency, f_low=0 returns the full surrogate
+f_low = 0                       # initial frequency, f_low=0 returns the full surrogate
+
+# optional parameters for a precessing surrogate models
+precessing_opts = {'return_dynamics': True}
 
 # h is dictionary of spin-weighted spherical harmonic modes
 # t is the corresponding time array in units of M
 # dyn stands for dynamics, do dyn.keys() to see contents
-t, h, dyn = sur(q, chiA, chiB, dt=dt, f_low=f_low)
+t, h, dyn = sur(q, chiA, chiB, dt=dt, f_low=f_low, precessing_opts=precessing_opts)
 ```
 
 There are many more options, such as using MKS units, returning the
@@ -205,6 +194,19 @@ to run some regression tests.
 >>> pytest                               # run all tests
 >>> pytest -v -s                         # run all tests with high verbosity
 ```
+
+# Contributing
+
+We welcome contributions! Here's how you can get involved:
+
+1. **Report Bugs or Suggest Enhancements**:  
+   Use the [GitHub issue tracker](https://github.com/sxs-collaboration/gwsurrogate/issues) to report bugs or suggest new features. Before submitting, consider browsing through existing issues to see if your concern has already been addressed. A developer will respond to issues that are opened on GitHub.
+
+2. **Contribute Code**:  
+   We use the [fork and pull request model](https://help.github.com/articles/creating-a-pull-request-from-a-fork/) for code contributions. Fork the repository, make your changes, and submit a pull request.
+
+Please ensure you follow our [Code of Conduct](https://github.com/sxs-collaboration/gwsurrogate?tab=coc-ov-file) when contributing. 
+
 
 # NSF Support #
 
