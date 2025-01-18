@@ -89,7 +89,7 @@ The development of ``GWSurrogate`` is hosted on [GitHub](https://github.com/sxs-
 
 # Statement of need
 
-``GWSurrogate`` is a Python package that provides an easy to use interface to gravitational wave surrogate models. More specifically, ``GWSurrogate`` gravitational wave models provide evaluation of
+``GWSurrogate`` is a Python package first introduced in 2013 to provide an intuitive interface for working with gravitational wave surrogate models. Specifically, ``GWSurrogate`` gravitational wave models provide evaluation of
 $$
  h_{\tt S}(t, \theta, \phi;\Lambda) = \sum^{\infty}_{\ell=2} \sum_{m=-\ell}^{\ell} h_{\tt S}^{\ell m}(t;\Lambda) ~^{-2}Y_{\ell m}(\theta, \phi) \,,
 $$
