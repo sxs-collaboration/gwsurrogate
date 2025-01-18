@@ -40,11 +40,11 @@ THE SOFTWARE.
 if (
     "__package__" not in locals() or __package__ is None or __package__ == ""
 ):  # py2 and py3 compatible
-    print("setting __package__ to gwsurrogate.new so relative imports work")
+    # setting __package__ to gwsurrogate.new so relative imports work
     __package__ = "gwsurrogate.new"
 
-print("__name__ = %s" % __name__)
-print("__package__= %s" % __package__)
+#print("__name__ = %s" % __name__)
+#print("__package__= %s" % __package__)
 
 import numpy as np
 import h5py
