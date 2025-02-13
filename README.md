@@ -182,8 +182,7 @@ give a more comprehensive overview of individual models.
 
 # Tests #
 
-If you have downloaded the entire project as a tar.gz file, its a good idea
-to run some regression tests. 
+If you have git cloned this project, its a good idea to run some regression tests. 
 
 
 ```
