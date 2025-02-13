@@ -182,7 +182,8 @@ give a more comprehensive overview of individual models.
 
 # Tests #
 
-If you have git cloned this project, its a good idea to run some regression tests. 
+If you have git cloned this project and installed (and intalled it
+using the `--editable` option), its a good idea to run some regression tests. 
 
 
 ```
