@@ -38,5 +38,6 @@ authors:
     orcid: "https://orcid.org/0000-0002-3251-0924"
 title: "gwsurrogate"
 version: 1.1.7
-date-released: 2025-02-25
-url: "https://github.com/sxs-collaboration/gwsurrogate"
+date-released: "2025-02-25"
+license: MIT
+repository-code: "https://github.com/sxs-collaboration/gwsurrogate"
