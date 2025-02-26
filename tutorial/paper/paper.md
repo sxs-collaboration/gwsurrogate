@@ -10,7 +10,7 @@ authors:
   - name: Scott E. Field
     orcid: 0000-0002-6037-3277
     equal-contrib: true
-    affiliation: "1, 6"
+    affiliation: "1, 5"
   - name: Vijay Varma
     orcid: 0000-0002-9994-1761
     equal-contrib: true
@@ -21,46 +21,42 @@ authors:
     orcid: 0000-0002-1534-9761
     affiliation: "3"
   - name: Chad R. Galley
-    affiliation: "4"
+    affiliation: "2"
   - name: Tousif Islam
     orcid: 0000-0002-3434-0084
-    affiliation: "1, 5"
+    affiliation: "1, 4"
   - name: Keefe Mitman
     orcid: 0000-0003-0276-3856
-    affiliation: "7"
+    affiliation: "2"
   - name: Michael Pürrer
     orcid: 0000-0002-3329-9788
-    affiliation: "6"
+    affiliation: "5"
   - name: Adhrit Ravichandran
     affiliation: "1"
   - name: Mark A. Scheel
     orcid: 0000-0001-6656-9134
-    affiliation: "7"
+    affiliation: "2"
   - name: Leo C. Stein
     orcid: 0000-0001-7559-9597
-    affiliation: "8"
+    affiliation: "6"
   - name: Jooheon Yoo
     orcid: 0000-0002-3251-0924
-    affiliation: "9"
+    affiliation: "7"
 affiliations:
   - name: Department of Mathematics and Center for Scientific Computing \& Data Science Research, University of Massachusetts, Dartmouth, MA 02747, USA
     index: 1
-  - name: Theorem Partners LLC, San Mateo, California 94402, USA
+  - name: Theoretical Astrophysics 350-17, California Institute of Technology, Pasadena, California 91125, USA
     index: 2
   - name: Institute for Gravitational and Subatomic Physics (GRASP), Utrecht University, 3584 CC Utrecht, The Netherlands
     index: 3
-  - name: Theoretical Astrophysics, Walter Burke Institute for Theoretical Physics, California Institute of Technology, Pasadena, California 91125, USA
-    index: 4
   - name: Kavli Institute for Theoretical Physics, University of California Santa Barbara, CA 93106, USA
-    index: 5
+    index: 4
   - name: Department of Physics and Center for Computational Research, East Hall, University of Rhode Island, Kingston, RI 02881
-    index: 6
-  - name: Theoretical Astrophysics 350-17, California Institute of Technology, Pasadena, California 91125, USA
-    index: 7
+    index: 5
   - name: Department of Physics and Astronomy, The University of Mississippi, University, MS 38677, USA
-    index: 8
+    index: 6
   - name: Cornell Center for Astrophysics and Planetary Science, Cornell University, Ithaca, New York 14853, USA
-    index: 9
+    index: 7
 date: 5 April 2024
 bibliography: paper.bib
 
@@ -106,6 +102,6 @@ Several other software packages are available for waveform generation, including
 
 # Acknowledgements
 
-We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Kevin Barkett, Mike Boyle, Collin Capano, Dwyer Deighan, Raffi Enficiaud, Oliver Jennrich, Gaurav Khanna, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. ``GWSurrogate`` has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496, PHY-2309301, and DMS-2309609. This work was also supported in part by the Sherman Fairchild Foundation, by NSF Grants PHY-2207342 and OAC-2209655 at Cornell, and by NSF Grants PHY-2309211, PHY-2309231, and OAC-2209656 at Caltech. 
+We acknowledge our many close collaborators for their contribution to the development of surrogate models. We further acknowledge the community of ``GWSurrogate`` users who have contributed pull requests and opened issues, including Kevin Barkett, Mike Boyle, Collin Capano, Dwyer Deighan, Raffi Enficiaud, Oliver Jennrich, Gaurav Khanna, Duncan Macleod, Alex Nitz, Seth Olsen, Swati Singh, and Avi Vajpeyi. ``GWSurrogate`` has been developed over the past 10 years with continued support from the National Science Foundation, most recently through NSF grants PHY-2110496, PHY-2309301, DMS-2309609, and AST-2407454. This work was also supported in part by the Sherman Fairchild Foundation, by NSF Grants PHY-2207342 and OAC-2209655 at Cornell, and by NSF Grants PHY-2309211, PHY-2309231, and OAC-2209656 at Caltech. 
 
 # References
