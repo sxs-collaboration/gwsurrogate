@@ -1,4 +1,7 @@
+[![PyPI version](https://badge.fury.io/py/gwsurrogate.svg)](https://pypi.org/project/gwsurrogate/)
+[![Conda Version](https://img.shields.io/conda/vn/conda-forge/gwsurrogate.svg)](https://anaconda.org/conda-forge/gwsurrogate)
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.07073/status.svg)](https://doi.org/10.21105/joss.07073)
+[![arXiv:2504.08839](https://img.shields.io/badge/arXiv-2504.08839-B31B1B.svg)](https://arxiv.org/abs/2504.08839)
 
 
 # Welcome to GWSurrogate! #
