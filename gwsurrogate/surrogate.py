@@ -141,7 +141,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   def __call__(self, q, M=None, dist=None, phi_ref=None,\
                      f_low=None, times=None, units='dimensionless',\
-                     singlemode_call=True):
+                     calibrated=True, singlemode_call=True):
     """Return single mode surrogate evaluation for...
 
        Input
@@ -156,7 +156,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
        times           --- array of times at which surrogate is to be evaluated
        units           --- units (mks or dimensionless) of input array of time samples
        singlemode_call --- Never set this by hand, will be False if this routine is called by the multimode evaluator
-
+       calibrated      --- If set to false, the calibration coefficients alpha and beta are set to 1
 
        More information
        ================
@@ -184,7 +184,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
 
     if (M is not None) and (dist is not None) and (times is not None) and (units != 'mks'):
     	raise ValueError('passing values of M, dist, and times suggest mks units should be used!')
-
+    
     if self.surrogate_mode_type == 'coorb_waveform_basis' and singlemode_call:
       msg = 'directly calling a coorb_waveform_basis surrogate will return a waveform in the co-orbital frame.\n'
       msg += 'Please use EvaluateSurrogate to evaluate co-orbital frame surrogates.\n'
@@ -197,18 +197,21 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     # at a given value of parameter space. These calibration parameters will scale the 
     # time and amplitude. Currently, these models use calibration:
     # BHPTNRSur1dq1e4, EMRISur1dq1e4
-    if(self.surrogateID == 'BHPTNRSur1dq1e4'):
+    if not calibrated:
+      alpha_nr_calibration, beta_nr_calibration = 1,1
+    elif(self.surrogateID == 'BHPTNRSur1dq1e4'):
       alpha_nr_calibration, beta_nr_calibration = self.compute_BHPT_calibration_params(q)
-    
-    if(self.surrogateID == 'EMRISur1dq1e4'):
+    elif(self.surrogateID == 'EMRISur1dq1e4'):
       # see Eq 4 of https://arxiv.org/abs/1910.10473
       # if alpha = 1 we have the "raw" waveform computed from
       # point-particle black hole perturbation theory
       # alpha rescales all modes in the same way in time and amplitude
       nu         = q/(1.+q)**2.
-      alpha_emri = 1.0-1.352854*nu-1.223006*nu*nu+8.601968*nu*nu*nu-46.74562*nu*nu*nu*nu
+      alpha_nr_calibration = 1.0-1.352854*nu-1.223006*nu*nu+8.601968*nu*nu*nu-46.74562*nu*nu*nu*nu
+      beta_nr_calibration = alpha_nr_calibration
     else:
-      alpha_emri = None
+      alpha_nr_calibration = None
+      beta_nr_calibration = None
 
 
     ### if (M,distance) provided, a physical mode in mks units is returned ###
@@ -221,9 +224,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       t_scale = 1.0
 
     # any model-specific amplitude scalings should go here
-    if(self.surrogateID == 'EMRISur1dq1e4'):
-      amp0 = alpha_emri * amp0
-    if(self.surrogateID == 'BHPTNRSur1dq1e4'):
+    if(self.surrogateID in ['EMRISur1dq1e4','BHPTNRSur1dq1e4']):
       amp0 = alpha_nr_calibration * amp0
 
 
@@ -232,10 +233,8 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       t = times
     else:
       t = self.time() # shallow copy of self.times
-      if self.surrogateID == 'EMRISur1dq1e4':
-        t = t * alpha_emri # this will deep copy, preserving data in self.times
-      elif self.surrogateID == 'BHPTNRSur1dq1e4':
-        t = t * beta_nr_calibration
+      if self.surrogateID in ['EMRISur1dq1e4','BHPTNRSur1dq1e4']:
+        t = t * beta_nr_calibration # this will deep copy, preserving data in self.times 
 
     ### if input times are dimensionless, convert to MKS if a physical surrogate is requested ###
     if units == 'dimensionless':
@@ -246,9 +245,7 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
       times = times / t_scale
 
     # input time grid needs to be mapped back to "raw EMRI" time grid before evaluation
-    if times is not None and self.surrogateID == 'EMRISur1dq1e4':
-      times = times / alpha_emri
-    if times is not None and self.surrogateID == 'BHPTNRSur1dq1e4':
+    if times is not None and self.surrogateID in ['EMRISur1dq1e4','BHPTNRSur1dq1e4']:
       times = times / beta_nr_calibration
 
     # convert from input to internal surrogate parameter values, and check within training region #
@@ -1060,7 +1057,7 @@ class EvaluateSurrogate():
   def __call__(self, q, M=None, dist=None, theta=None,phi=None,
                      z_rot=None, f_low=None, times=None,
                      units='dimensionless',
-                     ell=None, m=None, mode_sum=True,fake_neg_modes=True):
+                     ell=None, m=None, mode_sum=True,fake_neg_modes=True, calibrated=True):
     """Return surrogate evaluation for...
 
       INPUT
@@ -1079,6 +1076,7 @@ class EvaluateSurrogate():
       m              --- for each ell, supply a matching m value
       mode_sum       --- if true, all modes are summed, if false all modes are returned in an array
       fake_neg_modes --- if true, include m<0 modes deduced from m>0 mode. all m in [ell,m] input should be non-negative
+      calibrated     --- if false, set the calibration coefficients alpha and beta to 1
 
       NOTE: if only requesting one mode, this should be ell=[2],m=[2]
 
@@ -1149,9 +1147,9 @@ class EvaluateSurrogate():
 
         # if model is BHPTNRSur1dq1e4 and mode not 22, hp/hc are in the coorbital frame
         if is_modeled:
-          t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,times,units,ell,m)
+          t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q,M,dist,f_low,times,units,ell,m,calibrated)
         else: # then we must have neg_modeled=True and fake_neg_modes=True
-          t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,times,units,ell,m)
+          t_mode, hp_mode, hc_mode = self.evaluate_single_mode_by_symmetry(q,M,dist,f_low,times,units,ell,m,calibrated)
 
         # BHPTNRSur1dq1e4 models the real and imag parts of the higher order modes 
         # in the coorbital frame. We have to make sure we apply a frame transformation
@@ -1241,11 +1239,11 @@ class EvaluateSurrogate():
     return hp_mode, hc_mode
 
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  def evaluate_single_mode(self,q, M, dist, f_low, times, units,ell,m):
+  def evaluate_single_mode(self,q, M, dist, f_low, times, units,ell,m, calibrated):
     """ light wrapper around single mode evaluator"""
 
     t_mode, hp_mode, hc_mode = self.single_mode_dict[(ell,m)](q, M, dist, None, f_low, times,
-                                                              units,singlemode_call=False)
+                                                              units, calibrated, singlemode_call=False)
 
     return t_mode, hp_mode, hc_mode
 
@@ -1253,11 +1251,11 @@ class EvaluateSurrogate():
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   # TODO: this routine will evaluate m>0 to get the m<0 case!!! It would be much better
   #       to simply use m>0 modes that were already evaluated (could be ~2x faster) 
-  def evaluate_single_mode_by_symmetry(self,q, M, dist, f_low, times, units,ell,m):
+  def evaluate_single_mode_by_symmetry(self,q, M, dist, f_low, times, units,ell,m, calibrated):
     """ evaluate m<0 mode from m>0 mode and relationship between these"""
 
     if m<0:
-      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q, M, dist, f_low, times, units,ell,-m)
+      t_mode, hp_mode, hc_mode = self.evaluate_single_mode(q, M, dist, f_low, times, units,ell,-m, calibrated)
       hp_mode, hc_mode         = self._generate_minus_m_mode(hp_mode,hc_mode,ell,-m)
     else:
       raise ValueError('m must be negative.')
