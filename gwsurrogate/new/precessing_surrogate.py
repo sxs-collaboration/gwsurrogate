@@ -292,15 +292,20 @@ These time derivatives are given to the AB4 ODE solver.
 
 
 
-    def get_time_deriv_from_index(self, i0, q, y):
+    def get_time_deriv_from_index(self, i0, q, y, only_omega=False):
         # Setup fit variables
         x = _utils.get_ds_fit_x(y, q)
         fit_params = self._get_fit_params(x)
 
         # Evaluate fits
         data = self.fit_data[i0]
-        ooxy_coorb = _eval_vector_fit(data['omega_orb'], 2, fit_params, self._get_fit_settings)
         omega = _eval_scalar_fit(data['omega'], fit_params, self._get_fit_settings)
+        # This is useful if you just need the initial omega to initialize
+        # PN for hybridization.
+        if only_omega:
+            return omega
+
+        ooxy_coorb = _eval_vector_fit(data['omega_orb'], 2, fit_params, self._get_fit_settings)
         cAdot_coorb = _eval_vector_fit(data['chiA'], 3, fit_params, self._get_fit_settings)
         cBdot_coorb = _eval_vector_fit(data['chiB'], 3, fit_params, self._get_fit_settings)
 
