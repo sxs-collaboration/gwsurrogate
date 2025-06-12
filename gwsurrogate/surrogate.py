@@ -1719,7 +1719,7 @@ class SurrogateEvaluator(object):
 
 
     def __call__(self, q, chiA0, chiB0, M=None, dist_mpc=None, f_low=None,
-        f_ref=None, dt=None, df=None, times=None, freqs=None,
+        f_ref=None, t_ref=None, dt=None, df=None, times=None, freqs=None,
         mode_list=None, ellMax=None, inclination=None, phi_ref=0,
         precessing_opts=None, tidal_opts=None, par_dict=None,
         units='dimensionless', skip_param_checks=False,
@@ -2016,6 +2016,9 @@ class SurrogateEvaluator(object):
             if (f_ref is not None) and (f_ref < f_low):
                 raise ValueError("f_ref cannot be lower than f_low.")
 
+            if (f_ref is not None) and (t_ref is not None):
+                raise ValueError("Cannot specify both f_ref and t_ref.")
+
             if (mode_list is not None) and (ellMax is not None):
                 raise ValueError("Cannot specify both mode_list and ellMax.")
 
@@ -2047,7 +2050,7 @@ class SurrogateEvaluator(object):
             raise Exception('Invalid units')
 
         # If f_ref is not given, we set it to f_low.
-        if f_ref is None:
+        if f_ref is None and t_ref is None:
             f_ref = f_low
 
         # Get dimensionless step size or times/freqs and reference time/freq
@@ -2058,10 +2061,11 @@ class SurrogateEvaluator(object):
 
 
         # Get waveform modes and domain in dimensionless units
-        fM_low = f_low*t_scale
-        fM_ref = f_ref*t_scale
+        fM_low = f_low*t_scale if f_low is not None else None
+        fM_ref = f_ref*t_scale if f_ref is not None else None
+        # FIXME rescale t_ref as well
         domain, h, dynamics = self._sur_dimless(x, fM_low=fM_low,
-            fM_ref=fM_ref, dtM=dtM, timesM=timesM, dfM=dfM,
+            fM_ref=fM_ref, tM_ref=t_ref, dtM=dtM, timesM=timesM, dfM=dfM,
             freqsM=freqsM, mode_list=mode_list, ellMax=ellMax,
             precessing_opts=precessing_opts, tidal_opts=tidal_opts,
             par_dict=par_dict)
