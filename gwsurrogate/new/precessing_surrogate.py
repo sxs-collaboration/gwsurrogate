@@ -768,13 +768,14 @@ class CoorbitalWaveformSurrogate:
                             self.data['%s_%s_%s%s'%(ell, m, reim, pm)] = tmp_data
 
 
-    def __call__(self, q, chiA, chiB, ellMax=4):
+    def __call__(self, q, chiA, chiB, ellMax=4, skip_m0_modes=False):
         """
 Evaluates the coorbital waveform modes.
 q: The mass ratio
 chiA, chiB: The time-dependent spin in the coorbital frame. These should have
             shape (N, 3) where N = len(t_coorb)
 ellMax: The maximum ell mode to evaluate.
+skip_m0_modes: If True, skip the m=0 modes in the coorbital frame.
         """
         nmodes = ellMax*ellMax + 2*ellMax - 3
         modes = 1.j*np.zeros((nmodes, len(self.t)))
@@ -786,10 +787,12 @@ ellMax: The maximum ell mode to evaluate.
             #       which maps from coorb to inertial frame modes.
             # m=0 has a different evaluation pattern
             if (ell,0) in self.mode_list:
-                re = self._eval_comp(self.data['%s_0_real'%(ell)], q, chiA, chiB)
-                im = self._eval_comp(self.data['%s_0_imag'%(ell)], q, chiA, chiB)
-                modes[ell*(ell+1) - 4] = re + 1.j*im
-                #print("evaluation ell=%s, m=0"%ell)
+                # Skip m=0 modes (in coorb frame) if requested
+                if not skip_m0_modes:
+                    re = self._eval_comp(self.data['%s_0_real'%(ell)], q, chiA, chiB)
+                    im = self._eval_comp(self.data['%s_0_imag'%(ell)], q, chiA, chiB)
+                    modes[ell*(ell+1) - 4] = re + 1.j*im
+                    #print("evaluation ell=%s, m=0"%ell)
 
             # NOTE: similar to previous for-loop, skipping means "set mode to zero".
             for m in range(1, ell+1):
@@ -1001,7 +1004,11 @@ Arguments:
                                     'return_dynamics': True
                                     }
     tidal_opts: Should be None for this model.
-    par_dict: Should be None for this model.
+    par_dict: A dictionary containing optional parameters for the
+              precessing surrogate model. Default: None.
+              Allowed keys are:
+              skip_m0_modes: If True, skip the m=0 modes in the coorbital frame.
+                             Default: False.
 
 
 Returns:
@@ -1014,8 +1021,12 @@ Returns:
             raise ValueError('Expected freqsM to be None for a Time domain'
                 ' model')
 
+        skip_m0_modes = False
         if par_dict is not None:
-            raise ValueError('par_dict should be None for this model')
+            # Only allowed key is skip_m0_modes, which defaults to False.
+            skip_m0_modes = par_dict.pop("skip_m0_modes")
+            if len(par_dict.keys()) > 0:
+                raise ValueError(f"Unexpected keys in par_dict: {par_dict.keys()}")
 
         if precessing_opts is None:
             precessing_opts = {}
@@ -1077,8 +1088,8 @@ Returns:
 
 
         # Evaluate coorbital waveform surrogate
-        h_coorb = self.coorb_sur(q, chiA_coorb, chiB_coorb, \
-                ellMax=ellMax)
+        h_coorb = self.coorb_sur(q, chiA_coorb, chiB_coorb,
+                ellMax=ellMax, skip_m0_modes=skip_m0_modes)
 
         # Transform the sparsely sampled waveform
         h_inertial = inertial_waveform_modes(self.t_coorb, orbphase, quat,
