@@ -915,18 +915,18 @@ omega_ref_max_model: The maximium allowable reference dimensionless
         self.mode_list = self.coorb_sur.mode_list
 
 
-    def _check_unused_opts(self, precessing_opts):
+    def _check_unused_opts(self, opts_dict, name):
         """ Call this at the end of call module to check if all the
-        precessing_opts have been used. Assumes precessing_opts were
-        extracted using pop.
+        opts in dicts such as precessing_opts have been used. Assumes the opts
+        were extracted from the dict using pop.
         """
-        if len(precessing_opts.keys()) != 0:
+        if len(opts_dict.keys()) != 0:
             unused = ""
-            for k in precessing_opts.keys():
+            for k in opts_dict.keys():
                 unused += "'%s', "%k
             if unused[-2:] == ", ":     # get rid of trailing comma
                 unused = unused[:-2]
-            raise Exception('Unused keys in precessing_opts: %s'%unused)
+            raise Exception(f'Unused keys in {name}: {unused}')
 
 
     def get_dynamics(self, q, chiA0, chiB0, init_quat=None, \
@@ -1021,21 +1021,19 @@ Returns:
             raise ValueError('Expected freqsM to be None for a Time domain'
                 ' model')
 
-        skip_m0_modes = False
-        if par_dict is not None:
-            # Only allowed key is skip_m0_modes, which defaults to False.
-            skip_m0_modes = par_dict.pop("skip_m0_modes")
-            if len(par_dict.keys()) > 0:
-                raise ValueError(f"Unexpected keys in par_dict: {par_dict.keys()}")
-
         if precessing_opts is None:
             precessing_opts = {}
+        if par_dict is None:
+            par_dict = {}
 
+        # Only allowed key for par_dict is skip_m0_modes, which defaults to False.
+        skip_m0_modes = par_dict.pop("skip_m0_modes", False)
+        self._check_unused_opts(par_dict, "par_dict")
 
         init_orbphase = precessing_opts.pop('init_orbphase', 0)
         init_quat = precessing_opts.pop('init_quat', None)
         return_dynamics = precessing_opts.pop('return_dynamics', False)
-        self._check_unused_opts(precessing_opts)
+        self._check_unused_opts(precessing_opts, "precessing_opts")
 
         if ellMax is None:
             ellMax = self.ellMax_model
