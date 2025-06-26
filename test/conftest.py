@@ -1,6 +1,5 @@
 """ executed when running with pytest"""
 
-import pytest
 import sys
 
 def pytest_configure(config):

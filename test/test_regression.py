@@ -6,7 +6,8 @@ Regression data is stored in npz files.
 from __future__ import division
 import numpy as np
 import gwsurrogate as gws
-import os, sys
+import os
+import sys
 
 # set global tolerances for floating point comparisons (see np.testing.assert_allclose)
 atol = 0.0

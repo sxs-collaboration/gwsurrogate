@@ -678,9 +678,9 @@ class EvaluateSingleModeSurrogate(_H5Surrogate, _TextSurrogateRead):
     x_min, x_max = self.fit_interval
 
     if self.affine_map == 'minus1_to_1':
-      x_0 = 2.*(x - x_min)/(x_max - x_min) - 1.;
+      x_0 = 2.*(x - x_min)/(x_max - x_min) - 1.
     elif self.affine_map == 'zero_to_1':
-      x_0 = (x - x_min)/(x_max - x_min);
+      x_0 = (x - x_min)/(x_max - x_min)
     elif self.affine_map == 'none':
       x_0 = x
     else:
@@ -907,7 +907,7 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, enforce_o
             emm = int(splitkk[1][1:])
             if excluded == 'DEFAULT':
               exc_modes.append((ell,emm))
-            elif not (ell, emm) in exc_modes:
+            elif (ell, emm) not in exc_modes:
               print("Warning: Including mode (%d,%d) which is excluded by default"%(ell, emm))
        ### compile list of available modes ###
       if ell_m is None:
@@ -917,7 +917,7 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, enforce_o
           if splitkk[0][0] == 'l' and splitkk[1][0] == 'm':
             ell = int(splitkk[0][1:])
             emm = int(splitkk[1][1:])
-            if not (ell, emm) in exc_modes:
+            if (ell, emm) not in exc_modes:
               mode_keys.append((ell,emm))
       else:
         mode_keys = []
@@ -952,7 +952,7 @@ def CreateManyEvaluateSingleModeSurrogates(path, deg, ell_m, excluded, enforce_o
       emm = int(single_mode[4])
       mode_key = (ell,emm)
       if (ell_m is None) or (mode_key in ell_m):
-        if ((type(excluded) == list and not mode_key in excluded) or
+        if ((type(excluded) == list and mode_key not in excluded) or
             (excluded == 'DEFAULT' and not
              os.path.isfile(path+single_mode+'/EXCLUDED.txt'))):
           assert(mode_key not in single_mode_dict)

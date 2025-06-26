@@ -4,7 +4,7 @@ import numpy as np
 import os
 import unittest
 
-if __package__ is "" or "None": # py2 and py3 compatible 
+if __package__ == "" or "None": # py2 and py3 compatible 
   # setting __package__ to gwsurrogate.new so relative imports work
   __package__="gwsurrogate.new"
 

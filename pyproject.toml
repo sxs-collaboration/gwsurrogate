@@ -4,3 +4,6 @@
         "oldest-supported-numpy"
     ]
     build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+    extend-exclude = ["*.ipynb"]

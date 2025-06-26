@@ -107,7 +107,7 @@ def get_1d_spline_matrix(n, bc="not-a-knot"):
         raise Exception("Not implemented for < 4 knots, using cubic splines!")
     matrix = np.zeros((n, n))
     bc_coef_key = "BC %s"%(bc)
-    if not bc_coef_key in COEFS.keys():
+    if bc_coef_key not in COEFS.keys():
         raise Exception("Unknown boundary condition: %s"%(bc))
 
     # Start with the boundaries and work our way in

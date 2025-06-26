@@ -22,9 +22,7 @@ def gws_td_gen(**params):
         The time series containg the cross polarization in the
         radiation frame.
     """
-    import gwsurrogate as gws
     from pycbc.types import TimeSeries
-    from pycbc import conversions as conv
 
     # Parameter names should follow the convention of
     # https://github.com/gwastro/pycbc/blob/master/pycbc/waveform/parameters.py#L162

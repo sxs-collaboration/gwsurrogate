@@ -47,7 +47,6 @@ if (
 #print("__package__= %s" % __package__)
 
 import numpy as np
-import h5py
 from .saveH5Object import SimpleH5Object
 import itertools
 from functools import reduce

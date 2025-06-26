@@ -9,11 +9,9 @@ of the routines are general purpose. A few places may have hard-coded values.
 NOTE: Many of these functions are borrowed from the NR7dq2 python package.
 """
 
-import os
 import numpy as np
 import h5py
 from gwsurrogate.precessing_utils import _utils
-import warnings
 from gwtools.harmonics import sYlm
 from gwsurrogate.new.surrogate import _splinterp_Cwrapper
 
@@ -375,10 +373,10 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
             omega_max = self.get_omega(full_node_indices[imax], q, y0)
 
         # Do a linear interpolation between omega_min and omega_max
-        t_min = self.t[full_node_indices[imax-1]];
-        t_max = self.t[full_node_indices[imax]];
+        t_min = self.t[full_node_indices[imax-1]]
+        t_max = self.t[full_node_indices[imax]]
         t_ref = (t_min * (omega_max - omega_ref)
-                + t_max * (omega_ref - omega_min)) / (omega_max - omega_min);
+                + t_max * (omega_ref - omega_min)) / (omega_max - omega_min)
 
         if t_ref < self.t[0] or t_ref > self.t[-1]:
             raise Exception("Somehow, t_ref ended up being outside of "
@@ -1105,7 +1103,7 @@ Returns:
                 if t0 is None:
                     t0 = self.t_coorb[0]
                 tf = self.t_coorb[-1]
-                num_times = int(np.ceil((tf - t0)/dtM));
+                num_times = int(np.ceil((tf - t0)/dtM))
                 timesM = t0 + dtM*np.arange(num_times)
 
 

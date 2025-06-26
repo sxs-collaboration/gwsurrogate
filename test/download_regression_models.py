@@ -3,7 +3,8 @@
 This is useful to do when using continuous integration. """
 
 import gwsurrogate as gws
-import hashlib, os
+import hashlib
+import os
 
 
 def md5(fname):

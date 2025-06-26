@@ -3,9 +3,7 @@ Simple unit tests.
 """
 
 from __future__ import division
-import numpy as np
 import gwsurrogate as gws
-import os
 
 path_to_surrogate = 'tutorial/TutorialSurrogate/EOB_q1_2_NoSpin_Mode22/'
 

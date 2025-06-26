@@ -803,7 +803,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             if dtM is not None:
                 t0 = domain[0]
                 tf = domain[-1]
-                num_times = int(np.ceil((tf - t0)/dtM));
+                num_times = int(np.ceil((tf - t0)/dtM))
                 timesM = t0 + dtM*np.arange(num_times)
             else:
                 if timesM[0] < domain[0] or timesM[-1] > domain[-1]:
@@ -1137,7 +1137,7 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
             if dtM is not None:
                 t0 = domain[0]
                 tf = domain[-1]
-                num_times = int(np.ceil((tf - t0)/dtM));
+                num_times = int(np.ceil((tf - t0)/dtM))
                 timesM_tmp = t0 + dtM*np.arange(num_times)
             else:
                 # Because the spliced waveform is shifted so the final time
@@ -1149,7 +1149,7 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
                 min_dt = np.min(np.diff(timesM))
                 t0 = domain[0] #timesM[0] - min_dt
                 tf = domain[-1]
-                num_times = int(np.ceil((tf - t0)/min_dt));
+                num_times = int(np.ceil((tf - t0)/min_dt))
                 timesM_tmp = t0 + min_dt*np.arange(num_times)
 
             Amp_22 = _splinterp_Cwrapper(timesM_tmp, domain, Amp_22)
@@ -1270,7 +1270,7 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
         if dtM is not None:
             t0 = timesM_tmp[0]
             tf = timesM_tmp[-1]
-            num_times = int(np.ceil((tf - t0)/dtM));
+            num_times = int(np.ceil((tf - t0)/dtM))
             timesM = t0 + dtM*np.arange(num_times)
             timesM -= timesM[-1] # Ensure peak amplitude at t=0
         else:

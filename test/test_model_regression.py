@@ -50,7 +50,10 @@ from __future__ import division
 import numpy as np
 import gwsurrogate as gws
 from gwsurrogate.new import surrogate 
-import h5py, os, subprocess, time, warnings
+import h5py
+import os
+import time
+import warnings
 import requests
 
 import hashlib

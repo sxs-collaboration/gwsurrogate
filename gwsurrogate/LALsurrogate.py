@@ -3,8 +3,7 @@ from __future__ import division # for python 2
 
 
 from scipy import interpolate
-import numpy, h5py
-import numpy.linalg as la
+import h5py
 from pylab import *
 from .surrogate import SurrogateGW
 
@@ -136,7 +135,7 @@ class LALSurrogateEOB(SurrogateGW):
         B_imag = np.zeros([time_samples, self.dim_rb], dtype='double')
         
         # map specific q_eval to reference interval
-        q_0 = 2*(q_eval - self.qmin)/(self.qmax - self.qmin) - 1;
+        q_0 = 2*(q_eval - self.qmin)/(self.qmax - self.qmin) - 1
         
         # If given Mtot is larger than fiducial Mtot then don't extrapolate interpolant
         #if Mtot <= self.Mtot:
