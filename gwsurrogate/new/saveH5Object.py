@@ -104,7 +104,7 @@ def _read_attrs(f):
             d[k[len(TUPLE_PREFIX):]] = v
         elif type(item) == h5py._hl.dataset.Dataset:
             v = item[()]
-            if type(v) == np.string_:
+            if type(v) == numpy.bytes_:
                 v = str(v)
             if isinstance(v,bytes): # some strings are stored as bytes object
                 try: # python 3
