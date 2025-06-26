@@ -45,10 +45,10 @@ def save_gws_surrogate(filename, lm_modes, ei, v, cre, cim):
         smd['fit_type_phase'] = 'fast_spline_imag'
         smd['fit_type_amp'] = 'fast_spline_real'
         save_subdir = 'l%s_m%s'%(ell, m)
-        print 'saving mode %s'%(save_subdir)
+        print('saving mode %s'%(save_subdir))
         writeh5.write_h5(smd, subdir=save_subdir, closeQ = (i==N_MODES-1))
 
-print 'loading TS surrogate...'
+print('loading TS surrogate...')
 sur = gwsnew.FastTensorSplineSurrogate()
 sur.load(ts_filename)
 
@@ -60,30 +60,30 @@ for ell in range(2, 4):
     for m in range(-ell, ell+1):
         lm_modes.append((ell, m))
 
-print 'Saving gws surrogate...'
+print('Saving gws surrogate...')
 save_gws_surrogate(out_filename, lm_modes, sur.ei, v, sur.cre, sur.cim)
 
-print 'Loading gws surrogate...'
+print('Loading gws surrogate...')
 sur_new = gws.EvaluateSurrogate(out_filename, use_orbital_plane_symmetry=False)
 
-print 'Testing...'
+print('Testing...')
 x = np.array([1.2, 0.3, 0.4, 0.5, -0.2])
 h_ts = sur(x)
 
 lm_modes, t, hre, him = sur_new(x, mode_sum=False, fake_neg_modes=False)
 h_gws = (hre + 1.j*him).T
 
-print 'Evaluation was successfull! Checking errors...'
+print('Evaluation was successfull! Checking errors...')
 
 max_err = 0.
 for mode_gws, (ell, m) in zip(h_gws, lm_modes):
     mode_ts = h_ts[ell, m]
     err = np.max(abs(mode_ts - mode_gws))
     max_err = max(err, max_err)
-    print 'Max (%s, %s) mode error: %s'%(ell, m, err)
+    print('Max (%s, %s) mode error: %s'%(ell, m, err))
 
-print 'Max error: %s'%(max_err)
+print('Max error: %s'%(max_err))
 if max_err > 1.e-10:
-    print 'Surrogates disagree :('
+    print('Surrogates disagree :(')
 else:
-    print 'Good agreement!'
+    print('Good agreement!')

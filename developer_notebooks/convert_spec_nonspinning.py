@@ -34,7 +34,7 @@ f = h5py.File('../surrogates/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5')
 lm_modes = [(int(k[1]), int(k[4])) for k in f.keys()]
 mode_data = {}
 for (ell, m) in lm_modes:
-    print 'loading (%s, %s)...'%(ell, m)
+    print('loading (%s, %s)...'%(ell, m))
     g = f['l%s_m%s'%(ell, m)]
     name = 'mode_%s_%s'%(ell, m)
     mode_data[(ell, m)] = get_mode_surrogate_data(g, name)
@@ -53,24 +53,24 @@ sur = surrogate.MultiModalSurrogate(
         modes=lm_modes,
     )
 
-print 'done making surrogate, testing...'
+print('done making surrogate, testing...')
 res = sur(1.1)
 res2 = sur(9.9)
-print 'saving...'
+print('saving...')
 sur.save('new_SpEC_sur.h5')
 
-print 'loading...'
+print('loading...')
 sur2 = surrogate.MultiModalSurrogate()
 sur2.load('new_SpEC_sur.h5')
-print 'verifying...'
+print('verifying...')
 okay=True
 new_res = sur2(1.1)
 new_res2 = sur2(9.9)
 for old, new in [(res, new_res), (res2, new_res2)]:
     for mode in sur.modes:
         if np.max(abs(old[mode] - new[mode])) > 0.:
-            print 'Got a difference in the %s mode!'%(mode)
+            print('Got a difference in the %s mode!'%(mode))
             okay = False
 
 if okay:
-    print 'Great, results match!'
+    print('Great, results match!')
