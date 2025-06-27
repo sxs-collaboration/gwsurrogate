@@ -21,7 +21,66 @@ def generate_pn(
     ellMax=5,
     drop_memory_terms=True,
     debug=False,
+    saves_per_orbit_before_interpolation=None,
 ):
+    """
+    Generate a post-Newtonian waveform using the Julia PNWaveform package.
+    Parameters
+    ----------
+    q : float
+        Mass ratio of the binary (q = m1/m2, where m1 >= m2).
+    chiA0 : list or np.ndarray
+        Dimensionless spin of the primary BH, specified in the coorbital frame
+        at omega_ref.
+    chiB0 : list or np.ndarray
+        Dimensionless spin of the secondary BH, specified in the coorbital frame
+        at omega_ref.
+    omega_ref : float
+        Reference angular orbital frequency in dimensionless units (rad/M). The
+        input spins chiA0 and chiB0 are specified at the point where the PN
+        orbital frequency is omega_ref. The returned waveform will be returned
+        in an inertial frame that coincides with the coorbital frame at this
+        frequency.
+    omega_start : float
+        Starting angular orbital frequency for the PN evolution in dimensionless
+        units (rad/M). Must be less than omega_ref, and the PN evolution will go
+        backwards in time until this frequency.
+    omega_end : float
+        Ending angular orbital frequency for the PN evolution in dimensionless
+        units (rad/M). The PN evolution will go forwards in time until this
+        frequency.
+    t_ref : float
+        Reference time in dimensionless units (M). The returned waveform will
+        have t=t_ref at omega_ref.
+    dt : float or None
+        Time step in dimensionless units (M). If specified, the waveform will be
+        interpolated to this time step. Note that this dt is not used for dense
+        output generation from the ODE solver. That would be too slow as the
+        dense array would then need to transform to the inertial frame. Instead,
+        we generate a dense output with a fixed number of saves per orbit (see
+        the code for the default, but this can be overridden with the
+        `saves_per_orbit_before_interpolation` parameter below).
+        If dt is None, the waveform will be returned at the time steps used in
+        the PN ODE evolution (no dense output).
+    approximant : str, optional
+        The PN approximant to use. Default is "TaylorT1". Other options are
+        "TaylorT4" and "TaylorT5".
+    ellMax : int, optional
+        Maximum ell to include in the waveform. Default is 5.
+    drop_memory_terms : bool, optional
+        If True, the m=0 modes will be set to zero, effectively dropping the
+        memory terms. This is useful for hybridization with NR waveforms that do
+        not include memory terms. Default is True.
+    debug : bool, optional
+        If True, print debug information about the PN evolution and
+        transformation times.
+        Default is False.
+    saves_per_orbit_before_interpolation : int or None, optional
+        If specified, dense output will be generated with this many saves per
+        orbit instead of the default in the code. This option is there primarily
+        for testing interpolation errors.
+    """
+
     kwargs = {
         "approximant": approximant,
         "ell_max": ellMax,
@@ -38,10 +97,17 @@ def generate_pn(
         # we can interpolate it to the desired dt. saves_per_orbit should be
         # high enough to ensure small interpolation errors in the latter step.
         # We generally want it to be at least 2*ellMax (which would be the
-        # Nyquist frequency for the highest-m mode).
-        kwargs["saves_per_orbit"] = max(
-            2 * ellMax, 10
-        )  # At least 10 saves per orbit
+        # Nyquist frequency for the highest-m mode). But we double that to be
+        # safe. In fact, we set it to be at least 20 (4 * ellMax for ellMax=5)
+        # so that we have uniformity for most uses cases (ellMax<=5). If it is
+        # specified through saves_per_orbit_before_interpolation, we just use
+        # that value.
+        if saves_per_orbit_before_interpolation is not None:
+            kwargs["saves_per_orbit"] = saves_per_orbit_before_interpolation
+        else:
+            kwargs["saves_per_orbit"] = max(
+                4 * ellMax, 20
+            )  # At least 20 saves per orbit
 
     if drop_memory_terms:
         # if we want to drop m=0 modes, we ask for the waveform in the
@@ -141,47 +207,3 @@ def generate_pn(
     t_new += t_ref  # Sets t=t_ref at omega_ref
 
     return t_new, h_dict, chiA, chiB  # , omega_orb, phi_orb, quat_copr
-
-
-if __name__ == "__main__":
-    # Timing test
-    from time import time
-
-    q = 1.1  # Mass ratio
-    chiA0 = [0.1, 0.2, 0.3]  # Spin of the primary
-    chiB0 = [0.3, 0.2, 0.1]  # Spin of the secondary
-    omega_ref = 0.013  # Reference frequency
-    omega_start = 0.012379109136936127  # Start frequency of 20Hz for M=40 MSun
-    omega_end = 0.027  # End frequency
-    t_ref = -1000  # Reference time, can be negative
-    dt = 1.2391689667785797  # dt=0.1 converted to seconds for M=40 MSun, so a practical value
-
-    kwargs = {
-        "q": q,
-        "chiA0": chiA0,
-        "chiB0": chiB0,
-        "omega_ref": omega_ref,
-        "omega_start": omega_start,
-        "omega_end": omega_end,
-        "t_ref": t_ref,
-        "drop_memory_terms": False,  # Let's assume Mike does this in-house eventually
-    }
-
-    # Timing with dt specified
-    kwargs["dt"] = dt
-    # First do a dummy call to make sure everything is loaded and compiled
-    generate_pn(**kwargs)
-    # Now for the actual timing test
-    start_time = time()
-    generate_pn(**kwargs)
-    end_time = time()
-    print(f"Time taken: {(end_time - start_time) * 1000:.2f} ms for dt={dt}")
-
-    # Now repeat without specifying dt, which means no need for interpolation
-    kwargs["dt"] = None
-    # First do a dummy call to make sure everything is loaded and compiled
-    generate_pn(**kwargs)
-    start_time = time()
-    generate_pn(**kwargs)
-    end_time = time()
-    print(f"Time taken: {(end_time - start_time) * 1000:.2f} ms for dt=None")
