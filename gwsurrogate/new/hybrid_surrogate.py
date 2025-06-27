@@ -28,7 +28,8 @@ class HybridSurrogate(PrecessingSurrogate):
         self.nrsur = nrsur
         self.nrsur_dyn = nrsur._sur_dimless.dynamics_sur
         self.ellMax_model = nrsur._sur_dimless.ellMax_model
-        self.debug = False  # FIXME
+        self.debug = True  # FIXME
+        self.make_plot = False
 
         if self.debug:
             # Only import the plotting functions if debug is True
@@ -52,7 +53,7 @@ class HybridSurrogate(PrecessingSurrogate):
             9.5e-3,  # omega_start
             1.5e-2,  # omega_end
             -1000,  # t_ref
-            0.1,  # dt
+            1.239,  # dt
         )
 
     def get_dynamics(self):
@@ -96,7 +97,6 @@ class HybridSurrogate(PrecessingSurrogate):
         n_orbits=3,
         plot_settings=None,
     ):
-
         # Get stitching window: n_orbits of the the NR waveform, starting from
         # t_nrsur[idxStart_nrsur].
         idxEnd_nrsur = np.argmin(
@@ -166,7 +166,7 @@ class HybridSurrogate(PrecessingSurrogate):
             t_pn[idxStart_pn:idxEnd_pn], t_nrsur[idxStart_nrsur:idxEnd_nrsur]
         ):
             raise Exception(
-                "Expected nrsur and PN arrays within the window " "to match."
+                "Expected nrsur and PN arrays within the window to match."
             )
 
         # FIXME uncomment
@@ -220,7 +220,7 @@ class HybridSurrogate(PrecessingSurrogate):
         chiA_hyb = np.array(chiA_hyb).T
         chiB_hyb = np.array(chiB_hyb).T
 
-        if self.debug:
+        if self.debug and self.make_plot:
             print(f"\nPlotting hybrid surrogate in {plot_settings['plot_dir']}")
             self.plot_hyb(
                 t_pn,
@@ -334,6 +334,7 @@ class HybridSurrogate(PrecessingSurrogate):
 
         if self.debug:
             from time import time
+
             overall_start = time()
 
         # Get binary parameters
@@ -343,14 +344,13 @@ class HybridSurrogate(PrecessingSurrogate):
             raise ValueError("Expected dfM to be None for a Time domain model")
         if freqsM is not None:
             raise ValueError(
-                "Expected freqsM to be None for a Time domain" " model"
+                "Expected freqsM to be None for a Time domain model"
             )
         if dtM is None:
             raise ValueError("dtM must be specified for hybrid surrogate.")
         if timesM is not None:
             raise ValueError(
-                "timesM should not be specified for hybrid surrogate. "
-                "Use dtM instead."
+                "timesM should not be specified for hybrid surrogate. Use dtM instead."
             )
 
         if precessing_opts is None:
@@ -440,20 +440,19 @@ class HybridSurrogate(PrecessingSurrogate):
         # gets dropped, and any other memory contributions to the other modes
         # are dropped as well. This is what we want when working with NR
         # surrogate without memory.
-        t_pn, h_pn, chiA_pn, chiB_pn, omega_orb_pn, phi_orb_pn, qcopr_pn = (
-            self.generate_pn(
-                q,
-                chiA0,
-                chiB0,
-                omega0_nrsur,  # Reference frequency for PN (inertial frame=coorbital frame here and spins are input here in the same frame)
-                omega_low_pn,  # Earliest frequency for backwards PN evolution
-                omega0_nrsur
-                * 2,  # End frequency for forwards PN evolution (we don't need to go too far, just need 3 orbits)    #FIXME, be smarter
-                tref_for_pn,
-                dtM,
-                ellMax=ellMax,
-                drop_memory_terms=skip_m0_modes,
-            )
+        t_pn, h_pn, chiA_pn, chiB_pn = self.generate_pn(
+            q,
+            chiA0,
+            chiB0,
+            omega0_nrsur,  # Reference frequency for PN (inertial frame=coorbital frame here and spins are input here in the same frame)
+            omega_low_pn,  # Earliest frequency for backwards PN evolution
+            omega0_nrsur
+            * 1.1,  # End frequency for forwards PN evolution (we don't need to go too far, just need 3 orbits)    #FIXME, be smarter
+            tref_for_pn,
+            dtM,
+            ellMax=ellMax,
+            drop_memory_terms=skip_m0_modes,
+            debug=self.debug,
         )
         if self.debug:
             endtime_pn = time()

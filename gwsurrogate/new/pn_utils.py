@@ -1,5 +1,9 @@
 import numpy as np
 
+from .interp_utils import spline_interpolation_many
+
+from time import time
+
 # Start the Julia session and get PNWaveform
 from sxs.julia import PNWaveform
 
@@ -16,8 +20,8 @@ def generate_pn(
     approximant="TaylorT1",  # Use the defaults you actually want as there may be some optimization in the first call
     ellMax=5,
     drop_memory_terms=True,
+    debug=False,
 ):
-
     kwargs = {
         "approximant": approximant,
         "ell_max": ellMax,
@@ -25,12 +29,27 @@ def generate_pn(
         "Omega_e": omega_end,
     }
     if dt is not None:
-        kwargs["saveat"] = dt
+        # If dt is specified, instead of passing it directly we first ask the PN
+        # code to be interpolated onto a time grid with a fixed number of saves
+        # per orbit. Passing dt directly is too slow, as a dense time grid gets
+        # created before the transformation to the inertial frame, which would
+        # be very expensive. Instead, we get good enough sampling with
+        # saves_per_orbit, and after we get the waveform in the inertial frame,
+        # we can interpolate it to the desired dt. saves_per_orbit should be
+        # high enough to ensure small interpolation errors in the latter step.
+        # We generally want it to be at least 2*ellMax (which would be the
+        # Nyquist frequency for the highest-m mode).
+        kwargs["saves_per_orbit"] = max(
+            2 * ellMax, 10
+        )  # At least 10 saves per orbit
 
     if drop_memory_terms:
         # if we want to drop m=0 modes, we ask for the waveform in the
         # PN coorbital frame.
         kwargs["inertial"] = False
+
+    if debug:
+        start_pnevolve = time()
 
     # Evolve PN
     w = PNWaveform(
@@ -42,13 +61,23 @@ def generate_pn(
         **kwargs,
     )
 
+    if debug:
+        end_pnevolve = time()
+        print(
+            f"PN evolution took {(end_pnevolve - start_pnevolve) * 1000:.2f} ms"
+        )
+
     # Get the dynamics
-    t = w.t + t_ref  # Sets t=t_ref at omega_ref
+    # At this point t=0 corresponds to the reference frequency omega_ref.
+    t = w.t
     chiA = w.chi1
     chiB = w.chi2
-    quat = None
-    omega_orb = w.v**3 / (w.M1 + w.M2)
-    phi_orb = w.orbital_phase
+    # quat = None
+    # omega_orb = w.v**3 / (w.M1 + w.M2)
+    # phi_orb = w.orbital_phase
+
+    if debug:
+        start_transform = time()
 
     if drop_memory_terms:
         # We are in the PN coorbital frame, so set all m=0 modes to zero
@@ -58,18 +87,60 @@ def generate_pn(
         # Now go to the inertial frame
         w = w.to_inertial_frame()
 
+    if debug:
+        end_transform = time()
+        print(
+            f"Transform to inertial frame took {(end_transform - start_transform) * 1000:.2f} ms"
+        )
+
     # We are in the inertial frame. We get the coprecessing frame
     # for use in the hybridization.
-    w_copr = w.to_coprecessing_frame()
-    quat_copr = w_copr.frame
+    # w_copr = w.to_coprecessing_frame()
+    # quat_copr = w_copr.frame
+
+    if debug:
+        start_interp = time()
+
+    if dt is not None:
+        # Now we interpolate the waveform to the desired dt if needed.
+
+        # Time array including t=0 so that the reference point is a data point
+        # So the start and end times must be integer multiples of dt.
+        # Also ensure no extrapolation.
+        t_new = np.arange(
+            int(np.ceil(t[0] / dt)) * dt,
+            int(np.floor(t[-1] / dt)) * dt + dt,
+            dt,
+        )
+        # Drop the first point if it falls before t_[0], similarly for the last point.
+        if t_new[0] < t[0]:
+            t_new = t_new[1:]
+        if t_new[-1] > t[-1]:
+            t_new = t_new[:-1]
+
+        chiA = spline_interpolation_many(t_new, t, chiA.T).T
+        chiB = spline_interpolation_many(t_new, t, chiB.T).T
+        h = spline_interpolation_many(t_new, t, w.data.T)
+    else:
+        # If dt is None, we just use the original time array and data
+        t_new = t
+        h = w.data.T
+
+    if debug:
+        end_interp = time()
+        print(f"Interpolation took {(end_interp - start_interp) * 1000:.2f} ms")
 
     # Convert to dict format
     h_dict = {}
+    mode_idx = 0
     for ell in range(2, ellMax + 1):
         for m in range(-ell, ell + 1):
-            h_dict[(ell, m)] = w.data.T[w.index(ell, m)]
+            h_dict[(ell, m)] = h[mode_idx]
+            mode_idx += 1
 
-    return t, h_dict, chiA, chiB, omega_orb, phi_orb, quat_copr
+    t_new += t_ref  # Sets t=t_ref at omega_ref
+
+    return t_new, h_dict, chiA, chiB  # , omega_orb, phi_orb, quat_copr
 
 
 if __name__ == "__main__":
