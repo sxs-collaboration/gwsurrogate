@@ -31,7 +31,7 @@ class HybridSurrogate(PrecessingSurrogate):
         self.debug = True  # FIXME
         self.make_plot = False
 
-        if self.debug:
+        if self.make_plot:
             # Only import the plotting functions if debug is True
             # That way, no unnecessary matplotlib imports are made.
             from .hyb_plot_utils import plot_hyb
