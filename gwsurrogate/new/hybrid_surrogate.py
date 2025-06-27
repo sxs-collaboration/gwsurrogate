@@ -138,6 +138,11 @@ class HybridSurrogate(PrecessingSurrogate):
         if t_nrsur[idxStart_nrsur] > t_nrsur[idxEnd_nrsur]:
             raise Exception("nrsur start time is later than the end time!")
 
+        hyb_metadata = {
+            "t_nr_window_start": t_nrsur[idxStart_nrsur],
+            "t_nr_window_end": t_nrsur[idxEnd_nrsur],
+        }
+
         tWindow = t_nrsur[idxEnd_nrsur] - t_nrsur[idxStart_nrsur]
 
         # nrsur and PN are assumed to have been time shifted so that at
@@ -242,7 +247,7 @@ class HybridSurrogate(PrecessingSurrogate):
                 plot_settings["plot_fname_prefix"],
             )
 
-        return t_hyb, h_hyb, chiA_hyb, chiB_hyb
+        return t_hyb, h_hyb, chiA_hyb, chiB_hyb, hyb_metadata
 
     def __call__(
         self,
@@ -492,7 +497,7 @@ class HybridSurrogate(PrecessingSurrogate):
             starttime_hyb = time()
 
         # Do the hybridization.
-        t_hyb, h_hyb, chiA_hyb, chiB_hyb = self.stitch_nrsur_PN(
+        t_hyb, h_hyb, chiA_hyb, chiB_hyb, hyb_metadata = self.stitch_nrsur_PN(
             t_nrsur,
             h_nrsur,
             chiA_nrsur,
@@ -515,6 +520,7 @@ class HybridSurrogate(PrecessingSurrogate):
             "chiB": chiB_hyb,
             # "q_copr": quat,
             # "orbphase": orbphase,
+            "hyb_metadata": hyb_metadata,
         }
 
         if self.debug:
