@@ -218,7 +218,7 @@ We welcome contributions! Here's how you can get involved:
    Use the [GitHub issue tracker](https://github.com/sxs-collaboration/gwsurrogate/issues) to report bugs or suggest new features. Before submitting, consider browsing through existing issues to see if your concern has already been addressed. A developer will respond to issues that are opened on GitHub.
 
 2. **Contribute Code**:  
-   We use the [fork and pull request model](https://help.github.com/articles/creating-a-pull-request-from-a-fork/) for code contributions. Fork the repository, make your changes, and submit a pull request.
+   We use the [fork and pull request model](https://help.github.com/articles/creating-a-pull-request-from-a-fork/) for code contributions. Fork the repository, make your changes, and submit a pull request. We use [Ruff](https://github.com/charliermarsh/ruff) for linting and auto-fixes. If you’re on VS Code, install the Ruff extension.
 
 Please ensure you follow our [Code of Conduct](https://github.com/sxs-collaboration/gwsurrogate?tab=coc-ov-file) when contributing. 
 
