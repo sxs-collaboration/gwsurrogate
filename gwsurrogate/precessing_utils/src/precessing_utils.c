@@ -1,7 +1,21 @@
 #include <Python.h>
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include <numpy/arrayobject.h>
+#include <numpy/numpyconfig.h>
 
-#include "numpy/arrayobject.h"
+// entire block can be removed if building against numpy 1.X is dropped
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#if defined(__has_include)
+#  if __has_include(<numpy/npy_2_compat.h>)
+#    include <numpy/npy_2_compat.h>    /* NumPy≥2.0 shim */
+#  else
+     /* NumPy<2.0: stub so PyArray_ImportNumPyAPI() just calls import_array() */
+#    define PyArray_ImportNumPyAPI() (import_array(), 0)
+#  endif
+#else
+#  include <numpy/npy_2_compat.h>      // assume its there
+#endif
+// END numpy 1.X build support 
+
 #include "precessing_utils.h"
 #include <math.h>
 #include <stdio.h>
@@ -90,14 +104,20 @@ void init_utils(void)
 #else
     PyObject *module = Py_InitModule("_utils", _utils_methods);
 #endif
-    import_array(); // For numpy
-
-    if (module == NULL)
+    if (!module)
         INITERROR;
-    struct module_state *st = GETSTATE(module);
 
+    /* Import NumPy C-API (works on both 1.x and 2.x) */
+    if (PyArray_ImportNumPyAPI() < 0) {
+        Py_DECREF(module);
+        INITERROR;
+    }
+
+    //fprintf(stderr,"Build log: Precessing_utils built against NumPy %s\n",NPY_FEATURE_VERSION_STRING);
+
+    struct module_state *st = GETSTATE(module);
     st->error = PyErr_NewException("_utils.Error", NULL, NULL);
-    if (st->error == NULL) {
+    if (!st->error) {
         Py_DECREF(module);
         INITERROR;
     }

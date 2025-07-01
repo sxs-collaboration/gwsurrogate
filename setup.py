@@ -34,7 +34,7 @@ extmod = Extension(
     sources=["gwsurrogate/precessing_utils/src/precessing_utils.c"],
     include_dirs=["gwsurrogate/precessing_utils/include", numpy.get_include()],
     language="c",
-    extra_compile_args=["-std=c99", "-fPIC", "-O3"],
+    extra_compile_args=["-std=c99", "-fPIC", "-O3", '-Wcpp'],
 )
 extmods.append(extmod)
 
@@ -78,8 +78,26 @@ setup(
     long_description_content_type="text/markdown",
     long_description=open("README.md").read(),
     # will start new downloads if these are installed in a non-standard location
+    # NOTE: These are runtime requirements needed for installation.
+    #
+    #       In particular, the extensions listed above have their own build
+    #       requirements which (if building from source) are set in the
+    #       pyproject.toml file (not below). 
+    #
+    #       Notably, GWSurrogate is intended to be built against numpy 2.X 
+    #       header files but compatible with numpy>=1.7 runtime environments. 
+    #       Hence numpy>=2 constraints are not put on the install requirements
+    #       below. We do require numpy>=1.7 as that's when the 
+    #       NPY_NO_DEPRECATED_API macro first appeared.
+    #
+    #       pyproject.toml specifies build requirements, in particular you
+    #       may can modify that file if you intend to require a specific
+    #       version of numpy (e.g. >=1.7) as pip builds the extensions 
+    #       in an isolated environment and does not use the
+    #       requirements below.
     install_requires=[
-        "numpy<2.0",
+        "numpy>=1.7",
+        "requests",
         "scipy",
         "h5py",
         "pytest",

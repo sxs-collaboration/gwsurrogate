@@ -22,7 +22,7 @@ extensions = [
                 sources=['src/precessing_utils.c'],
                 include_dirs = ['include', numpy.get_include()],
                 language='c',
-                extra_compile_args = ['-fPIC', '-O3'],
+                extra_compile_args=["-std=c99", "-fPIC", "-O3", '-Wcpp'],
             )
         ]
 

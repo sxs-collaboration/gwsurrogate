@@ -515,7 +515,17 @@ class FastTensorSplineSurrogate(SimpleH5Object):
 
         h_modes = {}
         for k in modes:
-            i = self.mode_indices[str(k)]
+
+            # Needed for compatibility with numpy 2.0 as __repr__ of np.int64
+            # has changed (ie str(np.int64(2)) != '2' anymore)
+            # So str(k) won't work as a hash for the mode_indices dictionary when
+            # the surrogate h5 file stores the mode list as a tuple 
+            # of np.int64 scalars. The fast spline surrogate might be 
+            # the only model affected by this, so fixing it here instead of 
+            # surrogate I/O functions.  See NEP 50/NEP 51
+            k_str = str( (int(k[0]), int(k[1]))  )
+
+            i = self.mode_indices[k_str]
 
             h_eim = fast_complex_tensor_spline_eval(x,self.ts_grid,self.cre[i],self.cim[i])
 

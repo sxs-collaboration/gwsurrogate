@@ -1,7 +1,13 @@
 [build-system]
     requires = [
         "setuptools>=61.0",
-        "oldest-supported-numpy"
+        # pip will build gwsurrogate modules with numpy>=2.0 headers,
+        # which are backwards compatible with numpy 1.x runtime
+        # environments. See setup.py.
+        #
+        # If users need to build modules against numpy<2.0 headers,
+        # the line below can be relaxed to "numpy>=1.7"
+        "numpy>=2.0"
     ]
     build-backend = "setuptools.build_meta"
 
