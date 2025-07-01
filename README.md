@@ -76,10 +76,14 @@ In the case of an `homebrew` installation, you may install the package like this
 >>> conda install -c conda-forge gwsurrogate
 ```
 
-Note: Installation with Python 3.12 with conda currently doesn't work. Please use either use Python <= 3.11 or pip instead. The following should set up a suitable conda environment to install into:
+## numpy 1.x and 2.x ##
+
+Certain gwsurrogate modules are implemented as C-extensions and require NumPy’s C-API headers at build time. By default, `pip install .` uses the NumPy 2.x headers (as pinned in **pyproject.toml**) but produces binaries that remain compatible with NumPy 1.x at runtime. If you explicitly need to build against NumPy 1.x headers, update the NumPy requirement in **pyproject.toml** before installing.
+
+To create a Conda environment with Python 3.11 and NumPy < 2.0:
 
 ```bash
->>> conda create -n MyEnv python=3.11 "numpy<2.0"
+conda create -n myenv python=3.11 "numpy<2.0"
 ```
 
 ## From source (pip) ##
