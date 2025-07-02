@@ -878,9 +878,9 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             else:
                 l,m = mode
                 h_coorb_lm = 0
-                if 're' in h_coorb[mode][0].keys():
+                if 're' in h_coorb[mode][0]:
                     h_coorb_lm += h_coorb[mode][0]['re'] + 1j * 0
-                if 'im' in h_coorb[mode][0].keys():
+                if 'im' in h_coorb[mode][0]:
                     h_coorb_lm += 1j*h_coorb[mode][0]['im']
 
                 h_coorb_lm = h_coorb_lm[initIdx:]
@@ -1354,9 +1354,9 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
             else:
                 l,m = mode
                 h_coorb_lm = 0
-                if 're' in h_coorb[mode][0].keys():
+                if 're' in h_coorb[mode][0]:
                     h_coorb_lm += h_coorb[mode][0]['re'] + 1j * 0
-                if 'im' in h_coorb[mode][0].keys():
+                if 'im' in h_coorb[mode][0]:
                     h_coorb_lm += 1j*h_coorb[mode][0]['im']
 
                 h_coorb_lm = h_coorb_lm[initIdx:peak22Idx]
