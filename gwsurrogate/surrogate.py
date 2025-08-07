@@ -2506,6 +2506,92 @@ See the __call__ method on how to evaluate waveforms.
         x = [q, chiA0, chiB0]
         return x
 
+class NRSur7dq4_DD(SurrogateEvaluator): # TODO: Complete this in sync with convert_to_gwsurrogate.py
+    def __init__(self, h5filename):
+        self.h5filename = h5filename
+        domain_type = 'Time'
+        keywords = {
+            'Precessing': True,
+            }
+        # soft_lims -> raise warning when outside lims
+        # hard_lim -> raise error when outside lims
+        # Format is [qMax, chiMax].
+        soft_param_lims = [4.01, 0.801]
+        hard_param_lims = [6.01, 1]
+        super(NRSur7dq4_DD, self).__init__(self.__class__.__name__, \
+            domain_type, keywords, soft_param_lims, hard_param_lims)
+
+    def _load_dimless_surrogate(self): # TODO: Implement this
+      # needed to convert user input x to parameters used by surrogate fits
+        def get_fit_params(x):
+            """ Converts from x=[q, chi1x, chi1y, chi1z, chi2x, chi2y, chi2z]
+                to x = [np.log(q), (chi1x+chi2x)/2, (chi1x-chi2x)/2, chiHat, (chi1y+chi2y)/2, (chi1y-chi2y)/2, chi1z]
+                chiHat is defined in Eq.(3) of 1508.07253.
+                chiHat always lie in range [-1, 1].
+            """
+
+            x = np.copy(x)
+
+            q = float(x[0])
+            chi1x = float(x[1])
+            chi1y = float(x[2])
+            chi1z = float(x[3])
+            chi2x = float(x[4])
+            chi2y = float(x[5])
+            chi2z = float(x[6])
+            eta = q/(1.+q)**2
+            chi_wtAvg = (q*chi1z+chi2z)/(1+q)
+            chiHat = (chi_wtAvg - 38.*eta/113.*(chi1z + chi2z)) \
+                /(1. - 76.*eta/113.)
+
+            x = np.array([np.log(q), 
+                 (chi1x + chi2x)/2,
+                 (chi1x - chi2x)/2,
+                 chiHat,
+                  (chi1y + chi2y)/2,
+                  (chi1y - chi2y)/2,
+                  chi1z])
+            return x
+
+        def get_fit_settings():
+            """
+            These are to rescale the mass ratio fit range
+            from [-0.01, np.log(4+0.01)] to [-1, 1]. The chi fits are already
+            in this range.
+
+
+            Values defined here are model-specific. These are for NRSur7dq4.
+            """
+
+            q_fit_offset = -0.9857019407834238
+            q_fit_slope = 1.4298059216576398
+            q_max_bfOrder = 3
+            chi_max_bfOrder = 2
+            return q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder
+
+        # largest ell mode for NRSur7dq4
+        ellMax = 5
+
+        # max allowable reference dimensionless orbital angular frequency for NRSur7dq4_DD
+        omega_ref_max = 0.201
+
+        # sur = precessing_surrogate.PrecessingSurrogateDomainDecomposed(self.h5filename,
+        #          get_fit_params,get_fit_settings,ellMax,omega_ref_max)
+        sur = precessing_surrogate.PrecessingSurrogate(self.h5filename,
+                 get_fit_params,get_fit_settings,ellMax,omega_ref_max, subdomains=2)
+        return sur
+
+    def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,
+            tidal_opts, par_dict):
+        """
+        This function, which must be overriden for each derived class of
+        SurrogateEvaluator, puts all intrinsic parameters of the surrogate
+        into a single array.
+        For example, for NRSur7dq4: x = [q, chiA0, chiB0].
+        """
+        x = [q, chiA0, chiB0]
+        return x
+
 class SEOBNRv4PHMSur(SurrogateEvaluator):
     r"""
 A class for the SEOBNRv4PHM surrogate models.
@@ -2725,6 +2811,7 @@ SURROGATE_CLASSES = {
     "NRHybSur3dq8_CCE": NRHybSur3dq8_CCE,
     "NRHybSur2dq15": NRHybSur2dq15,
     "NRSur7dq4": NRSur7dq4,
+    "NRSur7dq4_DD": NRSur7dq4_DD, # TODO: Finalize a name for this model
     "NRHybSur3dq8Tidal": NRHybSur3dq8Tidal,
     "SEOBNRv4PHMSur": SEOBNRv4PHMSur,
 #    "SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5":EvaluateSurrogate # model SpEC_q1_10_NoSpin

@@ -817,6 +817,124 @@ ellMax: The maximum ell mode to evaluate.
 
         return group_name in h5file
 
+class DomainDecomposedCoorbitalWaveformSurrogate:
+    """This surrogate models the waveform in the coorbital frame with a two
+    subdomains in time"""
+
+    def __init__(self, h5file, get_fit_params, get_fit_settings):
+        """h5file is a h5py.File containing the surrogate data
+
+        get_fit_params is a function that takes a numpy array x and returns
+        the fit  parameters are used to evaluate the surrogate fits.
+
+
+        get_fit_settings is a function that provides information about
+        model-specific surrogate fits"""
+
+        self._get_fit_params = get_fit_params
+        self._get_fit_settings = get_fit_settings
+
+        self.ellMax = 2
+        while 'hCoorb_%s_%s_Re+_subdomain_0'%(self.ellMax+1, self.ellMax+1) in h5file.keys():
+            self.ellMax += 1
+
+        self.t = h5file['t_coorb'][()]
+        self.masks = h5file['masks'][()]
+
+        self.data = {}
+        self.mode_list = []
+        for ell in range(2, self.ellMax+1):
+            # m=0 has a different file naming convention
+            # If there are no modes, skip. Assumes if group "*_real_subdomain_0" exists, then
+            # "*_real_subdomain_1", "*_imag_subdomain_0" and "*_imag_subdomain_1" exist as well.
+            if self._check_h5group_exists(h5file,'hCoorb_%s_0_real_subdomain_0'%ell):
+                #print("Loading (ell=%s,0) mode"%(ell))
+                self.mode_list.append( (ell,0) )
+                for reim in ['real', 'imag']:
+                    for subdomain in ['0', '1']:
+                        group = h5file['hCoorb_%s_0_%s_subdomain_%s'%(ell, reim, subdomain)]
+                        self.data['%s_0_%s_sd_%s'%(ell, reim, subdomain)] \
+                                = _extract_component_data(group)
+
+            for m in range(1, ell+1):
+                # If there are no modes, skip. Assumes if group "*_Re+" exists, then
+                # "*_Re-", "*_Im+", and "_Im-" exists as well.
+                if self._check_h5group_exists(h5file,'hCoorb_%s_%s_Re+_subdomain_0'%(ell, m)):
+                    #print("Loading (ell=%s,m=\pm%s) modes"%(ell, m))
+                    self.mode_list.append( (ell,m) )
+                    self.mode_list.append( (ell,-m) )
+                    for reim in ['Re', 'Im']:
+                        for pm in ['+', '-']:
+                            for subdomain in ['0', '1']:
+                                group = h5file['hCoorb_%s_%s_%s%s_subdomain_%s'%(ell, m, reim, pm, subdomain)]
+                                tmp_data = _extract_component_data(group)
+                                self.data['%s_%s_%s%s_sd_%s'%(ell, m, reim, pm, subdomain)] = tmp_data
+
+    def __call__(self, q, chiA, chiB, ellMax=4):
+        """
+Evaluates the coorbital waveform modes.
+q: The mass ratio
+chiA, chiB: The time-dependent spin in the coorbital frame. These should have
+            shape (N, 3) where N = len(t_coorb)
+ellMax: The maximum ell mode to evaluate.
+        """
+        nmodes = ellMax*ellMax + 2*ellMax - 3
+        modes = 1.j*np.zeros((nmodes, len(self.t)))
+
+        for ell in range(2, ellMax+1):
+
+            # NOTE: modes is populated with zeros, so skipping means
+            #       "set to zero". This is required for inertial_waveform_modes,
+            #       which maps from coorb to inertial frame modes.
+            # m=0 has a different evaluation pattern
+            if (ell,0) in self.mode_list:
+                re_0 = self._eval_comp(self.data['%s_0_real_sd_0'%(ell)], q, chiA, chiB)
+                re_1 = self._eval_comp(self.data['%s_0_real_sd_1'%(ell)], q, chiA, chiB)
+                im_0 = self._eval_comp(self.data['%s_0_imag_sd_0'%(ell)], q, chiA, chiB)
+                im_1 = self._eval_comp(self.data['%s_0_imag_sd_1'%(ell)], q, chiA, chiB)
+                modes[ell*(ell+1) - 4] = (re_0+ 1.j*im_0)*self.masks[0]+ (re_1+ 1.j*im_1)*self.masks[1]
+                #print("evaluation ell=%s, m=0"%ell)
+
+            # NOTE: similar to previous for-loop, skipping means "set mode to zero".
+            for m in range(1, ell+1):
+                if (ell,m) in self.mode_list:
+                    rep_0 = self._eval_comp(self.data['%s_%s_Re+_sd_0'%(ell, m)], q, chiA,chiB)
+                    rep_1 = self._eval_comp(self.data['%s_%s_Re+_sd_1'%(ell, m)], q, chiA,chiB)
+                    rem_0 = self._eval_comp(self.data['%s_%s_Re-_sd_0'%(ell, m)], q, chiA,chiB)
+                    rem_1 = self._eval_comp(self.data['%s_%s_Re-_sd_1'%(ell, m)], q, chiA,chiB)
+                    imp_0 = self._eval_comp(self.data['%s_%s_Im+_sd_0'%(ell, m)], q, chiA,chiB)
+                    imp_1 = self._eval_comp(self.data['%s_%s_Im+_sd_1'%(ell, m)], q, chiA,chiB)
+                    imm_0 = self._eval_comp(self.data['%s_%s_Im-_sd_0'%(ell, m)], q, chiA,chiB)
+                    imm_1 = self._eval_comp(self.data['%s_%s_Im-_sd_1'%(ell, m)], q, chiA,chiB)
+                    h_posm_0, h_negm_0 = _assemble_mode_pair(rep_0, rem_0, imp_0, imm_0)
+                    h_posm_1, h_negm_1 = _assemble_mode_pair(rep_1, rem_1, imp_1, imm_1)
+                    modes[ell*(ell+1) - 4 + m] = h_posm_0*self.masks[0] + h_posm_1*self.masks[1]
+                    modes[ell*(ell+1) - 4 - m] = h_negm_0*self.masks[0] + h_negm_1*self.masks[1]
+                    #print("evaluation ell=%s, m=%s"%(ell,m))
+
+        return modes
+
+    def _eval_comp(self, data, q, chiA, chiB):
+        nodes = []
+        for orders, coefs, ni in zip(data['orders'], data['coefs'],
+                data['nodeIndices']):
+
+            fit_data = {
+                'bfOrders': orders,
+                'coefs': coefs,
+                }
+            x = np.append(q, np.append(chiA[ni], chiB[ni]))
+            fit_params = self._get_fit_params(x)
+            nodes.append(_eval_scalar_fit(fit_data, fit_params, self._get_fit_settings))
+
+        return np.array(nodes).dot(data['EI_basis'])
+
+    def _check_h5group_exists(self, h5file, group_name):
+        """ Check if h5 group GROUP_NAME has valid data to load.
+
+        Returns true or False """
+
+        return group_name in h5file
 
 ##############################################################################
 # Utility functions
@@ -880,7 +998,7 @@ See the __call__ method on how to evaluate waveforms.
     """
 
     def __init__(self, filename, get_fit_params, get_fit_settings,
-                 ellMax_model,omega_ref_max_model):
+                 ellMax_model,omega_ref_max_model, subdomains=1):
         """
 Loads the surrogate model data.
 
@@ -892,16 +1010,23 @@ get_fit_settings: A function that provides information about
 ellMax_model: The maximum ell mode supported by the surrogate model
 omega_ref_max_model: The maximium allowable reference dimensionless
                      orbital angular frequency supported by the surrogate model
+subdomains: The number of time-subdomains used in the surrogate model.
         """
         if isinstance(filename, h5py._hl.group.Group) or isinstance(filename, h5py._hl.files.File):
             h5file = filename
         else:
             h5file = h5py.File(filename, 'r')
 
+        if subdomains == 1:
+            coorbital_surrogate_class = CoorbitalWaveformSurrogate
+        elif subdomains == 2:
+            coorbital_surrogate_class = DomainDecomposedCoorbitalWaveformSurrogate
+        else:
+            raise ValueError("subdomains must be 1 or 2, got %s"%subdomains)
         self.ellMax_model = ellMax_model
         self.omega_ref_max_model = omega_ref_max_model
         self.dynamics_sur = DynamicsSurrogate(h5file,get_fit_params,get_fit_settings,omega_ref_max_model)
-        self.coorb_sur = CoorbitalWaveformSurrogate(h5file,get_fit_params,get_fit_settings)
+        self.coorb_sur = coorbital_surrogate_class(h5file,get_fit_params,get_fit_settings)
         self.t_coorb = self.coorb_sur.t
         self.tds = np.append(self.dynamics_sur.t[0:6:2], \
             self.dynamics_sur.t[6:])
