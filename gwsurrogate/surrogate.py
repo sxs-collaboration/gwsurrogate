@@ -2506,7 +2506,7 @@ See the __call__ method on how to evaluate waveforms.
         x = [q, chiA0, chiB0]
         return x
 
-class NRSur7dq4_DD(SurrogateEvaluator): # TODO: Complete this in sync with convert_to_gwsurrogate.py
+class NRSur7dq4_DD(SurrogateEvaluator):
     def __init__(self, h5filename):
         self.h5filename = h5filename
         domain_type = 'Time'
@@ -2521,7 +2521,7 @@ class NRSur7dq4_DD(SurrogateEvaluator): # TODO: Complete this in sync with conve
         super(NRSur7dq4_DD, self).__init__(self.__class__.__name__, \
             domain_type, keywords, soft_param_lims, hard_param_lims)
 
-    def _load_dimless_surrogate(self): # TODO: Implement this
+    def _load_dimless_surrogate(self):
       # needed to convert user input x to parameters used by surrogate fits
         def get_fit_params(x):
             """ Converts from x=[q, chi1x, chi1y, chi1z, chi2x, chi2y, chi2z]
@@ -2811,7 +2811,7 @@ SURROGATE_CLASSES = {
     "NRHybSur3dq8_CCE": NRHybSur3dq8_CCE,
     "NRHybSur2dq15": NRHybSur2dq15,
     "NRSur7dq4": NRSur7dq4,
-    "NRSur7dq4_DD": NRSur7dq4_DD, # TODO: Finalize a name for this model
+    "NRSur7dq4_DD": NRSur7dq4_DD,
     "NRHybSur3dq8Tidal": NRHybSur3dq8Tidal,
     "SEOBNRv4PHMSur": SEOBNRv4PHMSur,
 #    "SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5":EvaluateSurrogate # model SpEC_q1_10_NoSpin
