@@ -870,7 +870,7 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
                                 tmp_data = _extract_component_data(group)
                                 self.data['%s_%s_%s%s_sd_%s'%(ell, m, reim, pm, subdomain)] = tmp_data
 
-    def __call__(self, q, chiA, chiB, ellMax=4):
+    def __call__(self, q, chiA, chiB, ellMax=5):
         """
 Evaluates the coorbital waveform modes.
 q: The mass ratio
