@@ -154,13 +154,13 @@ _surrogate_world['NRSur7dq4'] = \
 
 _surrogate_world['NRSur7dq4v2'] = \
  surrogate_info(\
-   'https://www.dropbox.com/scl/fi/fn4xjuwz9t7wd15fwfxan/NRSur7dq4v2.tar.gz?rlkey=m1oy10abar7w8xrj2xwvlz25z&st=idgk9cns&dl=0',
+   'https://www.dropbox.com/scl/fi/aog333byfa4x0cjh4yb9x/NRSur7dq4v2.h5?rlkey=mci9eq1y71p3jwjsxrlgcmbps&st=amueac9c&dl=0',
    '''Surrogate model with improved ringdown for precessing binary black holes
      with mass ratio q<=4 and spin magnitudes <=0.8. This model is yet to be
      published. All ell<=5 modes are included. The spin and frame dynamics are also
      modeled.''',
      '''''',
-     '52256169026fcd3a6472e7bcc6e9a867') 
+     '36228e17cd95fe8adaf1e85f8e31bf4e') 
 
 _surrogate_world['SEOBNRv4PHMSur'] = \
   surrogate_info(\
