@@ -173,6 +173,7 @@ def NRSur7dq4_samples(i):
     return [5., chiA, chiB], None, precessing_opts
 
 model_sampler["NRSur7dq4"] = NRSur7dq4_samples
+model_sampler["NRSur7dq4v2"] = NRSur7dq4_samples  # use same samples for new version of model
 
 def SEOBNRv4PHMSur_samples(i):
   """ sample points for the SEOBNRv4PHMSur model
