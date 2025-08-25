@@ -112,7 +112,7 @@ rtols = {'NRHybSur3dq8':  3.4e-5,
 surrogate_old_interface = ["SpEC_q1_10_NoSpin","EOBNRv2_tutorial","EOBNRv2","SpEC_q1_10_NoSpin_linear","EMRISur1dq1e4","BHPTNRSur1dq1e4"]
 
 # news loader class
-surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal","NRSur7dq4","NRHybSur2dq15","NRHybSur3dq8_CCE","SEOBNRv4PHMSur"]
+surrogate_loader_interface = ["NRHybSur3dq8","NRHybSur3dq8Tidal","NRSur7dq4","NRSur7dq4v2","NRHybSur2dq15","NRHybSur3dq8_CCE","SEOBNRv4PHMSur"]
 
 # Most models are randomly sampled, but in some cases its useful to provide 
 # test points to activate specific code branches. This is done by mapping 

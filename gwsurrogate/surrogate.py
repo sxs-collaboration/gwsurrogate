@@ -2811,7 +2811,7 @@ SURROGATE_CLASSES = {
     "NRHybSur3dq8_CCE": NRHybSur3dq8_CCE,
     "NRHybSur2dq15": NRHybSur2dq15,
     "NRSur7dq4": NRSur7dq4,
-    "NRSur7dq4_DD": NRSur7dq4_DD,
+    "NRSur7dq4v2": NRSur7dq4_DD,
     "NRHybSur3dq8Tidal": NRHybSur3dq8Tidal,
     "SEOBNRv4PHMSur": SEOBNRv4PHMSur,
 #    "SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5":EvaluateSurrogate # model SpEC_q1_10_NoSpin
