@@ -337,6 +337,8 @@ def test_model_regression(generate_regression_data=False):
   models_to_test = {}
   for model in models:
     surrogate_data = surrogate_path+os.path.basename(gws.catalog._surrogate_world[model][0])
+    if model == 'NRSur7dq4v2': # TODO: Upload to Zenodo when appropriate and remove this if
+        surrogate_data = surrogate_path+'NRSur7dq4v2.h5'
     if os.path.isfile(surrogate_data): # surrogate data file exists
       if model == 'EOBNRv2': # dropbox has crazy urls now, breaks stuff which this if fixes
         models_to_test[model] = surrogate_path+'EOBNRv2' # actually two models in one file - dont test
