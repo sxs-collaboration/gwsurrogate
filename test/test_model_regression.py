@@ -340,8 +340,6 @@ def test_model_regression(generate_regression_data=False):
     if os.path.isfile(surrogate_data): # surrogate data file exists
       if model == 'EOBNRv2': # dropbox has crazy urls now, breaks stuff which this if fixes
         models_to_test[model] = surrogate_path+'EOBNRv2' # actually two models in one file - dont test
-      elif model == 'NRSur7dq4v2': # TODO: Upload to zenodo when appropriate and remove this if
-        models_to_test[model] = surrogate_path+'NRSur7dq4v2.h5?rlkey=mci9eq1y71p3jwjsxrlgcmbps'
       else:
         models_to_test[model] = surrogate_data
     elif model in dont_test:
