@@ -35,9 +35,6 @@ for model in models:
   gws.catalog.pull(model)
   surr_url = gws.catalog._surrogate_world[model].url
   path_to_model = gws.catalog.download_path()+os.path.basename(surr_url)
-  if model == 'NRSur7dq4v2':  # TODO: Remove this if when surrogate file moved to Zenodo
-    os.rename(path_to_model, gws.catalog.download_path()+'NRSur7dq4v2.h5')
-    path_to_model = gws.catalog.download_path()+'NRSur7dq4v2.h5'
   print("md5 Hash of %s is %s"%(model,md5(path_to_model)))
   if not gws.catalog.is_file_recent(path_to_model):
     print("File download failed!") 
