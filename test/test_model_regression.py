@@ -321,6 +321,7 @@ def test_model_regression(generate_regression_data=False):
                #"NRHybSur3dq8",
                #"NRHybSur3dq8Tidal",
                #"NRSur7dq4"
+               "NRSur7dq4v2", #TODO: Remove this once the data is added to h5 file
                ]
 
 
