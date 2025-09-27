@@ -998,7 +998,7 @@ See the __call__ method on how to evaluate waveforms.
     """
 
     def __init__(self, filename, get_fit_params, get_fit_settings,
-                 ellMax_model,omega_ref_max_model, subdomains=1):
+                 ellMax_model,omega_ref_max_model):
         """
 Loads the surrogate model data.
 
@@ -1010,16 +1010,18 @@ get_fit_settings: A function that provides information about
 ellMax_model: The maximum ell mode supported by the surrogate model
 omega_ref_max_model: The maximium allowable reference dimensionless
                      orbital angular frequency supported by the surrogate model
-subdomains: The number of time-subdomains used in the surrogate model.
         """
         if isinstance(filename, h5py._hl.group.Group) or isinstance(filename, h5py._hl.files.File):
             h5file = filename
         else:
             h5file = h5py.File(filename, 'r')
 
+        subdomain_dps=[key for key in h5file.keys() if 'subdomain' in key]
+        subdomains = len(set([int(dp.split('_')[-1]) for dp in subdomain_dps])) if len(subdomain_dps) != 0 else 1
         if subdomains == 1:
             coorbital_surrogate_class = CoorbitalWaveformSurrogate
         elif subdomains == 2:
+            assert len(subdomain_dps)%2 == 0        # Testing that each waveform datapiece has two subdomain datapieces
             coorbital_surrogate_class = DomainDecomposedCoorbitalWaveformSurrogate
         else:
             raise ValueError("subdomains must be 1 or 2, got %s"%subdomains)

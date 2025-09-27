@@ -2600,7 +2600,7 @@ See the __call__ method on how to evaluate waveforms.
         # sur = precessing_surrogate.PrecessingSurrogateDomainDecomposed(self.h5filename,
         #          get_fit_params,get_fit_settings,ellMax,omega_ref_max)
         sur = precessing_surrogate.PrecessingSurrogate(self.h5filename,
-                 get_fit_params,get_fit_settings,ellMax,omega_ref_max, subdomains=2)
+                 get_fit_params,get_fit_settings,ellMax,omega_ref_max)
         return sur
 
     def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,
