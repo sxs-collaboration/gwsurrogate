@@ -2506,7 +2506,7 @@ See the __call__ method on how to evaluate waveforms.
         x = [q, chiA0, chiB0]
         return x
 
-class NRSur7dq4_DD(SurrogateEvaluator): #TODO: Update this descriptor after publication
+class NRSur7dq4v2(SurrogateEvaluator): #TODO: Update this descriptor after publication
     r"""
 A class for the NRSur7dq4v2 surrogate model, a domain-decomposed modification 
 of the surrogate presented in Varma et al. 2019, arxiv1905.09300.
@@ -2540,7 +2540,7 @@ See the __call__ method on how to evaluate waveforms.
         # Format is [qMax, chiMax].
         soft_param_lims = [4.01, 0.801]
         hard_param_lims = [6.01, 1]
-        super(NRSur7dq4_DD, self).__init__(self.__class__.__name__, \
+        super(NRSur7dq4v2, self).__init__(self.__class__.__name__, \
             domain_type, keywords, soft_param_lims, hard_param_lims)
 
     def _load_dimless_surrogate(self):
@@ -2594,7 +2594,7 @@ See the __call__ method on how to evaluate waveforms.
         # largest ell mode for NRSur7dq4
         ellMax = 5
 
-        # max allowable reference dimensionless orbital angular frequency for NRSur7dq4_DD
+        # max allowable reference dimensionless orbital angular frequency for NRSur7dq4v2
         omega_ref_max = 0.201
 
         # sur = precessing_surrogate.PrecessingSurrogateDomainDecomposed(self.h5filename,
@@ -2833,7 +2833,7 @@ SURROGATE_CLASSES = {
     "NRHybSur3dq8_CCE": NRHybSur3dq8_CCE,
     "NRHybSur2dq15": NRHybSur2dq15,
     "NRSur7dq4": NRSur7dq4,
-    "NRSur7dq4v2": NRSur7dq4_DD,
+    "NRSur7dq4v2": NRSur7dq4v2,
     "NRHybSur3dq8Tidal": NRHybSur3dq8Tidal,
     "SEOBNRv4PHMSur": SEOBNRv4PHMSur,
 #    "SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5":EvaluateSurrogate # model SpEC_q1_10_NoSpin
