@@ -1017,14 +1017,16 @@ omega_ref_max_model: The maximium allowable reference dimensionless
             h5file = h5py.File(filename, 'r')
 
         subdomain_dps=[key for key in h5file.keys() if 'subdomain' in key]
-        subdomains = len(set([int(dp.split('_')[-1]) for dp in subdomain_dps])) if len(subdomain_dps) != 0 else 1
-        if subdomains == 1:
+        multidomain = len(subdomain_dps) > 0        # Checking if the surrogate uses multiple domains
+        if not multidomain:
             coorbital_surrogate_class = CoorbitalWaveformSurrogate
-        elif subdomains == 2:
-            assert len(subdomain_dps)%2 == 0        # Testing that each waveform datapiece has two subdomain datapieces
-            coorbital_surrogate_class = DomainDecomposedCoorbitalWaveformSurrogate
         else:
-            raise ValueError("subdomains must be 1 or 2, got %s"%subdomains)
+            subdomains = len(set([int(dp.split('_')[-1]) for dp in subdomain_dps]))
+            if subdomains == 2:
+                assert(len(subdomain_dps)%2 == 0)        # Testing that each waveform datapiece has two subdomain datapieces
+                coorbital_surrogate_class = DomainDecomposedCoorbitalWaveformSurrogate
+            else:
+                raise ValueError("subdomains must be 1 or 2, got %s"%subdomains)    # NOTE: only 1 or 2 subdomains are supported
         self.ellMax_model = ellMax_model
         self.omega_ref_max_model = omega_ref_max_model
         self.dynamics_sur = DynamicsSurrogate(h5file,get_fit_params,get_fit_settings,omega_ref_max_model)
