@@ -2582,7 +2582,8 @@ See the __call__ method on how to evaluate waveforms.
             in this range.
 
 
-            Values defined here are model-specific. These are for NRSur7dq4.
+            Values defined here are model-specific. These are identical to those
+            for NRSur7dq4.
             """
 
             q_fit_offset = -0.9857019407834238
@@ -2591,14 +2592,13 @@ See the __call__ method on how to evaluate waveforms.
             chi_max_bfOrder = 2
             return q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder
 
-        # largest ell mode for NRSur7dq4
+        # largest ell mode for NRSur7dq4v2
         ellMax = 5
 
-        # max allowable reference dimensionless orbital angular frequency for NRSur7dq4v2
+        # max allowable reference dimensionless orbital angular frequency for NRSur7dq4v2,
+        # identical to those for NRSur7dq4
         omega_ref_max = 0.201
 
-        # sur = precessing_surrogate.PrecessingSurrogateDomainDecomposed(self.h5filename,
-        #          get_fit_params,get_fit_settings,ellMax,omega_ref_max)
         sur = precessing_surrogate.PrecessingSurrogate(self.h5filename,
                  get_fit_params,get_fit_settings,ellMax,omega_ref_max)
         return sur
@@ -2609,7 +2609,6 @@ See the __call__ method on how to evaluate waveforms.
         This function, which must be overriden for each derived class of
         SurrogateEvaluator, puts all intrinsic parameters of the surrogate
         into a single array.
-        For example, for NRSur7dq4: x = [q, chiA0, chiB0].
         """
         x = [q, chiA0, chiB0]
         return x
