@@ -1105,7 +1105,8 @@ Arguments:
                 far.
     mode_list:  This should be None, use ellMax instead.
     ellMax:     The maximum ell modes to use. The NRSur7dq4 surrogate model
-                contains modes up to L=4. Using ellMax=2 or ellMax=3 reduces
+                contains modes up to L=4, and the NRSur7dq4v2 surrogate model
+                contains modes up to L=5. Using ellMax=2 or ellMax=3 reduces
                 the evaluation time.
 
     precessing_opts:
