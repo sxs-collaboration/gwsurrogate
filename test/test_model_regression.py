@@ -288,7 +288,7 @@ def test_model_regression(generate_regression_data=False):
       
       # URL to download the file and file path where the downloaded file will be saved
       # NOTE: Dropbox links default to "dl=0" which is a preview page. Append "dl=1" to download file directly
-      url = "https://www.dropbox.com/scl/fi/g12562mas9x4ujxdcdu6e/model_regression_data.h5?rlkey=l21gsvokca5svtjy4nod2dysq&dl=1"
+      url = "https://www.dropbox.com/scl/fi/lsncask8vyi45mlmfknju/model_regression_data.h5?rlkey=8e31a8m9jc0wl58lcv9ezhw1j&st=a6uuqvi4&dl=1"
       output_path = "test/model_regression_data.h5"
 
       # Make the GET request with streaming
@@ -321,7 +321,7 @@ def test_model_regression(generate_regression_data=False):
                #"NRHybSur3dq8",
                #"NRHybSur3dq8Tidal",
                #"NRSur7dq4"
-               "NRSur7dq4v2", #TODO: Remove this once the data is added to h5 file
+               #"NRSur7dq4v2", #TODO: Remove this once the data is added to h5 file
                ]
 
 
