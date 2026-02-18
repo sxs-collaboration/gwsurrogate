@@ -1,5 +1,5 @@
 import ctypes
-from ctypes import c_double, c_long, POINTER, util
+from ctypes import c_double, c_long, c_int, POINTER, util
 import numpy as np
 import os
 from glob import glob
@@ -16,6 +16,7 @@ def _load_spline_interp(dll_path,function_name):
 
     dll = ctypes.CDLL(dll_path, mode=ctypes.RTLD_GLOBAL)
     func = dll.spline_interp
+    func.restype = c_int
     func.argtypes = [c_long, c_long,
         POINTER(c_double), POINTER(c_double),
         POINTER(c_double), POINTER(c_double)]
@@ -38,20 +39,20 @@ else:
 
 def interpolate(xnew, x, y):
 
-    if min(xnew) < min(x) or max(xnew) > max(x):
-        raise Exception('Extrapolation not allowed')
-
-    x = x.astype('float64')
-    y = y.astype('float64')
-    xnew = xnew.astype('float64')
+    x = x.astype('float64', copy=False)
+    y = y.astype('float64', copy=False)
+    xnew = xnew.astype('float64', copy=False)
 
     x_p = x.ctypes.data_as(POINTER(c_double))
     y_p = y.ctypes.data_as(POINTER(c_double))
     xnew_p = xnew.ctypes.data_as(POINTER(c_double))
 
-    ynew  = np.zeros(xnew.shape[0])
+    ynew  = np.empty(xnew.shape[0])
     ynew_p = ynew.ctypes.data_as(POINTER(c_double))
 
-    c_interp(x.shape[0],xnew.shape[0],x_p,y_p,xnew_p,ynew_p)
+    status = c_interp(x.shape[0],xnew.shape[0],x_p,y_p,xnew_p,ynew_p)
+
+    if status:
+        raise Exception('c_interp returned non-0 value {}'%status)
 
     return ynew
