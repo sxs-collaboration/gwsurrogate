@@ -38,7 +38,7 @@ else:
 
 def interpolate(xnew, x, y):
 
-    if min(xnew) < min(x) or max(xnew) > max(x):
+    if xnew.min() < x.min() or xnew.max() > x.max():
         raise Exception('Extrapolation not allowed')
 
     x = x.astype('float64')
