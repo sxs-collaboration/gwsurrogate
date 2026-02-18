@@ -816,6 +816,27 @@ ellMax: The maximum ell mode to evaluate.
         Returns true or False """
 
         return group_name in h5file
+    
+    def _iter_component_keys(self, ellMax):
+        for ell in range(2, ellMax+1):
+            if (ell, 0) in self.mode_list:
+                yield f"{ell}_0_real"
+                yield f"{ell}_0_imag"
+            for m in range(1, ell+1):
+                if (ell, m) in self.mode_list:
+                    for reim in ["Re", "Im"]:
+                        for pm in ["+", "-"]:
+                            yield f"{ell}_{m}_{reim}{pm}"
+
+    def total_components(self, ellMax):
+        return sum(1 for _ in self._iter_component_keys(ellMax))
+
+    def total_node_evals(self, ellMax):
+        # total scalar-fit evaluations done inside _eval_comp across all components
+        total = 0
+        for key in self._iter_component_keys(ellMax):
+            total += len(self.data[key]['nodeIndices'])
+        return total
 
 class DomainDecomposedCoorbitalWaveformSurrogate:
     """This surrogate models the waveform in the coorbital frame with a two
@@ -935,6 +956,28 @@ ellMax: The maximum ell mode to evaluate.
         Returns true or False """
 
         return group_name in h5file
+    
+    def _iter_component_keys(self, ellMax):
+        for ell in range(2, ellMax+1):
+            if (ell, 0) in self.mode_list:
+                for sd in ["0", "1"]:
+                    yield f"{ell}_0_real_sd_{sd}"
+                    yield f"{ell}_0_imag_sd_{sd}"
+            for m in range(1, ell+1):
+                if (ell, m) in self.mode_list:
+                    for reim in ["Re", "Im"]:
+                        for pm in ["+", "-"]:
+                            for sd in ["0", "1"]:
+                                yield f"{ell}_{m}_{reim}{pm}_sd_{sd}"
+
+    def total_components(self, ellMax):
+        return sum(1 for _ in self._iter_component_keys(ellMax))
+
+    def total_node_evals(self, ellMax):
+        total = 0
+        for key in self._iter_component_keys(ellMax):
+            total += len(self.data[key]['nodeIndices'])
+        return total
 
 ##############################################################################
 # Utility functions
@@ -1150,6 +1193,7 @@ Returns:
         if precessing_opts is None:
             precessing_opts = {}
 
+        debug_work_stats = precessing_opts.pop('debug_work_stats', False)
 
         init_orbphase = precessing_opts.pop('init_orbphase', 0)
         init_quat = precessing_opts.pop('init_quat', None)
@@ -1160,6 +1204,13 @@ Returns:
             ellMax = self.ellMax_model
         if ellMax > self.ellMax_model:
             raise ValueError("Model only allows ellMax<=%i."%self.ellMax_model)
+        
+        if debug_work_stats:
+            sur = self.coorb_sur
+            cname = type(sur).__name__
+            comps = sur.total_components(ellMax)
+            nodes = sur.total_node_evals(ellMax)
+            print(f"[DEBUG] {cname}: ellMax={ellMax}, components={comps}, total_node_evals={nodes}")
 
         q, chiA0, chiB0 = x
 
