@@ -1540,7 +1540,7 @@ class SurrogateEvaluator(object):
     """
 
     def __init__(self, name, domain_type, keywords, soft_param_lims, \
-        hard_param_lims):
+        hard_param_lims, basis_tol_opts=None):
         """
         name:           Name of the surrogate
         domain_type:    'Time' or 'Frequency'
@@ -1557,7 +1557,7 @@ class SurrogateEvaluator(object):
         self.name = name
 
         # load the dimensionless surrogate
-        self._sur_dimless = self._load_dimless_surrogate()
+        self._sur_dimless = self._load_dimless_surrogate(basis_tol_opts=basis_tol_opts)
 
         self._domain_type = domain_type
         if self._domain_type not in ['Time', 'Frequency']:
@@ -1573,7 +1573,7 @@ class SurrogateEvaluator(object):
         print('Loaded %s model'%self.name)
 
 
-    def _load_dimless_surrogate(self):
+    def _load_dimless_surrogate(self, basis_tol_opts=None):
         """
         This function, which must be overriden for each derived class of
         SurrogateEvaluator, handles the loading of the dimensionless surrogate.
@@ -2174,7 +2174,7 @@ See the __call__ method on how to evaluate waveforms.
         super(NRHybSur3dq8, self).__init__(self.__class__.__name__, \
             domain_type, keywords, soft_param_lims, hard_param_lims)
 
-    def _load_dimless_surrogate(self):
+    def _load_dimless_surrogate(self, basis_tol_opts=None):
         """
         This function, which must be overriden for each derived class of
         SurrogateEvaluator, handles the loading of the dimensionless surrogate.
@@ -2251,7 +2251,7 @@ See the __call__ method on how to evaluate waveforms.
         super(NRHybSur3dq8Tidal, self).__init__(self.__class__.__name__, \
             domain_type, keywords, soft_param_lims, hard_param_lims)
 
-    def _load_dimless_surrogate(self):
+    def _load_dimless_surrogate(self, basis_tol_opts=None):
         """
         This function, which must be overriden for each derived class of
         SurrogateEvaluator, handles the loading of the dimensionless surrogate.
@@ -2358,7 +2358,7 @@ See the __call__ method on how to evaluate waveforms.
         super(NRHybSur2dq15, self).__init__(self.__class__.__name__, \
             domain_type, keywords, soft_param_lims, hard_param_lims)
 
-    def _load_dimless_surrogate(self):
+    def _load_dimless_surrogate(self, basis_tol_opts=None):
         """
         This function, which must be overriden for each derived class of
         SurrogateEvaluator, handles the loading of the dimensionless surrogate.
@@ -2428,7 +2428,7 @@ See the __call__ method on how to evaluate waveforms.
         super(NRSur7dq4, self).__init__(self.__class__.__name__, \
             domain_type, keywords, soft_param_lims, hard_param_lims)
 
-    def _load_dimless_surrogate(self):
+    def _load_dimless_surrogate(self, basis_tol_opts=None):
         """
         This function, which must be overriden for each derived class of
         SurrogateEvaluator, handles the loading of the dimensionless surrogate.
@@ -2529,7 +2529,7 @@ NR waveforms in that range.
 
 See the __call__ method on how to evaluate waveforms.
     """
-    def __init__(self, h5filename):
+    def __init__(self, h5filename, basis_tol_opts=None):
         self.h5filename = h5filename
         domain_type = 'Time'
         keywords = {
@@ -2541,9 +2541,10 @@ See the __call__ method on how to evaluate waveforms.
         soft_param_lims = [4.01, 0.801]
         hard_param_lims = [6.01, 1]
         super(NRSur7dq4v2, self).__init__(self.__class__.__name__, \
-            domain_type, keywords, soft_param_lims, hard_param_lims)
+            domain_type, keywords, soft_param_lims, hard_param_lims,
+            basis_tol_opts=basis_tol_opts)
 
-    def _load_dimless_surrogate(self):
+    def _load_dimless_surrogate(self, basis_tol_opts=None):
       # needed to convert user input x to parameters used by surrogate fits
         def get_fit_params(x):
             """ Converts from x=[q, chi1x, chi1y, chi1z, chi2x, chi2y, chi2z]
@@ -2600,7 +2601,8 @@ See the __call__ method on how to evaluate waveforms.
         omega_ref_max = 0.201
 
         sur = precessing_surrogate.PrecessingSurrogate(self.h5filename,
-                 get_fit_params,get_fit_settings,ellMax,omega_ref_max)
+                 get_fit_params,get_fit_settings,ellMax,omega_ref_max,
+                 basis_tol_opts=basis_tol_opts)
         return sur
 
     def _get_intrinsic_parameters(self, q, chiA0, chiB0, precessing_opts,
@@ -2668,7 +2670,7 @@ further discussion on this point.
         super(SEOBNRv4PHMSur, self).__init__(self.__class__.__name__, \
             domain_type, keywords, soft_param_lims, hard_param_lims)
 
-    def _load_dimless_surrogate(self):
+    def _load_dimless_surrogate(self, basis_tol_opts=None):
         """
         This function, which must be overriden for each derived class of
         SurrogateEvaluator, handles the loading of the dimensionless surrogate.
@@ -2847,7 +2849,7 @@ class LoadSurrogate(object):
     """
 
     #NOTE: __init__ is never called for LoadSurrogate
-    def __new__(self, surrogate_name, surrogate_name_spliced=None):
+    def __new__(self, surrogate_name, surrogate_name_spliced=None, basis_tol_opts=None):
         """ Returns a SurrogateEvaluator derived object based on name.
 
         INPUT
@@ -2873,8 +2875,12 @@ class LoadSurrogate(object):
                                 If you wish to load a spliced model from its h5
                                 file, provide (i) the hdf5 file path as its
                                 surrogate name and (ii) the model name (e.g.
-                                NRHybSur3dq8Tidal) as SURROGATE_NAME_SPLICED."""
-
+                                NRHybSur3dq8Tidal) as SURROGATE_NAME_SPLICED.
+                                
+        BASIS_TOL_OPTS: A dictionary of basis tolerances to be used in the coorbital
+                                frame surrogate. This is only used for the NRSur7dq4v2
+                                surrogate, which is a domain-decomposed modification of
+                                NRSur7dq4."""
 
         # the "output" of this if-block is surrogate_h5file and surrogate_name
         # to be used for "SURROGATE_CLASSES[surrogate_name](surrogate_h5file)"
@@ -2908,8 +2914,11 @@ class LoadSurrogate(object):
                 if not os.path.isfile(surrogate_h5file):
                     print("Surrogate data not found for %s. Downloading now."%surrogate_name)
                     catalog.pull(surrogate_name)
+        
+        if basis_tol_opts is not None and surrogate_name != "NRSur7dq4v2":
+            raise ValueError("basis_tol_opts is only used for NRSur7dq4v2 surrogate, but surrogate_name is %s"%surrogate_name)
 
         if surrogate_name not in SURROGATE_CLASSES.keys():
             raise Exception('Invalid surrogate : %s'%surrogate_name)
         else:
-            return SURROGATE_CLASSES[surrogate_name](surrogate_h5file)
+            return SURROGATE_CLASSES[surrogate_name](surrogate_h5file, basis_tol_opts=basis_tol_opts)
