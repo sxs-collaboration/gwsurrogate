@@ -40,7 +40,7 @@ else:
 def interpolate(xnew, x, y):
 
     x = x.astype('float64', copy=False)
-    y = y.astype('float64', copy=False)
+    y = y.astype('float64', copy=True)
     xnew = xnew.astype('float64', copy=False)
 
     x_p = x.ctypes.data_as(POINTER(c_double))
