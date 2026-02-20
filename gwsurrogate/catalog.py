@@ -160,7 +160,7 @@ _surrogate_world['NRSur7dq4v2'] = \
      published. All ell<=5 modes are included. The spin and frame dynamics are also
      modeled.''',
      '''''',
-     '36228e17cd95fe8adaf1e85f8e31bf4e') 
+     '2bef4cfdb12d73904bd727015bef629c') 
 
 _surrogate_world['SEOBNRv4PHMSur'] = \
   surrogate_info(\
@@ -313,7 +313,7 @@ def pull(surr_name,sdir=download_path()):
         backup_fname = '%s_%s'%(timestamp, fname)
         backup_dir = '%s/backup'%(sdir)
         os.system('mkdir -p %s'%backup_dir)
-        print('\n%s file exits, moving to %s/%s.'%(fname, backup_dir, \
+        print('\n%s file exists, moving to %s/%s.'%(fname, backup_dir, \
             backup_fname))
         os.system('mv %s/%s %s/%s'%(sdir, fname, backup_dir, backup_fname))
         number_of_backup_files = glob('%s/*_%s'%(backup_dir, fname))
@@ -332,7 +332,7 @@ def pull(surr_name,sdir=download_path()):
       f.writelines(r.iter_content(chunk_size=8192))
     #os.system('wget -q --directory-prefix='+sdir+' '+surr_url)
   else:
-    raise ValueError("No surrogate package exits")
+    raise ValueError("No surrogate package exists")
 
   # deduce the surrogate file name and extension type
   # one can directly load a surrogate from surr_path
