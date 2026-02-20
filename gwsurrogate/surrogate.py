@@ -2921,4 +2921,7 @@ class LoadSurrogate(object):
         if surrogate_name not in SURROGATE_CLASSES.keys():
             raise Exception('Invalid surrogate : %s'%surrogate_name)
         else:
-            return SURROGATE_CLASSES[surrogate_name](surrogate_h5file, basis_tol_opts=basis_tol_opts)
+            if basis_tol_opts is not None:
+                return SURROGATE_CLASSES[surrogate_name](surrogate_h5file, basis_tol_opts=basis_tol_opts)
+            else:
+                return SURROGATE_CLASSES[surrogate_name](surrogate_h5file)
