@@ -2858,7 +2858,7 @@ class LoadSurrogate(object):
     """
 
     #NOTE: __init__ is never called for LoadSurrogate
-    def __new__(self, surrogate_name, surrogate_name_spliced=None, basis_tol_opts=None):
+    def __new__(self, surrogate_name, surrogate_name_spliced=None, basis_size_opts=None):
         """ Returns a SurrogateEvaluator derived object based on name.
 
         INPUT
@@ -2886,7 +2886,7 @@ class LoadSurrogate(object):
                                 surrogate name and (ii) the model name (e.g.
                                 NRHybSur3dq8Tidal) as SURROGATE_NAME_SPLICED.
                                 
-        BASIS_TOL_OPTS: A dictionary of basis tolerances to be used in the coorbital
+        BASIS_SIZE_OPTS: A dictionary of basis sizes to be used in the coorbital
                                 frame surrogate. This is only used for the NRSur7dq4v2
                                 surrogate, which is a domain-decomposed modification of
                                 NRSur7dq4."""
@@ -2924,13 +2924,13 @@ class LoadSurrogate(object):
                     print("Surrogate data not found for %s. Downloading now."%surrogate_name)
                     catalog.pull(surrogate_name)
         
-        if basis_tol_opts is not None and surrogate_name != "NRSur7dq4v2":
-            raise ValueError("basis_tol_opts is only used for NRSur7dq4v2 surrogate, but surrogate_name is %s"%surrogate_name)
+        if basis_size_opts is not None and surrogate_name != "NRSur7dq4v2":
+            raise ValueError("basis_size_opts is only used for NRSur7dq4v2 surrogate, but surrogate_name is %s"%surrogate_name)
 
         if surrogate_name not in SURROGATE_CLASSES.keys():
             raise Exception('Invalid surrogate : %s'%surrogate_name)
         else:
-            if basis_tol_opts is not None:
-                return SURROGATE_CLASSES[surrogate_name](surrogate_h5file, basis_tol_opts=basis_tol_opts)
+            if basis_size_opts is not None:
+                return SURROGATE_CLASSES[surrogate_name](surrogate_h5file, basis_tol_opts=basis_size_opts)
             else:
                 return SURROGATE_CLASSES[surrogate_name](surrogate_h5file)
