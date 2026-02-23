@@ -23,8 +23,8 @@ def test_normalize_spin_zero_norm_returns_unchanged():
     """chi_norm == 0 → chi returned unmodified."""
     chi = RNG.standard_normal((10, 3))
     chi_orig = chi.copy()
-    result = normalize_spin(chi, chi_norm=0.0)
-    np.testing.assert_array_equal(result, chi_orig,
+    normalize_spin(chi, chi_norm=0.0)
+    np.testing.assert_array_equal(chi, chi_orig,
                                   err_msg="normalize_spin modified chi when chi_norm=0")
 
 
@@ -36,8 +36,8 @@ def test_normalize_spin_rescales_rows():
     chi += 0.1
     chi_norm = 0.7
 
-    result = normalize_spin(chi, chi_norm=chi_norm)
-    row_norms = np.sqrt(np.sum(result**2, axis=1))
+    normalize_spin(chi, chi_norm=chi_norm)
+    row_norms = np.sqrt(np.sum(chi**2, axis=1))
     np.testing.assert_allclose(row_norms, chi_norm, rtol=1e-12, atol=1e-14,
                                err_msg="Row magnitudes after normalize_spin are not chi_norm")
 
@@ -45,18 +45,19 @@ def test_normalize_spin_rescales_rows():
 def test_normalize_spin_unit_norm():
     """chi_norm=1.0 → all rows become unit vectors."""
     chi = RNG.standard_normal((15, 3)) + 1.0
-    result = normalize_spin(chi, chi_norm=1.0)
-    row_norms = np.sqrt(np.sum(result**2, axis=1))
+    normalize_spin(chi, chi_norm=1.0)
+    row_norms = np.sqrt(np.sum(chi**2, axis=1))
     np.testing.assert_allclose(row_norms, 1.0, rtol=1e-12, atol=1e-14)
 
 
 def test_normalize_spin_preserves_direction():
     """normalize_spin only rescales; the direction (unit vector) is unchanged."""
     chi = RNG.standard_normal((12, 3)) + 0.5
+    original_chi = np.copy(chi)
     chi_norm = 0.4
-    result = normalize_spin(chi, chi_norm=chi_norm)
-    orig_unit = (chi.T / np.sqrt(np.sum(chi**2, axis=1))).T
-    new_unit = (result.T / np.sqrt(np.sum(result**2, axis=1))).T
+    normalize_spin(chi, chi_norm=chi_norm)
+    orig_unit = (original_chi.T / np.sqrt(np.sum(original_chi**2, axis=1))).T
+    new_unit = (chi.T / np.sqrt(np.sum(chi**2, axis=1))).T
     np.testing.assert_allclose(new_unit, orig_unit, rtol=1e-12, atol=1e-14,
                                err_msg="normalize_spin changed the direction of chi")
 
@@ -64,8 +65,9 @@ def test_normalize_spin_preserves_direction():
 def test_normalize_spin_shape_preserved():
     """Output shape equals input shape."""
     chi = RNG.standard_normal((8, 3))
-    result = normalize_spin(chi, chi_norm=0.5)
-    assert result.shape == chi.shape
+    original_chi = np.copy(chi)
+    normalize_spin(chi, chi_norm=0.5)
+    assert original_chi.shape == chi.shape
 
 
 # ---------------------------------------------------------------------------
