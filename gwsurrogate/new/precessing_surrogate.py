@@ -899,8 +899,8 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
                 for reim in ['real', 'imag']:
                     for subdomain in ['0', '1']:
                         group = h5file['hCoorb_%s_0_%s_subdomain_%s'%(ell, reim, subdomain)]
-                        if 'hCoorb_%s_0_%s_subdomain_%s'%(ell, reim, subdomain) in (basis_tol_opts or {}).keys():
-                            tol = basis_tol_opts['hCoorb_%s_0_%s_subdomain_%s'%(ell, reim, subdomain)]
+                        if '%s_0_%s_sd_%s'%(ell, reim, subdomain) in (basis_tol_opts or {}).keys():
+                            tol = basis_tol_opts['%s_0_%s_sd_%s'%(ell, reim, subdomain)]
                         else:
                             tol = None
                         self.data['%s_0_%s_sd_%s'%(ell, reim, subdomain)] \
@@ -917,8 +917,8 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
                         for pm in ['+', '-']:
                             for subdomain in ['0', '1']:
                                 group = h5file['hCoorb_%s_%s_%s%s_subdomain_%s'%(ell, m, reim, pm, subdomain)]
-                                if 'hCoorb_%s_%s_%s%s_subdomain_%s'%(ell, m, reim, pm, subdomain) in (basis_tol_opts or {}).keys():
-                                    tol = basis_tol_opts['hCoorb_%s_%s_%s%s_subdomain_%s'%(ell, m, reim, pm, subdomain)]
+                                if '%s_%s_%s%s_sd_%s'%(ell, m, reim, pm, subdomain) in (basis_tol_opts or {}).keys():
+                                    tol = basis_tol_opts['%s_%s_%s%s_sd_%s'%(ell, m, reim, pm, subdomain)]
                                 else:
                                     tol = None
                                 tmp_data = _extract_component_data(group, basis_tol=tol)
@@ -1002,6 +1002,12 @@ ellMax: The maximum ell mode to evaluate.
                         for pm in ["+", "-"]:
                             for sd in ["0", "1"]:
                                 yield f"{ell}_{m}_{reim}{pm}_sd_{sd}"
+
+    def extract_basis_sizes(self, ellMax):
+        basis_sizes = {}
+        for key in self._iter_component_keys(ellMax):
+            basis_sizes[key] = len(self.data[key]['nodeIndices'])
+        return basis_sizes
 
     def total_components(self, ellMax):
         return sum(1 for _ in self._iter_component_keys(ellMax))

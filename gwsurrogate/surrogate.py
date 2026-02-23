@@ -2506,7 +2506,7 @@ See the __call__ method on how to evaluate waveforms.
         x = [q, chiA0, chiB0]
         return x
 
-class NRSur7dq4v2(SurrogateEvaluator): #TODO: Update this descriptor after publication
+class NRSur7dq4v2(SurrogateEvaluator):
     r"""
 A class for the NRSur7dq4v2 surrogate model, a domain-decomposed modification 
 of the surrogate presented in Varma et al. 2019, arxiv1905.09300.
@@ -2614,6 +2614,15 @@ See the __call__ method on how to evaluate waveforms.
         """
         x = [q, chiA0, chiB0]
         return x
+    
+    def coorbital_basis_sizes(self, ellMax=5):
+        """
+        Returns the number of basis functions used in the surrogate fits for
+        each datapiece. This is useful when wanting to reduce dimensionality 
+        of the surrogate fits by truncating the number of basis functions 
+        during evaluation.
+        """
+        return self._sur_dimless.coorb_sur.extract_basis_sizes(ellMax=ellMax)
 
 class SEOBNRv4PHMSur(SurrogateEvaluator):
     r"""
