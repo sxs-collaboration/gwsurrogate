@@ -861,9 +861,7 @@ def mode_sum(h_modes, ellMax, theta, phi):
 
 def normalize_spin(chi, chi_norm):
     if chi_norm > 0.:
-        tmp_norm = np.sqrt(np.sum(chi**2, 1))
-        return (chi.T * chi_norm / tmp_norm).T
-    return chi
+        chi *= chi_norm / np.linalg.norm(chi, axis=1, keepdims=True)
 
 ##############################################################################
 
@@ -1061,8 +1059,8 @@ Returns:
         # coprecessing spins
         chiA_copr = splinterp_many(self.t_coorb, self.tds, chiA_copr_dyn.T).T
         chiB_copr = splinterp_many(self.t_coorb, self.tds, chiB_copr_dyn.T).T
-        chiA_copr = normalize_spin(chiA_copr, chiA_norm)
-        chiB_copr = normalize_spin(chiB_copr, chiB_norm)
+        normalize_spin(chiA_copr, chiA_norm)
+        normalize_spin(chiB_copr, chiB_norm)
         orbphase = _splinterp_Cwrapper(self.t_coorb, self.tds, orbphase_dyn)
 
         quat = splinterp_many(self.t_coorb, self.tds, quat_dyn)
@@ -1128,8 +1126,8 @@ Returns:
                 ## is done in the LAL code.
                 chiA_copr = splinterp_many(timesM, self.tds, chiA_copr_dyn.T).T
                 chiB_copr = splinterp_many(timesM, self.tds, chiB_copr_dyn.T).T
-                chiA_copr = normalize_spin(chiA_copr, chiA_norm)
-                chiB_copr = normalize_spin(chiB_copr, chiB_norm)
+                normalize_spin(chiA_copr, chiA_norm)
+                normalize_spin(chiB_copr, chiB_norm)
                 orbphase = _splinterp_Cwrapper(timesM, self.tds, orbphase_dyn)
                 quat = splinterp_many(timesM, self.tds, quat_dyn)
                 # Note that quat is a 4-number array so we don't have to do
