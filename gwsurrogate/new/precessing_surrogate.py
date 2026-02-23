@@ -822,19 +822,24 @@ ellMax: The maximum ell mode to evaluate.
 ##############################################################################
 # Utility functions
 
-def rotate_spin(chi, phase):
-    """For transforming spins between the coprecessing and coorbital frames"""
+def rotate_spin(chi, phase, cp=None, sp=None):
+    """For transforming spins between the coprecessing and coorbital frames.
+    If cp and sp are provided, they are used directly instead of computing
+    cos(phase) and sin(phase)."""
     v = chi.T
-    sp = np.sin(phase)
-    cp = np.cos(phase)
+    if cp is None:
+        sp = np.sin(phase)
+        cp = np.cos(phase)
     res = 1.*v
     res[0] = v[0]*cp + v[1]*sp
     res[1] = v[1]*cp - v[0]*sp
     return res.T
 
 def coorb_spins_from_copr_spins(chiA_copr, chiB_copr, orbphase):
-    chiA_coorb = rotate_spin(chiA_copr, orbphase)
-    chiB_coorb = rotate_spin(chiB_copr, orbphase)
+    sp = np.sin(orbphase)
+    cp = np.cos(orbphase)
+    chiA_coorb = rotate_spin(chiA_copr, orbphase, cp=cp, sp=sp)
+    chiB_coorb = rotate_spin(chiB_copr, orbphase, cp=cp, sp=sp)
     return chiA_coorb, chiB_coorb
 
 def inertial_waveform_modes(t, orbphase, quat, h_coorb):
