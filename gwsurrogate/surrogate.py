@@ -2477,6 +2477,8 @@ See the __call__ method on how to evaluate waveforms.
 
             return x
 
+        get_fit_params._cmode = 0  # NRSur7dq4 transform (log(q), chiHat, chi_a)
+
         # needed to evaluate model-specific surrogate fits
         def get_fit_settings():
             """
@@ -2721,6 +2723,8 @@ further discussion on this point.
             ## Literally do nothing!!
             x = np.copy(x)
             return x
+
+        get_fit_params._cmode = 1  # identity transform
 
         def get_fit_settings(subdomain_ID):
             """ Get fit settings for SUBDOMAIN_ID.

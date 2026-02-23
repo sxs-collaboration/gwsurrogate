@@ -58,6 +58,7 @@ static struct module_state _state;
 
 /* Forward declarations */
 static PyObject *py_rotate_waveform(PyObject *self, PyObject *args);
+static PyObject *eval_coorb_modes(PyObject *self, PyObject *args);
 
 /* ==== Setup the python methods table === */
 static PyMethodDef _utils_methods[] = {
@@ -73,6 +74,7 @@ static PyMethodDef _utils_methods[] = {
     {"coorbital_to_inertial_in_place", coorbital_to_inertial_in_place, METH_VARARGS},
     {"wignerD_matrices", py_wignerD_matrices, METH_VARARGS},
     {"rotate_waveform", py_rotate_waveform, METH_VARARGS},
+    {"eval_coorb_modes", eval_coorb_modes, METH_VARARGS},
     {NULL, NULL} /* Marks the end of this structure */
 };
 
@@ -1672,6 +1674,370 @@ PyObject *py_wignerD_matrices(PyObject *self, PyObject *args)
 
     Py_RETURN_NONE;
 }
+
+
+/* ------------------------------------------------------------------ */
+/* eval_coorb_modes: fused __call__ + _eval_comp for                  */
+/*   CoorbitalWaveformSurrogate                                       */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Validate one array argument of eval_coorb_modes. Returns 1 on success, and on
+ * failure sets a Python exception and returns 0. Every array reaching the
+ * evaluation loops is read through a raw typed pointer, so dtype, rank and
+ * C-contiguity all have to hold before any data is touched.
+ */
+static int coorb_check_array(PyArrayObject *arr, const char *name,
+                             int ndim, int typenum) {
+    if (PyArray_NDIM(arr) != ndim) {
+        PyErr_Format(PyExc_ValueError, "%s must be %d dimensional", name, ndim);
+        return 0;
+    }
+    if (PyArray_TYPE(arr) != typenum) {
+        PyErr_Format(PyExc_ValueError, "%s has an unexpected dtype", name);
+        return 0;
+    }
+    if (!PyArray_IS_C_CONTIGUOUS(arr)) {
+        PyErr_Format(PyExc_ValueError, "%s must be C contiguous", name);
+        return 0;
+    }
+    return 1;
+}
+
+/*
+ * Evaluates all coorbital waveform mode components and assembles complex modes.
+ * Replaces the Python __call__ + _eval_comp loops with a single C call.
+ *
+ * Arguments:
+ *   q:                  double, mass ratio
+ *   chiA:               (N, 3) float64, spin A time series
+ *   chiB:               (N, 3) float64, spin B time series
+ *   comp_n_nodes:       (n_comps,) int32, number of nodes per component
+ *   comp_node_offset:   (n_comps,) int32, offset into flat node arrays
+ *   comp_ell:           (n_comps,) int32, ell each component belongs to
+ *   all_node_indices:   (total_nodes,) int32, concatenated nodeIndices
+ *   node_n_coefs:       (total_nodes,) int32, number of coefs per node
+ *   node_coef_offset:   (total_nodes,) int32, offset into coefs/orders
+ *   all_coefs:          (total_coefs,) float64, concatenated coefficients
+ *   all_orders:         (total_coefs, 7) long, concatenated bf orders
+ *   all_EI_basis:       (total_nodes, N_time) float64, stacked EI bases
+ *   mode_info:          (n_groups, 8) int32, mode assembly metadata
+ *   q_consts:           (5,) float64, q-dependent constants
+ *   nmodes:             int, number of output modes
+ *   ellMax:             int, max ell to include
+ *   fit_params_mode:    int, 0=NRSur7dq4, 1=identity
+ *   q_fit_offset:       double
+ *   q_fit_slope:        double
+ *   q_max_bfOrder:      int
+ *   chi_max_bfOrder:    int
+ *
+ * Returns (nmodes, N_time) complex128 array.
+ */
+static PyObject *eval_coorb_modes(PyObject *self, PyObject *args) {
+
+    double q_val;
+    PyArrayObject *chiA_arr, *chiB_arr;
+    PyArrayObject *comp_n_nodes_arr, *comp_node_offset_arr, *comp_ell_arr;
+    PyArrayObject *all_node_indices_arr, *node_n_coefs_arr, *node_coef_offset_arr;
+    PyArrayObject *all_coefs_arr, *all_orders_arr, *all_EI_basis_arr;
+    PyArrayObject *mode_info_arr, *q_consts_arr;
+    int nmodes, ellMax_eval, fit_params_mode;
+    double q_fit_offset, q_fit_slope;
+    int q_max_bfOrder, chi_max_bfOrder;
+
+    if (!PyArg_ParseTuple(args, "dO!O!O!O!O!O!O!O!O!O!O!O!O!iiiddii",
+            &q_val,
+            &PyArray_Type, &chiA_arr,
+            &PyArray_Type, &chiB_arr,
+            &PyArray_Type, &comp_n_nodes_arr,
+            &PyArray_Type, &comp_node_offset_arr,
+            &PyArray_Type, &comp_ell_arr,
+            &PyArray_Type, &all_node_indices_arr,
+            &PyArray_Type, &node_n_coefs_arr,
+            &PyArray_Type, &node_coef_offset_arr,
+            &PyArray_Type, &all_coefs_arr,
+            &PyArray_Type, &all_orders_arr,
+            &PyArray_Type, &all_EI_basis_arr,
+            &PyArray_Type, &mode_info_arr,
+            &PyArray_Type, &q_consts_arr,
+            &nmodes, &ellMax_eval, &fit_params_mode,
+            &q_fit_offset, &q_fit_slope,
+            &q_max_bfOrder, &chi_max_bfOrder)) return NULL;
+
+    if (!coorb_check_array(chiA_arr, "chiA", 2, NPY_DOUBLE) ||
+        !coorb_check_array(chiB_arr, "chiB", 2, NPY_DOUBLE) ||
+        !coorb_check_array(comp_n_nodes_arr, "comp_n_nodes", 1, NPY_INT32) ||
+        !coorb_check_array(comp_node_offset_arr, "comp_node_offset", 1,
+                           NPY_INT32) ||
+        !coorb_check_array(comp_ell_arr, "comp_ell", 1, NPY_INT32) ||
+        !coorb_check_array(all_node_indices_arr, "all_node_indices", 1,
+                           NPY_INT32) ||
+        !coorb_check_array(node_n_coefs_arr, "node_n_coefs", 1, NPY_INT32) ||
+        !coorb_check_array(node_coef_offset_arr, "node_coef_offset", 1,
+                           NPY_INT32) ||
+        !coorb_check_array(all_coefs_arr, "all_coefs", 1, NPY_DOUBLE) ||
+        !coorb_check_array(all_orders_arr, "all_orders", 2, NPY_LONG) ||
+        !coorb_check_array(all_EI_basis_arr, "all_EI_basis", 2, NPY_DOUBLE) ||
+        !coorb_check_array(mode_info_arr, "mode_info", 2, NPY_INT32) ||
+        !coorb_check_array(q_consts_arr, "q_consts", 1, NPY_DOUBLE)) {
+        return NULL;
+    }
+
+    const npy_intp n_comps = PyArray_DIMS(comp_n_nodes_arr)[0];
+    const npy_intp n_groups = PyArray_DIMS(mode_info_arr)[0];
+    const npy_intp total_nodes = PyArray_DIMS(all_node_indices_arr)[0];
+    const npy_intp total_coefs = PyArray_DIMS(all_coefs_arr)[0];
+    const npy_intp n_chi = PyArray_DIMS(chiA_arr)[0];
+    const npy_intp N_time = PyArray_DIMS(all_EI_basis_arr)[1];
+
+    /* The fit-order bounds size the x_powers table below, so keep them small
+     * enough that the table stays a sensible stack allocation. */
+    if (q_max_bfOrder < 0 || q_max_bfOrder > 32 ||
+        chi_max_bfOrder < 0 || chi_max_bfOrder > 32) {
+        PyErr_SetString(PyExc_ValueError,
+                "q_max_bfOrder and chi_max_bfOrder must be between 0 and 32");
+        return NULL;
+    }
+
+    /* nmodes has to match ellMax exactly, since the mode indices stored in
+     * mode_info are derived from ellMax and index straight into the output. */
+    if (ellMax_eval < 1 ||
+        nmodes != ellMax_eval*ellMax_eval + 2*ellMax_eval - 3) {
+        PyErr_SetString(PyExc_ValueError,
+                "nmodes must equal ellMax*ellMax + 2*ellMax - 3, "
+                "with ellMax >= 1");
+        return NULL;
+    }
+
+    if (PyArray_DIMS(chiA_arr)[1] != 3 || PyArray_DIMS(chiB_arr)[1] != 3 ||
+        PyArray_DIMS(chiB_arr)[0] != n_chi) {
+        PyErr_SetString(PyExc_ValueError,
+                "chiA and chiB must both have shape (N, 3)");
+        return NULL;
+    }
+    if (PyArray_DIMS(comp_node_offset_arr)[0] != n_comps ||
+        PyArray_DIMS(comp_ell_arr)[0] != n_comps) {
+        PyErr_SetString(PyExc_ValueError,
+                "comp_n_nodes, comp_node_offset and comp_ell must have the "
+                "same length");
+        return NULL;
+    }
+    if (PyArray_DIMS(node_n_coefs_arr)[0] != total_nodes ||
+        PyArray_DIMS(node_coef_offset_arr)[0] != total_nodes ||
+        PyArray_DIMS(all_EI_basis_arr)[0] != total_nodes) {
+        PyErr_SetString(PyExc_ValueError,
+                "node_n_coefs, node_coef_offset and all_EI_basis must agree "
+                "with all_node_indices on the total number of nodes");
+        return NULL;
+    }
+    if (PyArray_DIMS(all_orders_arr)[0] != total_coefs ||
+        PyArray_DIMS(all_orders_arr)[1] != 7) {
+        PyErr_SetString(PyExc_ValueError,
+                "all_orders must have shape (len(all_coefs), 7)");
+        return NULL;
+    }
+    if (PyArray_DIMS(mode_info_arr)[1] != 8) {
+        PyErr_SetString(PyExc_ValueError, "mode_info must have shape (n, 8)");
+        return NULL;
+    }
+    if (PyArray_DIMS(q_consts_arr)[0] != 5) {
+        PyErr_SetString(PyExc_ValueError, "q_consts must have length 5");
+        return NULL;
+    }
+
+    /* Extract data pointers */
+    double *chiA = (double *)PyArray_DATA(chiA_arr);
+    double *chiB = (double *)PyArray_DATA(chiB_arr);
+    npy_int32 *comp_n_nodes = (npy_int32 *)PyArray_DATA(comp_n_nodes_arr);
+    npy_int32 *comp_node_offset = (npy_int32 *)PyArray_DATA(comp_node_offset_arr);
+    npy_int32 *comp_ell = (npy_int32 *)PyArray_DATA(comp_ell_arr);
+    npy_int32 *all_node_indices = (npy_int32 *)PyArray_DATA(all_node_indices_arr);
+    npy_int32 *node_n_coefs = (npy_int32 *)PyArray_DATA(node_n_coefs_arr);
+    npy_int32 *node_coef_offset = (npy_int32 *)PyArray_DATA(node_coef_offset_arr);
+    double *all_coefs = (double *)PyArray_DATA(all_coefs_arr);
+    long *all_orders = (long *)PyArray_DATA(all_orders_arr);
+    double *all_EI_basis = (double *)PyArray_DATA(all_EI_basis_arr);
+    npy_int32 *mode_info = (npy_int32 *)PyArray_DATA(mode_info_arr);
+    double *q_consts = (double *)PyArray_DATA(q_consts_arr);
+
+    /* Bounds-check every index before the evaluation loops read through it.
+     * This walks the node and mode tables only (a few hundred entries), so it
+     * stays far cheaper than the per-time-sample work that follows. The
+     * basis-function orders are range-checked once at pack time instead, since
+     * they are fixed by the model and outnumber the nodes by ~100x. */
+    npy_intp max_nodes = 0;
+    for (npy_intp c = 0; c < n_comps; c++) {
+        npy_intp nn = comp_n_nodes[c];
+        npy_intp offset = comp_node_offset[c];
+        if (nn < 0 || offset < 0 || offset + nn > total_nodes) {
+            PyErr_SetString(PyExc_ValueError,
+                    "comp_n_nodes/comp_node_offset describe a node range "
+                    "outside all_node_indices");
+            return NULL;
+        }
+        if (nn > max_nodes) max_nodes = nn;
+    }
+    for (npy_intp gj = 0; gj < total_nodes; gj++) {
+        npy_intp ni = all_node_indices[gj];
+        npy_intp nc = node_n_coefs[gj];
+        npy_intp co = node_coef_offset[gj];
+        if (ni < 0 || ni >= n_chi) {
+            PyErr_SetString(PyExc_ValueError,
+                    "all_node_indices contains an index outside chiA/chiB");
+            return NULL;
+        }
+        if (nc < 0 || co < 0 || co + nc > total_coefs) {
+            PyErr_SetString(PyExc_ValueError,
+                    "node_n_coefs/node_coef_offset describe a coefficient "
+                    "range outside all_coefs");
+            return NULL;
+        }
+    }
+    for (npy_intp g = 0; g < n_groups; g++) {
+        npy_int32 *info = mode_info + g * 8;
+        if (info[0] > ellMax_eval) continue;
+        /* Column meanings depend on m: see _pack_component_data. m == 0 uses
+         * one mode index and two components, m != 0 uses two and four. */
+        int n_mode_idx = (info[1] == 0) ? 1 : 2;
+        int n_comp_idx = (info[1] == 0) ? 2 : 4;
+        for (int k = 2; k < 2 + n_mode_idx; k++) {
+            if (info[k] < 0 || info[k] >= nmodes) {
+                PyErr_SetString(PyExc_ValueError,
+                        "mode_info contains a mode index outside the output");
+                return NULL;
+            }
+        }
+        for (int k = 2 + n_mode_idx; k < 2 + n_mode_idx + n_comp_idx; k++) {
+            if (info[k] < 0 || info[k] >= n_comps) {
+                PyErr_SetString(PyExc_ValueError,
+                        "mode_info contains a component index outside "
+                        "comp_n_nodes");
+                return NULL;
+            }
+        }
+    }
+
+    /* Allocate output: (nmodes, N_time) complex128, zero-initialized */
+    npy_intp out_dims[2] = {nmodes, N_time};
+    PyArrayObject *modes_arr = (PyArrayObject *)PyArray_ZEROS(
+            2, out_dims, NPY_COMPLEX128, 0);
+    if (!modes_arr) return NULL;
+    double *modes = (double *)PyArray_DATA(modes_arr);
+
+    /* Workspace for the component results plus the node values of whichever
+     * component is being evaluated. Allocated per call rather than cached on
+     * the module so that concurrent callers do not share scratch space. */
+    size_t work_len = (size_t)n_comps * (size_t)N_time + (size_t)max_nodes;
+    double *work = (double *)malloc((work_len ? work_len : 1) * sizeof(double));
+    if (!work) {
+        Py_DECREF(modes_arr);
+        return PyErr_NoMemory();
+    }
+    double *comp_results = work;
+    double *nodes_buf = work + (size_t)n_comps * (size_t)N_time;
+
+    /* Powers of the transformed q and of the six spin components, in the
+     * layout compute_x_powers/eval_one_fit expect. */
+    double x_powers[q_max_bfOrder + 1 + 6*(chi_max_bfOrder + 1)];
+
+    /* ---- Phase 1: Evaluate the components needed for ellMax ---- */
+    for (npy_intp c = 0; c < n_comps; c++) {
+        if (comp_ell[c] > ellMax_eval) continue;
+
+        npy_intp nn = comp_n_nodes[c];
+        npy_intp offset = comp_node_offset[c];
+
+        for (npy_intp j = 0; j < nn; j++) {
+            npy_intp gj = offset + j;
+            npy_intp ni = all_node_indices[gj];
+
+            /* Build x[7] from q, chiA[ni], chiB[ni] */
+            double x[7];
+            x[0] = q_val;
+            x[1] = chiA[ni * 3 + 0];
+            x[2] = chiA[ni * 3 + 1];
+            x[3] = chiA[ni * 3 + 2];
+            x[4] = chiB[ni * 3 + 0];
+            x[5] = chiB[ni * 3 + 1];
+            x[6] = chiB[ni * 3 + 2];
+
+            /* Apply fit_params transform */
+            if (fit_params_mode == 0) {
+                /* NRSur7dq4: x[0]=log(q), x[3]=chiHat, x[6]=chi_a */
+                double chi1z = x[3], chi2z = x[6];
+                x[0] = q_consts[0];  /* log(q) */
+                double chi_wtAvg = q_consts[1]*chi1z + q_consts[2]*chi2z;
+                x[3] = (chi_wtAvg - q_consts[3]*(chi1z + chi2z))
+                        / q_consts[4];
+                x[6] = (chi1z - chi2z) * 0.5;
+            }
+            /* mode == 1: identity, x unchanged */
+
+            npy_intp co = node_coef_offset[gj];
+            compute_x_powers(x, q_fit_offset, q_fit_slope,
+                             q_max_bfOrder, chi_max_bfOrder, x_powers);
+            nodes_buf[j] = eval_one_fit(all_orders + co*7, all_coefs + co,
+                                        (int)node_n_coefs[gj], x_powers,
+                                        q_max_bfOrder, chi_max_bfOrder);
+        }
+
+        /* Dot product: comp_results[c] = nodes . EI_basis */
+        double *out = comp_results + (size_t)c * N_time;
+        memset(out, 0, (size_t)N_time * sizeof(double));
+        for (npy_intp j = 0; j < nn; j++) {
+            double nj = nodes_buf[j];
+            double *basis = all_EI_basis + (size_t)(offset + j) * N_time;
+            for (npy_intp t = 0; t < N_time; t++) {
+                out[t] += nj * basis[t];
+            }
+        }
+    }
+
+    /* ---- Phase 2: Assemble complex modes ---- */
+    for (npy_intp g = 0; g < n_groups; g++) {
+        npy_int32 *info = mode_info + g * 8;
+        int ell = info[0];
+        int m   = info[1];
+
+        if (ell > ellMax_eval) continue;
+
+        if (m == 0) {
+            int mode_idx = info[2];
+            int comp_re  = info[3];
+            int comp_im  = info[4];
+            double *re = comp_results + (size_t)comp_re * N_time;
+            double *im = comp_results + (size_t)comp_im * N_time;
+            double *dst = modes + (size_t)mode_idx * N_time * 2;
+            for (npy_intp t = 0; t < N_time; t++) {
+                dst[t * 2]     = re[t];
+                dst[t * 2 + 1] = im[t];
+            }
+        } else {
+            int idx_pos  = info[2];
+            int idx_neg  = info[3];
+            int comp_rep = info[4];
+            int comp_rem = info[5];
+            int comp_imp = info[6];
+            int comp_imm = info[7];
+            double *rep = comp_results + (size_t)comp_rep * N_time;
+            double *re_minus = comp_results + (size_t)comp_rem * N_time;
+            double *imp = comp_results + (size_t)comp_imp * N_time;
+            double *imm = comp_results + (size_t)comp_imm * N_time;
+            double *pos = modes + (size_t)idx_pos * N_time * 2;
+            double *neg = modes + (size_t)idx_neg * N_time * 2;
+            for (npy_intp t = 0; t < N_time; t++) {
+                pos[t * 2]     = rep[t] - re_minus[t];
+                pos[t * 2 + 1] = imm[t] - imp[t];
+                neg[t * 2]     = rep[t] + re_minus[t];
+                neg[t * 2 + 1] = imp[t] + imm[t];
+            }
+        }
+    }
+
+    free(work);
+    return PyArray_Return(modes_arr);
+}
+
 
 /* ------------------------------------------------------------------ */
 /* rotate_waveform: quaternion inverse + wignerD + fused matmul in C  */

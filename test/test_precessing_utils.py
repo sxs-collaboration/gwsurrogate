@@ -4,8 +4,10 @@ Unit tests for precessing surrogate utility functions:
   - normalize_spin
   - splinterp_many  (batch spline interpolation)
   - _splinterp_Cwrapper / _splinterp_Cwrapper_many (low-level wrappers)
+  - eval_coorb_modes (C vs Python path comparison)
 """
 
+import os
 import numpy as np
 import pytest
 
@@ -17,6 +19,7 @@ from gwsurrogate.new.precessing_surrogate import (
     splinterp_many,
 )
 from gwsurrogate.new.surrogate import _splinterp_Cwrapper, _splinterp_Cwrapper_many
+from gwsurrogate.precessing_utils import _utils
 
 
 RNG = np.random.default_rng(99)
@@ -69,6 +72,162 @@ def test_total_node_evals_respects_ell_maximum():
 
     assert _total_node_evals(data, ellMax=3) == 3
     assert _total_node_evals(data, ellMax=4) == 6
+
+
+# ---------------------------------------------------------------------------
+# Skip condition for tests requiring the NRSur7dq4 model
+# ---------------------------------------------------------------------------
+
+def _model_path():
+    import gwsurrogate as gws
+    candidate = os.path.join(gws.catalog.download_path(), "NRSur7dq4.h5")
+    return candidate if os.path.isfile(candidate) else None
+
+
+_MODEL_AVAILABLE = _model_path() is not None
+
+skip_if_no_model = pytest.mark.skipif(
+    not _MODEL_AVAILABLE,
+    reason="NRSur7dq4.h5 not found",
+)
+
+
+@pytest.fixture(scope="module")
+def coorb_test_data():
+    """Load NRSur7dq4, run dynamics, return coorb_sur and test inputs."""
+    import warnings
+    import gwsurrogate as gws
+
+    sur = gws.LoadSurrogate("NRSur7dq4")
+    psur = sur._sur_dimless
+
+    q = 2.0
+    chiA0 = np.array([0.0, 0.0, 0.5])
+    chiB0 = np.array([0.0, 0.0, -0.3])
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        quat, orbphase, chiA_copr, chiB_copr = \
+            psur.get_dynamics(q, chiA0, chiB0)
+
+    from gwsurrogate.new.precessing_surrogate import coorb_spins_from_copr_spins
+    from gwsurrogate.new.surrogate import _splinterp_Cwrapper_many
+
+    # Interpolate to coorbital time grid
+    t_ds = psur.dynamics_sur.t
+    t_coorb = psur.coorb_sur.t
+    chiA_copr_coorb = _splinterp_Cwrapper_many(
+        t_coorb, t_ds, chiA_copr.T).T
+    chiB_copr_coorb = _splinterp_Cwrapper_many(
+        t_coorb, t_ds, chiB_copr.T).T
+    orbphase_coorb = _splinterp_Cwrapper_many(
+        t_coorb, t_ds, orbphase[np.newaxis, :])[0]
+
+    chiA_coorb, chiB_coorb = coorb_spins_from_copr_spins(
+        chiA_copr_coorb, chiB_copr_coorb, orbphase_coorb)
+
+    return psur.coorb_sur, q, chiA_coorb, chiB_coorb
+
+
+@skip_if_no_model
+def test_eval_coorb_modes_c_vs_python(coorb_test_data):
+    """C eval_coorb_modes matches Python _call_python for NRSur7dq4."""
+    coorb_sur, q, chiA, chiB = coorb_test_data
+    ellMax = coorb_sur.ellMax  # 4
+
+    modes_c = coorb_sur._call_c(q, chiA, chiB, ellMax)
+    modes_py = coorb_sur._call_python(q, chiA, chiB, ellMax)
+
+    np.testing.assert_allclose(modes_c, modes_py, rtol=1e-12, atol=1e-15,
+                               err_msg="C and Python coorb modes disagree")
+
+
+@skip_if_no_model
+def test_eval_coorb_modes_partial_ellmax(coorb_test_data):
+    """C path with ellMax=2 matches Python path."""
+    coorb_sur, q, chiA, chiB = coorb_test_data
+    ellMax = 2
+
+    modes_c = coorb_sur._call_c(q, chiA, chiB, ellMax)
+    modes_py = coorb_sur._call_python(q, chiA, chiB, ellMax)
+
+    np.testing.assert_allclose(modes_c, modes_py, rtol=1e-12, atol=1e-15,
+                               err_msg="Partial ellMax: C vs Python disagree")
+
+
+@skip_if_no_model
+def test_eval_coorb_modes_ellmax_above_model(coorb_test_data):
+    """ellMax beyond the model's own ellMax zero-pads the extra modes."""
+    coorb_sur, q, chiA, chiB = coorb_test_data
+    ellMax = coorb_sur.ellMax + 1
+
+    modes_c = coorb_sur._call_c(q, chiA, chiB, ellMax)
+    modes_py = coorb_sur._call_python(q, chiA, chiB, ellMax)
+
+    assert modes_c.shape[0] == ellMax*ellMax + 2*ellMax - 3
+    np.testing.assert_allclose(modes_c, modes_py, rtol=1e-12, atol=1e-15,
+                               err_msg="ellMax above model: C vs Python differ")
+
+
+@skip_if_no_model
+def test_call_dispatches_to_c(coorb_test_data, monkeypatch):
+    """__call__ uses the C path when the fit_params transform is known."""
+    coorb_sur, q, chiA, chiB = coorb_test_data
+    assert coorb_sur._fit_params_mode >= 0
+
+    def _fail(*args, **kwargs):
+        raise AssertionError("__call__ fell back to the Python path")
+
+    monkeypatch.setattr(coorb_sur, "_call_python", _fail)
+    modes = coorb_sur(q, chiA, chiB, ellMax=coorb_sur.ellMax)
+    assert modes.shape == (coorb_sur.ellMax**2 + 2*coorb_sur.ellMax - 3,
+                           len(coorb_sur.t))
+
+
+@skip_if_no_model
+def test_eval_coorb_modes_rejects_bad_arguments(coorb_test_data):
+    """Malformed arguments raise ValueError rather than reading out of bounds."""
+    coorb_sur, q, chiA, chiB = coorb_test_data
+    p = coorb_sur._packed
+    ellMax = coorb_sur.ellMax
+    nmodes = ellMax*ellMax + 2*ellMax - 3
+    q_consts = coorb_sur._compute_q_consts(float(q))
+    settings = coorb_sur._fit_settings
+
+    def call(**overrides):
+        kw = dict(chiA=chiA, chiB=chiB, nmodes=nmodes, ellMax=ellMax,
+                  all_orders=p['all_orders'], q_consts=q_consts)
+        kw.update(overrides)
+        return _utils.eval_coorb_modes(
+            float(q),
+            np.ascontiguousarray(kw['chiA'], dtype=np.float64),
+            np.ascontiguousarray(kw['chiB'], dtype=np.float64),
+            p['comp_n_nodes'], p['comp_node_offset'], p['comp_ell'],
+            p['all_node_indices'], p['node_n_coefs'],
+            p['node_coef_offset'], p['all_coefs'],
+            kw['all_orders'], p['all_EI_basis'],
+            p['mode_info'], kw['q_consts'],
+            kw['nmodes'], kw['ellMax'], coorb_sur._fit_params_mode,
+            settings[0], settings[1], settings[2], settings[3])
+
+    # Baseline: the unmodified arguments are accepted.
+    call()
+
+    # chiA too short for the stored node indices.
+    with pytest.raises(ValueError):
+        call(chiA=chiA[:10], chiB=chiB[:10])
+
+    # nmodes inconsistent with ellMax would let mode_info index past the output.
+    with pytest.raises(ValueError):
+        call(nmodes=nmodes - 1)
+
+    # Wrong dtype for an array read through a raw typed pointer.
+    with pytest.raises(ValueError):
+        call(all_orders=p['all_orders'].astype(np.int32))
+
+    # Wrong length for q_consts.
+    with pytest.raises(ValueError):
+        call(q_consts=q_consts[:3])
 
 
 # ---------------------------------------------------------------------------
