@@ -674,13 +674,16 @@ def _extract_component_data(h5_group):
     return data
 
 def _assemble_mode_pair(rep, rem, imp, imm):
-    hplus = rep + 1.j*imp
-    hminus = rem + 1.j*imm
-    # hplus and hminus were built with the (ell, -m) mode as the
-    # reference mode:
-    #   hplus = 0.5*( h^{ell, -m} + h^{ell, m}* )
-    #   hminus = 0.5*(h^{ell, -m} - h^{ell, m}* )
-    return (hplus - hminus).conjugate(), hplus + hminus
+    # hplus = rep + 1j*imp, hminus = rem + 1j*imm
+    # return (hplus - hminus).conj(), hplus + hminus
+    # Pre-allocate two outputs directly to avoid 3 intermediate allocations.
+    h_posm = np.empty(len(rep), dtype=np.complex128)
+    h_negm = np.empty(len(rep), dtype=np.complex128)
+    h_posm.real = rep - rem    # Re(hplus - hminus)
+    h_posm.imag = imm - imp    # Im((hplus - hminus).conj()) = -Im(hplus - hminus)
+    h_negm.real = rep + rem    # Re(hplus + hminus)
+    h_negm.imag = imp + imm    # Im(hplus + hminus)
+    return h_posm, h_negm
 
 #########################################################
 
