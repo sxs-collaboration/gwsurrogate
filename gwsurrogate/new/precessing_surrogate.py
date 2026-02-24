@@ -216,6 +216,7 @@ These time derivatives are given to the AB4 ODE solver.
         self.omega_ref_max_model = omega_ref_max_model
 
         self.fit_data = []
+        self.fit_data_batch = []
         for i in range(len(self.t)):
             group = h5file['ds_node_%s'%(i)]
             tmp_data = {}
@@ -227,6 +228,19 @@ These time derivatives are given to the AB4 ODE solver.
             tmp_data['chiB'] =self._load_vector_fit(group, 'chiB', 3)
 
             self.fit_data.append(tmp_data)
+
+            # Build the batch list: [ooxy0, ooxy1, omega, cAx, cAy, cAz, cBx, cBy, cBz]
+            self.fit_data_batch.append([
+                (tmp_data['omega_orb'][0]['bfOrders'], tmp_data['omega_orb'][0]['coefs']),
+                (tmp_data['omega_orb'][1]['bfOrders'], tmp_data['omega_orb'][1]['coefs']),
+                (tmp_data['omega']['bfOrders'],         tmp_data['omega']['coefs']),
+                (tmp_data['chiA'][0]['bfOrders'],        tmp_data['chiA'][0]['coefs']),
+                (tmp_data['chiA'][1]['bfOrders'],        tmp_data['chiA'][1]['coefs']),
+                (tmp_data['chiA'][2]['bfOrders'],        tmp_data['chiA'][2]['coefs']),
+                (tmp_data['chiB'][0]['bfOrders'],        tmp_data['chiB'][0]['coefs']),
+                (tmp_data['chiB'][1]['bfOrders'],        tmp_data['chiB'][1]['coefs']),
+                (tmp_data['chiB'][2]['bfOrders'],        tmp_data['chiB'][2]['coefs']),
+            ])
 
         self.diff_t = np.diff(self.t)
         self.L = len(self.t)
@@ -261,16 +275,11 @@ These time derivatives are given to the AB4 ODE solver.
         x = _utils.get_ds_fit_x(y, q)
         fit_params = self._get_fit_params(x)
 
-        # Evaluate fits
-        data = self.fit_data[i0]
-        ooxy_coorb = _eval_vector_fit(data['omega_orb'], 2, fit_params, self._fit_settings)
-        omega = _eval_scalar_fit(data['omega'], fit_params, self._fit_settings)
-        cAdot_coorb = _eval_vector_fit(data['chiA'], 3, fit_params, self._fit_settings)
-        cBdot_coorb = _eval_vector_fit(data['chiB'], 3, fit_params, self._fit_settings)
-
-        # Do rotations to the coprecessing frame, find dqdt, and append
-        dydt = _utils.assemble_dydt(y, ooxy_coorb, omega,
-                cAdot_coorb, cBdot_coorb)
+        # Fused: evaluate 9 fits + assemble dydt in one C call
+        q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder = self._fit_settings
+        dydt = _utils.eval_fit_batch_dydt(
+            self.fit_data_batch[i0], fit_params, y,
+            q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
 
         return dydt
 

@@ -1,5 +1,7 @@
 double ipow(double base, long exponent);
 static PyObject *eval_fit(PyObject *self, PyObject *args);
+static PyObject *eval_fit_batch(PyObject *self, PyObject *args);
+static PyObject *eval_fit_batch_dydt(PyObject *self, PyObject *args);
 static PyObject *normalize_y(PyObject *self, PyObject *args);
 static PyObject *get_ds_fit_x(PyObject *self, PyObject *args);
 static PyObject *assemble_dydt(PyObject *self, PyObject *args);
