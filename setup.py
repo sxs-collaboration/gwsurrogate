@@ -29,29 +29,13 @@ _arch_flags = _get_arch_flags()
 # all extensions here
 extmods = []
 
-# build extension 1: python wrapper to gsl's spline function
-if os.path.isdir("/opt/local/include"):
-    IncDirs = ["/opt/local/include"]
-elif os.path.isdir("/opt/homebrew/include"):
-    IncDirs = ["/opt/homebrew/include"]
-else:
-    IncDirs = []
-
-if os.path.isdir("/opt/local/lib"):
-    LibDirs = ["/opt/local/lib"]
-elif os.path.isdir("/opt/homebrew/lib"):
-    LibDirs = ["/opt/homebrew/lib"]
-else:
-    LibDirs = []
-
+# build extension 1: custom spline interpolation (no external deps)
 extmod = Extension(
     "gwsurrogate.spline_interp_Cwrapper._spline_interp",
-    include_dirs=IncDirs,
-    libraries=["gsl"],
-    extra_compile_args=["-std=c99"] + _arch_flags,
+    extra_compile_args=["-std=c++14", "-O3"] + _arch_flags,
     extra_link_args=_arch_flags,
-    library_dirs=LibDirs,
-    sources=["gwsurrogate/spline_interp_Cwrapper/_spline_interp.c"],
+    language="c++",
+    sources=["gwsurrogate/spline_interp_Cwrapper/_spline_interp.cpp"],
 )
 extmods.append(extmod)
 

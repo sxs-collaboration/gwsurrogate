@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from gwsurrogate.new.precessing_surrogate import normalize_spin, splinterp_many
-from gwsurrogate.new.surrogate import _splinterp_Cwrapper
+from gwsurrogate.new.surrogate import _splinterp_Cwrapper, _splinterp_Cwrapper_many
 
 
 RNG = np.random.default_rng(99)
@@ -125,3 +125,30 @@ def test_splinterp_many_reproduces_knots():
     np.testing.assert_allclose(result, data, atol=1e-12,
                                err_msg="splinterp_many does not reproduce knot values")
 
+
+# ---------------------------------------------------------------------------
+# _splinterp_Cwrapper_many (low-level)
+# ---------------------------------------------------------------------------
+
+def test_splinterp_Cwrapper_many_matches_loop():
+    """_splinterp_Cwrapper_many agrees with row-by-row _splinterp_Cwrapper."""
+    M, N_in = 9, 45
+    t_in = np.linspace(-1.0, 1.0, N_in)
+    t_out = np.linspace(-0.9, 0.9, 70)
+    data = np.array([np.exp(-(i * 0.5) * t_in**2) for i in range(1, M + 1)])
+
+    result_many = _splinterp_Cwrapper_many(t_out, t_in, data)
+    result_loop = np.array([_splinterp_Cwrapper(t_out, t_in, data[i])
+                            for i in range(M)])
+
+    np.testing.assert_allclose(result_many, result_loop, rtol=1e-12,
+                               err_msg="_splinterp_Cwrapper_many disagrees with loop")
+
+
+def test_splinterp_Cwrapper_many_dtype():
+    """Output dtype is float64 for real input."""
+    t_in = np.linspace(0.0, 1.0, 20)
+    t_out = np.linspace(0.1, 0.9, 30)
+    data = np.ones((4, 20), dtype=np.float32)
+    result = _splinterp_Cwrapper_many(t_out, t_in, data)
+    assert result.dtype == np.float64, f"Expected float64, got {result.dtype}"

@@ -20,11 +20,11 @@ import pytest
 #   evaluated at t ≈ -100 M.
 # ---------------------------------------------------------------------------
 EXPECTED = {
-    (2, -2): (-7.824097058920128e-02,  1.938088511764885e-01),
-    (2,  0): (-2.057018634775000e-04,  3.022657009148731e-06),
-    (2,  2): (-7.824928526991039e-02, -1.938267559950780e-01),
-    (3, -1): ( 2.012090684917627e-04, -5.061592210096143e-05),
-    (3,  3): ( 1.810621264394530e-03, -2.116647178186893e-02),
+    (2, -2): -7.824097058920128e-02 + 1.938088511764885e-01j,
+    (2,  0): -2.057018634775000e-04 + 3.022657009148731e-06j,
+    (2,  2): -7.824928526991039e-02 - 1.938267559950780e-01j,
+    (3, -1):  2.012090684917627e-04 - 5.061592210096143e-05j,
+    (3,  3):  1.810621264394530e-03 - 2.116647178186893e-02j,
 }
 EXPECTED_SUM_ABS = 4.955406483976013e-01
 
@@ -97,16 +97,10 @@ def test_no_nan_in_waveform(nrsur7dq4_result):
 def test_mode_values_at_t_minus100(nrsur7dq4_result):
     """Mode values at t ≈ -100 M match hard-coded expected values."""
     _, h, idx = nrsur7dq4_result
-    for mode, (expected_re, expected_im) in EXPECTED.items():
+    for mode, expected in EXPECTED.items():
         val = h[mode][idx]
-        np.testing.assert_allclose(
-            val.real, expected_re, rtol=RTOL, atol=ATOL,
-            err_msg=f"Real part of mode {mode} regressed",
-        )
-        np.testing.assert_allclose(
-            val.imag, expected_im, rtol=RTOL, atol=ATOL,
-            err_msg=f"Imaginary part of mode {mode} regressed",
-        )
+        np.testing.assert_allclose(val, expected, rtol=RTOL, atol=ATOL,
+                                   err_msg=f"Mode {mode} regressed")
 
 
 @skip_if_no_model

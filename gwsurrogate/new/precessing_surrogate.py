@@ -13,7 +13,7 @@ import numpy as np
 import h5py
 from gwsurrogate.precessing_utils import _utils
 from gwtools.harmonics import sYlm
-from gwsurrogate.new.surrogate import _splinterp_Cwrapper
+from gwsurrogate.new.surrogate import _splinterp_Cwrapper, _splinterp_Cwrapper_many
 
 
 ###############################################################################
@@ -852,8 +852,7 @@ def inertial_waveform_modes(t, orbphase, quat, h_coorb):
     return h_inertial
 
 def splinterp_many(t_out, t_in, many_things):
-    return np.array([_splinterp_Cwrapper(t_out, t_in, thing) \
-            for thing in many_things])
+    return _splinterp_Cwrapper_many(t_out, t_in, many_things)
 
 def mode_sum(h_modes, ellMax, theta, phi):
     coefs = []
@@ -1113,9 +1112,7 @@ Returns:
 
 
         if do_interp:
-            hre = splinterp_many(timesM, self.t_coorb, np.real(h_inertial))
-            him = splinterp_many(timesM, self.t_coorb, np.imag(h_inertial))
-            h_inertial = hre + 1.j*him
+            h_inertial = _splinterp_Cwrapper_many(timesM, self.t_coorb, h_inertial)
 
         # Make mode dict
         h = {}
