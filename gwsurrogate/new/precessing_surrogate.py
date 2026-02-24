@@ -205,7 +205,8 @@ These time derivatives are given to the AB4 ODE solver.
 
         self._get_fit_params = get_fit_params
         self._get_fit_settings = get_fit_settings
-        self._fit_settings = get_fit_settings()
+        self._fit_settings = get_fit_settings()   # cached tuple (Opt 1)
+        self._fit_params_mode = getattr(get_fit_params, '_cmode', -1)
         self.omega_ref_max_model = omega_ref_max_model
 
         self.fit_data = []
@@ -263,10 +264,22 @@ These time derivatives are given to the AB4 ODE solver.
 
 
 
+    def _compute_q_consts(self, q):
+        """Compute q-dependent constants for C fit_params transform."""
+        if self._fit_params_mode == 0:
+            eta = q / (1.0 + q)**2
+            return np.array([
+                np.log(q),
+                q / (1.0 + q),
+                1.0 / (1.0 + q),
+                38.0 * eta / 113.0,
+                1.0 - 76.0 * eta / 113.0,
+            ])
+        return np.zeros(5)
+
     def get_time_deriv_from_index(self, i0, q, y):
         # Setup fit variables
         x = _utils.get_ds_fit_x(y, q)
-        fit_params = self._get_fit_params(x)
 
         # Reference implementation for the fused C path below:
         #
@@ -281,9 +294,19 @@ These time derivatives are given to the AB4 ODE solver.
 
         # Fused: evaluate 9 fits + assemble dydt in one C call
         q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder = self._fit_settings
-        dydt = _utils.eval_fit_batch_dydt(
-            self.fit_data_batch[i0], fit_params, y,
-            q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
+
+        if self._fit_params_mode >= 0:
+            # C-side transform: skip Python get_fit_params call
+            dydt = _utils.eval_fit_batch_dydt(
+                self.fit_data_batch[i0], x, y,
+                q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder,
+                self._q_consts, self._fit_params_mode)
+        else:
+            # Legacy path: Python transform
+            fit_params = self._get_fit_params(x)
+            dydt = _utils.eval_fit_batch_dydt(
+                self.fit_data_batch[i0], fit_params, y,
+                q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
 
         return dydt
 
@@ -429,6 +452,10 @@ L = len(self.t), and these returned arrays are sampled at self.t
         maxNorm = max(normA, normB)
         if maxNorm > 1.001:
             raise Exception("Got a spin magnitude of %s > 1.0"%(maxNorm))
+
+        # Pre-compute q-dependent constants for C fit_params transform
+        if self._fit_params_mode >= 0:
+            self._q_consts = self._compute_q_consts(float(q))
 
         # Get reference time
         if omega_ref is not None:

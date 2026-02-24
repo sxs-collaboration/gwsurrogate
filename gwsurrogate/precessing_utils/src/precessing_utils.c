@@ -471,18 +471,35 @@ static PyObject *eval_fit_batch_dydt(PyObject *self, PyObject *args) {
     PyArrayObject *fit_params, *y;
     double q_fit_offset, q_fit_slope;
     int q_max_bfOrder, chi_max_bfOrder;
+    PyArrayObject *q_consts_arr = NULL;
+    int fit_params_mode = -1;
 
-    if (!PyArg_ParseTuple(args, "OO!O!ddii",
+    if (!PyArg_ParseTuple(args, "OO!O!ddii|O!i",
             &fit_list,
             &PyArray_Type, &fit_params,
             &PyArray_Type, &y,
             &q_fit_offset,
             &q_fit_slope,
             &q_max_bfOrder,
-            &chi_max_bfOrder)) return NULL;
+            &chi_max_bfOrder,
+            &PyArray_Type, &q_consts_arr,
+            &fit_params_mode)) return NULL;
 
     double *x_data = (double *) PyArray_DATA(fit_params);
     double *y_data = (double *) PyArray_DATA(y);
+
+    /* Apply fit_params transform in-place if requested */
+    if (fit_params_mode == 0 && q_consts_arr != NULL) {
+        double *q_consts = (double *) PyArray_DATA(q_consts_arr);
+        double chi1z = x_data[3], chi2z = x_data[6];
+        x_data[0] = q_consts[0];  /* log(q) */
+        double chi_wtAvg = q_consts[1]*chi1z + q_consts[2]*chi2z;
+        x_data[3] = (chi_wtAvg - q_consts[3]*(chi1z + chi2z))
+                     / q_consts[4];
+        x_data[6] = (chi1z - chi2z) * 0.5;
+    }
+    /* fit_params_mode == 1: identity, x unchanged */
+    /* fit_params_mode == -1: legacy path, x already transformed by Python */
 
     /* Pre-compute x_powers once for all fits */
     double x_powers[q_max_bfOrder+1 + 6*(chi_max_bfOrder+1)];
