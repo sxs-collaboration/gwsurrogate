@@ -62,9 +62,11 @@ http://arxiv.org/abs/1302.2919
     n = q.shape[1]
     num_ells = ellMax - 1
 
-    # Allocate output — Python owns the memory
+    # Allocate output — Python owns the memory.
+    # C zeros them only when edge-case time points exist (n2>0 or n3>0);
+    # in the general case every element is written, so np.empty suffices.
     matrices = [
-        np.zeros((2*(i+2)+1, 2*(i+2)+1, n), dtype=np.complex128)
+        np.empty((2*(i+2)+1, 2*(i+2)+1, n), dtype=np.complex128)
         for i in range(num_ells)
     ]
 
