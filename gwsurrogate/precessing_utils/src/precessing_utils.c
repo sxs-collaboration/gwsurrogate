@@ -56,6 +56,9 @@ static struct module_state _state;
 #endif
 
 
+/* Forward declarations */
+static PyObject *py_rotate_waveform(PyObject *self, PyObject *args);
+
 /* ==== Setup the python methods table === */
 static PyMethodDef _utils_methods[] = {
     {"eval_fit", eval_fit, METH_VARARGS},
@@ -69,6 +72,7 @@ static PyMethodDef _utils_methods[] = {
     {"wigner_coef", wigner_coef, METH_VARARGS},
     {"coorbital_to_inertial_in_place", coorbital_to_inertial_in_place, METH_VARARGS},
     {"wignerD_matrices", py_wignerD_matrices, METH_VARARGS},
+    {"rotate_waveform", py_rotate_waveform, METH_VARARGS},
     {NULL, NULL} /* Marks the end of this structure */
 };
 
@@ -1526,6 +1530,140 @@ PyObject *py_wignerD_matrices(PyObject *self, PyObject *args)
     ret = wignerD_matrices(q_data, (size_t)n, ellMax, mat_ptrs);
     Py_END_ALLOW_THREADS
 
+    Py_DECREF(q_arr);
+
+    if (ret != 0) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "wignerD_matrices failed (internal error)");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/* ------------------------------------------------------------------ */
+/* rotate_waveform: compute wignerD + matrix-vector multiply in C     */
+/* ------------------------------------------------------------------ */
+
+static PyObject *py_rotate_waveform(PyObject *self, PyObject *args)
+{
+    PyArrayObject *q_obj, *h_obj, *out_obj;
+    int ellMax;
+
+    if (!PyArg_ParseTuple(args, "O!O!iO!",
+            &PyArray_Type, &q_obj,
+            &PyArray_Type, &h_obj,
+            &ellMax,
+            &PyArray_Type, &out_obj))
+        return NULL;
+
+    /* Validate q: shape (4, N), float64, C-contiguous */
+    if (PyArray_NDIM(q_obj) != 2 || PyArray_DIM(q_obj, 0) != 4) {
+        PyErr_SetString(PyExc_ValueError, "q must have shape (4, N)");
+        return NULL;
+    }
+    npy_intp N = PyArray_DIM(q_obj, 1);
+
+    /* Determine expected n_modes */
+    int num_ells = ellMax - 1;
+    npy_intp n_modes = 0;
+    for (int ell = 2; ell <= ellMax; ell++)
+        n_modes += 2 * ell + 1;
+
+    /* Validate h: shape (n_modes, N), complex128, C-contiguous */
+    if (PyArray_NDIM(h_obj) != 2 ||
+        PyArray_DIM(h_obj, 0) != n_modes ||
+        PyArray_DIM(h_obj, 1) != N) {
+        PyErr_Format(PyExc_ValueError,
+                     "h must have shape (%ld, %ld)", (long)n_modes, (long)N);
+        return NULL;
+    }
+    if (PyArray_TYPE(h_obj) != NPY_COMPLEX128 || !PyArray_IS_C_CONTIGUOUS(h_obj)) {
+        PyErr_SetString(PyExc_TypeError, "h must be C-contiguous complex128");
+        return NULL;
+    }
+
+    /* Validate out: same shape as h, complex128, C-contiguous */
+    if (PyArray_NDIM(out_obj) != 2 ||
+        PyArray_DIM(out_obj, 0) != n_modes ||
+        PyArray_DIM(out_obj, 1) != N) {
+        PyErr_Format(PyExc_ValueError,
+                     "out must have shape (%ld, %ld)", (long)n_modes, (long)N);
+        return NULL;
+    }
+    if (PyArray_TYPE(out_obj) != NPY_COMPLEX128 || !PyArray_IS_C_CONTIGUOUS(out_obj)) {
+        PyErr_SetString(PyExc_TypeError, "out must be C-contiguous complex128");
+        return NULL;
+    }
+
+    PyArrayObject *q_arr = (PyArrayObject *)PyArray_ContiguousFromAny(
+        (PyObject *)q_obj, NPY_DOUBLE, 2, 2);
+    if (!q_arr) return NULL;
+
+    const double *q_data = (const double *)PyArray_DATA(q_arr);
+    const double complex *h_data = (const double complex *)PyArray_DATA(h_obj);
+    double complex *out_data = (double complex *)PyArray_DATA(out_obj);
+
+    /* Allocate D matrices */
+    double complex *mat_ptrs[num_ells];
+    double complex *mat_mem = NULL;
+    size_t total_elems = 0;
+    for (int i = 0; i < num_ells; i++) {
+        int dim = 2 * (i + 2) + 1;
+        total_elems += (size_t)dim * dim * N;
+    }
+    mat_mem = (double complex *)malloc(total_elems * sizeof(double complex));
+    if (!mat_mem) {
+        Py_DECREF(q_arr);
+        PyErr_NoMemory();
+        return NULL;
+    }
+    {
+        size_t offset = 0;
+        for (int i = 0; i < num_ells; i++) {
+            int dim = 2 * (i + 2) + 1;
+            mat_ptrs[i] = mat_mem + offset;
+            offset += (size_t)dim * dim * N;
+        }
+    }
+
+    int ret;
+    Py_BEGIN_ALLOW_THREADS
+
+    /* Step 1: compute Wigner D matrices */
+    ret = wignerD_matrices(q_data, (size_t)N, ellMax, mat_ptrs);
+
+    if (ret == 0) {
+        /* Step 2: matrix-vector multiply per ell block, per time step.
+         * D layout: (dim, dim, N) C-contiguous via D[row * dim * N + col * N + t]
+         * h layout: (n_modes, N) C-contiguous, so h[mode][t] = h_data[mode * N + t]
+         */
+        size_t mode_offset = 0;
+        for (int i = 0; i < num_ells; i++) {
+            int ell = i + 2;
+            int dim = 2 * ell + 1;
+            const double complex *D = mat_ptrs[i];
+
+            for (int row = 0; row < dim; row++) {
+                double complex *out_row = out_data + (mode_offset + row) * N;
+                const double complex *h_base = h_data + mode_offset * N;
+
+                for (size_t t = 0; t < (size_t)N; t++) {
+                    double complex acc = 0;
+                    for (int col = 0; col < dim; col++) {
+                        acc += D[(size_t)row * dim * N + (size_t)col * N + t]
+                             * h_base[(size_t)col * N + t];
+                    }
+                    out_row[t] = acc;
+                }
+            }
+            mode_offset += dim;
+        }
+    }
+
+    Py_END_ALLOW_THREADS
+
+    free(mat_mem);
     Py_DECREF(q_arr);
 
     if (ret != 0) {
