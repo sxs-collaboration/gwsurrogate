@@ -122,58 +122,50 @@ coprecessing frame to the inertial frame.
 
 ###############################################################################
 # Functions related to fit evaluations
-def _eval_scalar_fit(fit_data, fit_params, get_fit_settings):
+def _eval_scalar_fit(fit_data, fit_params, fit_settings):
     """ Evaluates a single scalar fit.
 
         Arguments:
         ==========
         fit_data: fit data for each specific datapiece
-        fit_params: function that takes a numpy array x and returns
-                    the fit parameters used to evaluate the surrogate fits.
-                    Example: The NRSur7dq4 model converts
-                       x=[q, chi1x, chi1y, chi1z, chi2x, chi2y, chi2z]
-                       to
-                       x=[np.log(q), chi1x, chi1y, chiHat, chi2x, chi2y, chi_a]
-        get_fit_settings: function that provides information about
-                          surrogate fits for each specific datapiece.
+        fit_params: numpy array of fit parameters (already transformed)
+        fit_settings: tuple (q_fit_offset, q_fit_slope, q_max_bfOrder,
+                      chi_max_bfOrder) — model-specific constants, cached
+                      once at init time.
 
         Notes:
         ======
-        fit_params and get_fit_settings should come from each surrogate model's
+        fit_params and fit_settings should come from each surrogate model's
         class definition. For example, for the NRSur7dq4 model, these are defined
         in NRSur7dq4(SurrogateEvaluator)
     """
     q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder \
-        = get_fit_settings()
+        = fit_settings
     val = _utils.eval_fit(fit_data['bfOrders'], fit_data['coefs'], \
         fit_params, q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
     return val
 
-def _eval_vector_fit(fit_data, size, fit_params, get_fit_settings):
+def _eval_vector_fit(fit_data, size, fit_params, fit_settings):
     """ Evaluates a vector fit, where each element is a scalar fit.
 
         Arguments:
         ==========
         fit_data: fit data for each specific datapiece
-        fit_params: function that takes a numpy array x and returns
-                    the fit parameters used to evaluate the surrogate fits.
-                    Example: The NRSur7dq4 model converts
-                       x=[q, chi1x, chi1y, chi1z, chi2x, chi2y, chi2z]
-                       to
-                       x=[np.log(q), chi1x, chi1y, chiHat, chi2x, chi2y, chi_a]
-        get_fit_settings: function that provides information about
-                          surrogate fits for each specific datapiece.
+        fit_params: numpy array of fit parameters (already transformed)
+        fit_settings: tuple (q_fit_offset, q_fit_slope, q_max_bfOrder,
+                      chi_max_bfOrder) — model-specific constants, cached
+                      once at init time.
 
         Notes:
         ======
-        fit_params and get_fit_settings should come from each surrogate model's
+        fit_params and fit_settings should come from each surrogate model's
         class definition. For example, for the NRSur7dq4 model, these are defined
         in NRSur7dq4(SurrogateEvaluator)
     """
-    val = []
+    val = np.empty(size)
     for i in range(size):
-        val.append(_eval_scalar_fit(fit_data[i], fit_params, get_fit_settings))
-    return np.asarray(val)
+        val[i] = _eval_scalar_fit(fit_data[i], fit_params, fit_settings)
+    return val
 
 ###############################################################################
 
@@ -220,6 +212,7 @@ These time derivatives are given to the AB4 ODE solver.
 
         self._get_fit_params = get_fit_params
         self._get_fit_settings = get_fit_settings
+        self._fit_settings = get_fit_settings()
         self.omega_ref_max_model = omega_ref_max_model
 
         self.fit_data = []
@@ -270,10 +263,10 @@ These time derivatives are given to the AB4 ODE solver.
 
         # Evaluate fits
         data = self.fit_data[i0]
-        ooxy_coorb = _eval_vector_fit(data['omega_orb'], 2, fit_params, self._get_fit_settings)
-        omega = _eval_scalar_fit(data['omega'], fit_params, self._get_fit_settings)
-        cAdot_coorb = _eval_vector_fit(data['chiA'], 3, fit_params, self._get_fit_settings)
-        cBdot_coorb = _eval_vector_fit(data['chiB'], 3, fit_params, self._get_fit_settings)
+        ooxy_coorb = _eval_vector_fit(data['omega_orb'], 2, fit_params, self._fit_settings)
+        omega = _eval_scalar_fit(data['omega'], fit_params, self._fit_settings)
+        cAdot_coorb = _eval_vector_fit(data['chiA'], 3, fit_params, self._fit_settings)
+        cBdot_coorb = _eval_vector_fit(data['chiB'], 3, fit_params, self._fit_settings)
 
         # Do rotations to the coprecessing frame, find dqdt, and append
         dydt = _utils.assemble_dydt(y, ooxy_coorb, omega,
@@ -307,7 +300,7 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
     def get_omega(self, i0, q, y):
         x = _utils.get_ds_fit_x(y, q)
         fit_params = self._get_fit_params(x)
-        omega = _eval_scalar_fit(self.fit_data[i0]['omega'], fit_params, self._get_fit_settings)
+        omega = _eval_scalar_fit(self.fit_data[i0]['omega'], fit_params, self._fit_settings)
         return omega
 
     def _get_t_from_omega(self, omega_ref, q, chiA0, chiB0, init_orbphase,
@@ -702,6 +695,7 @@ class CoorbitalWaveformSurrogate:
 
         self._get_fit_params = get_fit_params
         self._get_fit_settings = get_fit_settings
+        self._fit_settings = get_fit_settings()
 
         self.ellMax = 2
         while 'hCoorb_%s_%s_Re+'%(self.ellMax+1, self.ellMax+1) in h5file.keys():
@@ -785,7 +779,7 @@ ellMax: The maximum ell mode to evaluate.
                 }
             x = np.append(q, np.append(chiA[ni], chiB[ni]))
             fit_params = self._get_fit_params(x)
-            nodes.append(_eval_scalar_fit(fit_data, fit_params, self._get_fit_settings))
+            nodes.append(_eval_scalar_fit(fit_data, fit_params, self._fit_settings))
 
         return np.array(nodes).dot(data['EI_basis'])
 
