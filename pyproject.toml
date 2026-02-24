@@ -18,5 +18,15 @@ dynamic = ["version", "license", "authors", "dependencies", "entry-points", "cla
     ]
     build-backend = "setuptools.build_meta"
 
+[tool.pytest.ini_options]
+addopts = "--tb=short"
+
+[tool.coverage.run]
+source = ["gwsurrogate"]
+omit = ["*/test*", "*/venv*", "setup.py"]
+
+[tool.coverage.report]
+show_missing = true
+
 [tool.ruff]
     extend-exclude = ["*.ipynb"]

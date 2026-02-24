@@ -53,6 +53,11 @@ https://github.com/moble/GWFrames
 written by Michael Boyle, based on his paper:
 http://arxiv.org/abs/1302.2919
     """
+    if q.ndim != 2 or q.shape[0] != 4:
+        raise ValueError("q must have shape (4, N)")
+    if ellMax < 2:
+        raise ValueError("ellMax must be >= 2")
+
     ra = q[0] + 1.j*q[3]
     rb = q[2] + 1.j*q[1]
     ra_small = (abs(ra) < 1.e-12)
