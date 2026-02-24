@@ -503,7 +503,7 @@ the nearest time node.
         #   chiBy, chiBz]
         # We do three steps of RK4, so we have 3 fewer timesteps in the output
         # compared to self.t
-        data = np.zeros((self.L-3, 11))
+        data = np.empty((self.L-3, 11))  # every row written by RK4/AB4 before use
 
         y0 = np.append(np.array([1., 0., 0., 0., init_orbphase]),
                 np.append(chiA0, chiB0))
