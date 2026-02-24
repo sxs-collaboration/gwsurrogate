@@ -743,7 +743,7 @@ chiA, chiB: The time-dependent spin in the coorbital frame. These should have
 ellMax: The maximum ell mode to evaluate.
         """
         nmodes = ellMax*ellMax + 2*ellMax - 3
-        modes = 1.j*np.zeros((nmodes, len(self.t)))
+        modes = np.zeros((nmodes, len(self.t)), dtype=complex)
 
         for ell in range(2, ellMax+1):
 
