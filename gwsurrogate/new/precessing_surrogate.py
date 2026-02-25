@@ -86,8 +86,6 @@ h: An array of waveform modes with shape (n_modes, N). The modes are ordered
 
 Returns: h_inertial, a similar array to h containing the inertial frame modes.
     """
-    quat = quatInv(quat)
-
     ellMax = {
             5: 2,
             12: 3,
