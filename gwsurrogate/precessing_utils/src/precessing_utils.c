@@ -1120,8 +1120,87 @@ static void hardcode_ell4(const double * restrict cv, const double * restrict sv
     }
 }
 
+/* ====================================================================
+ * wignerD_matrices
+ * ====================================================================
+ *
+ * Compute Wigner D-matrices D^ell_{m,mp}(q) for ell = 2..ellMax at N
+ * quaternion time-samples.  Uses hardcoded polynomial formulas for
+ * ell = 2, 3, 4 (via hc_ell2/3/4) and falls back to Horner evaluation
+ * with three-term ell-recurrence for ell > 4.
+ *
+ * Optionally performs a fused matrix-vector multiply for waveform
+ * rotation when h_data and out_data are non-NULL.
+ *
+ * Parameters
+ * ----------
+ * q        : const double *, shape (4, N), C-contiguous.
+ *            Unit-quaternion time series [q0, q1, q2, q3] with rows
+ *            indexed as q[component * N + time].
+ * n        : size_t.  Number of time samples N.
+ * ellMax   : int >= 2.  Maximum angular momentum quantum number.
+ *            Matrices are computed for ell = 2, 3, ..., ellMax.
+ * matrices : double complex **, length (ellMax - 1).
+ *            Pre-allocated output arrays.  matrices[i] has shape
+ *            (2*ell+1, 2*ell+1, N) for ell = i + 2, stored as
+ *            mat[row * dim * N + col * N + k].
+ * h_data   : const double complex * (optional, may be NULL).
+ *            Coorbital mode data for fused rotation, packed as
+ *            h_data[mode_offset + m_idx * N + k].  When non-NULL,
+ *            the function multiplies D^ell @ h for each (ell, time)
+ *            and writes the result to out_data.
+ * out_data : double complex * (optional, may be NULL).
+ *            Output buffer for the fused rotation result, same layout
+ *            as h_data.  Ignored when h_data is NULL.
+ *
+ * Returns
+ * -------
+ *  0 on success, -1 on invalid arguments or allocation failure.
+ *
+ * Algorithm
+ * ---------
+ * 1. Quaternion → Cayley-Klein:  a = q0 + i*q3,  b = q2 + i*q1.
+ *
+ * 2. Classify each time point into one of three cases:
+ *      general  (|a|^2 >= 1e-24 and |b|^2 >= 1e-24),
+ *      edge-a   (|a|^2 < 1e-24, beta ≈ pi),
+ *      edge-b   (|b|^2 < 1e-24, beta ≈ 0).
+ *    Edge cases are handled via pure-phase power expansions.
+ *
+ * 3. For the general case, decompose a = |a| * ua,  b = |b| * ub
+ *    where ua, ub are unit complex numbers, and precompute:
+ *      - cv_pw[p], sv_pw[p]  : real power tables |a|^p, |b|^p
+ *      - ua_pw[p], ub_pw[p]  : unit-phase tables ua^p, ub^p
+ *      - R = |b|^2/|a|^2     : ratio for Horner evaluation
+ *      - cos_beta = |a|^2 - |b|^2  : for ell-recurrence
+ *
+ * 4. For each ell, compute the real reduced d-matrix d_real(|a|,|b|)
+ *    in the fundamental domain (mp >= 0, m + mp >= 0):
+ *      ell <= 4 : hardcoded polynomial formulas (hc_ell2/3/4)
+ *      ell >  4 : Horner evaluation in R = s^2/c^2 for boundary (m,mp)
+ *                 pairs, then three-term ell-recurrence for interior pairs.
+ *
+ * 5. Expand to the full D-matrix via 4-fold symmetry:
+ *      D^ell_{m,mp} = d_real(m,mp) * ua^{m+mp} * ub^{m-mp}
+ *    with sign factors (-1)^{m-mp} for the transposed positions.
+ *
+ * 6. (Optional) If h_data is non-NULL, accumulate D @ h products
+ *    during the ell loop to avoid a separate rotation pass.
+ *
+ * Memory
+ * ------
+ * A single malloc provides all scratch space via a bump allocator.
+ * Includes: log-factorial table, Cayley-Klein arrays, index arrays,
+ * power tables, d-matrix recurrence buffers.  Freed before return.
+ *
+ * See also: wignerD_matrices_opt (same algorithm, no hardcoded ell<=4),
+ *           hc_ell2, hc_ell3, hc_ell4 (hardcoded polynomial helpers).
+ * ====================================================================
+ */
 int wignerD_matrices(const double * restrict q, size_t n, int ellMax,
-                     double complex ** restrict matrices)
+                     double complex ** restrict matrices,
+                     const double complex *h_data,
+                     double complex *out_data)
 {
     /* NOTE: we assume that q is a unit normal quaternion. */
     if (!q || !matrices || ellMax < 2 || n == 0) return -1;
@@ -1303,6 +1382,7 @@ int wignerD_matrices(const double * restrict q, size_t n, int ellMax,
         build_cpows(ub, ub_inv, n1, P, ub_pw);
 
         /* ---- Hot loop over ell ---- */
+        size_t mode_offset = 0;
         for (int i = 0; i < NL; ++i) {
             int ell = i + 2;
             size_t dim = (size_t)(2*ell+1);
@@ -1437,10 +1517,58 @@ int wignerD_matrices(const double * restrict q, size_t n, int ellMax,
                 }
             }
 
+            /* Fused matmul: reordered loop for SIMD auto-vectorization.
+             * Inner loop over t (stride-1) enables SSE/AVX on D and h.
+             */
+            if (h_data) {
+                const double complex *h_base = h_data + mode_offset * n;
+                double complex *out_base = out_data + mode_offset * n;
+                for (int row = 0; row < (int)dim; row++) {
+                    double complex *out_row = out_base + (size_t)row * n;
+                    /* Zero the output row */
+                    for (size_t t = 0; t < n; t++)
+                        out_row[t] = 0;
+                    /* Accumulate D[row,col,t] * h[col,t] */
+                    for (int col = 0; col < (int)dim; col++) {
+                        const double complex *D_rc = mat
+                            + (size_t)row * dim * n + (size_t)col * n;
+                        const double complex *h_col = h_base + (size_t)col * n;
+                        for (size_t t = 0; t < n; t++)
+                            out_row[t] += D_rc[t] * h_col[t];
+                    }
+                }
+                mode_offset += (size_t)dim;
+            }
+
             /* Rotate recurrence buffers */
             double *tmp = d_prev;
             d_prev = d_prev2;
             d_prev2 = tmp;
+        }
+    }
+
+    /* Fallback matmul when n1==0 (all edge cases, no general path ran) */
+    if (h_data && n1 == 0) {
+        size_t mode_offset = 0;
+        for (int i = 0; i < NL; ++i) {
+            int ell = i + 2;
+            size_t dim = (size_t)(2*ell+1);
+            const double complex *D = matrices[i];
+            const double complex *h_base = h_data + mode_offset * n;
+            double complex *out_base = out_data + mode_offset * n;
+            for (int row = 0; row < (int)dim; row++) {
+                double complex *out_row = out_base + (size_t)row * n;
+                for (size_t t = 0; t < n; t++)
+                    out_row[t] = 0;
+                for (int col = 0; col < (int)dim; col++) {
+                    const double complex *D_rc = D
+                        + (size_t)row * dim * n + (size_t)col * n;
+                    const double complex *h_col = h_base + (size_t)col * n;
+                    for (size_t t = 0; t < n; t++)
+                        out_row[t] += D_rc[t] * h_col[t];
+                }
+            }
+            mode_offset += dim;
         }
     }
 
@@ -1527,7 +1655,8 @@ PyObject *py_wignerD_matrices(PyObject *self, PyObject *args)
 
     int ret;
     Py_BEGIN_ALLOW_THREADS
-    ret = wignerD_matrices(q_data, (size_t)n, ellMax, mat_ptrs);
+    ret = wignerD_matrices(q_data, (size_t)n, ellMax, mat_ptrs,
+                           NULL, NULL);
     Py_END_ALLOW_THREADS
 
     Py_DECREF(q_arr);
@@ -1631,7 +1760,8 @@ static PyObject *py_rotate_waveform(PyObject *self, PyObject *args)
     Py_BEGIN_ALLOW_THREADS
 
     /* Step 1: compute Wigner D matrices */
-    ret = wignerD_matrices(q_data, (size_t)N, ellMax, mat_ptrs);
+    ret = wignerD_matrices(q_data, (size_t)N, ellMax, mat_ptrs,
+                           NULL, NULL);
 
     if (ret == 0) {
         /* Step 2: matrix-vector multiply per ell block, per time step.
