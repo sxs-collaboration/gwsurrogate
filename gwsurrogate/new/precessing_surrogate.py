@@ -171,7 +171,7 @@ def _eval_vector_fit(fit_data, size, fit_params, get_fit_settings):
     val = []
     for i in range(size):
         val.append(_eval_scalar_fit(fit_data[i], fit_params, get_fit_settings))
-    return np.array(val)
+    return np.asarray(val)
 
 ###############################################################################
 
