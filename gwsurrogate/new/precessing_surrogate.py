@@ -58,52 +58,18 @@ http://arxiv.org/abs/1302.2919
     if ellMax < 2:
         raise ValueError("ellMax must be >= 2")
 
-    ra = q[0] + 1.j*q[3]
-    rb = q[2] + 1.j*q[1]
-    ra_small = (abs(ra) < 1.e-12)
-    rb_small = (abs(rb) < 1.e-12)
-    i1 = np.where((1 - ra_small)*(1 - rb_small))[0]
-    i2 = np.where(ra_small)[0]
-    i3 = np.where((1 - ra_small)*rb_small)[0]
+    q = np.ascontiguousarray(q, dtype=np.float64)
+    n = q.shape[1]
+    num_ells = ellMax - 1
 
-    n = len(ra)
-    lvals = range(2, ellMax+1)
-    matrices = [0.j*np.zeros((2*ell+1, 2*ell+1, n)) for ell in lvals]
+    # Allocate output — Python owns the memory
+    matrices = [
+        np.zeros((2*(i+2)+1, 2*(i+2)+1, n), dtype=np.complex128)
+        for i in range(num_ells)
+    ]
 
-    # Determine res at i2: it's 0 unless mp == -m
-    # Determine res at i3: it's 0 unless mp == m
-    for i, ell in enumerate(lvals):
-        for m in range(-ell, ell+1):
-            if (ell+m)%2 == 1:
-                matrices[i][ell+m, ell-m, i2] = rb[i2]**(2*m)
-            else:
-                matrices[i][ell+m, ell-m, i2] = -1*rb[i2]**(2*m)
-            matrices[i][ell+m, ell+m, i3] = ra[i3]**(2*m)
-
-    # Determine res at i1, where we can safely divide by ra and rb
-    ra = ra[i1]
-    rb = rb[i1]
-    ra_pows = _assemble_powers(ra, range(-2*ellMax, 2*ellMax+1))
-    rb_pows = _assemble_powers(rb, range(-2*ellMax, 2*ellMax+1))
-    abs_raSqr_pows = _assemble_powers(abs(ra)**2, range(0, 2*ellMax+1))
-    absRRatioSquared = (abs(rb)/abs(ra))**2
-    ratio_pows = _assemble_powers(absRRatioSquared, range(0, 2*ellMax+1))
-
-    for i, ell in enumerate(lvals):
-        for m in range(-ell, ell+1):
-            for mp in range(-ell, ell+1):
-                factor = _utils.wigner_coef(ell, mp, m)
-                factor *= ra_pows[2*ellMax + m+mp]
-                factor *= rb_pows[2*ellMax + m-mp]
-                factor *= abs_raSqr_pows[ell-m]
-                rhoMin = max(0, mp-m)
-                rhoMax = min(ell+mp, ell-m)
-                s = 0.
-                for rho in range(rhoMin, rhoMax+1):
-                    c = ((-1)**rho)*(_utils.binom(ell+mp, rho)*
-                                     _utils.binom(ell-mp, ell-rho-m))
-                    s += c * ratio_pows[rho]
-                matrices[i][ell+m, ell+mp, i1] = factor*s
+    # C fills them in-place, returns None
+    _utils.wignerD_matrices(q, ellMax, matrices)
 
     return matrices
 

@@ -11,3 +11,4 @@ double factorial(int n);
 double factorial_ratio(int n, int k);
 double _binomial(int n, int k);
 double _wigner_coef(int ell, int mp, int m);
+PyObject *py_wignerD_matrices(PyObject *self, PyObject *args);

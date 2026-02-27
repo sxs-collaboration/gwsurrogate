@@ -18,8 +18,12 @@
 // END numpy 1.X build support 
 
 #include "precessing_utils.h"
+
+#include <complex.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /*
  * Created in 2019 by Vijay Varma, Jonathan Blackman
@@ -62,6 +66,7 @@ static PyMethodDef _utils_methods[] = {
     {"binom", binom, METH_VARARGS},
     {"wigner_coef", wigner_coef, METH_VARARGS},
     {"coorbital_to_inertial_in_place", coorbital_to_inertial_in_place, METH_VARARGS},
+    {"wignerD_matrices", py_wignerD_matrices, METH_VARARGS},
     {NULL, NULL} /* Marks the end of this structure */
 };
 
@@ -633,6 +638,359 @@ static PyObject *coorbital_to_inertial_in_place(PyObject *self, PyObject *args) 
     };
 
     free(twiddle);
+
+    Py_RETURN_NONE;
+}
+
+
+/* ------------------------------------------------------------------ */
+/*  Bump allocator                                                    */
+/* ------------------------------------------------------------------ */
+
+typedef struct { char *ptr, *end; } Bump;
+
+static inline void *bump(Bump *b, size_t bytes)
+{
+    char *p = (char *)(((size_t)b->ptr + 63) & ~(size_t)63);
+    if (p + bytes > b->end) return NULL;
+    b->ptr = p + bytes;
+    return p;
+}
+
+#define BUMP(b, type, count) ((type *)bump(&(b), (size_t)(count) * sizeof(type)))
+
+/* ------------------------------------------------------------------ */
+/*  Coefficient helpers — all take the lf table as a parameter        */
+/* ------------------------------------------------------------------ */
+
+static inline double rho_coeff(const double *lf,
+                               int ell, int mp, int m, int rho)
+{
+    int a = ell + mp, b = ell - mp, c = ell - rho - m;
+    if (rho < 0 || rho > a || c < 0 || c > b) return 0.0;
+    double lc = lf[a] - lf[rho] - lf[a - rho]
+              + lf[b] - lf[c]   - lf[b - c];
+    return (rho & 1 ? -1.0 : 1.0) * exp(lc);
+}
+
+static inline double wigner_coef2(const double *lf, int ell, int mp, int m)
+{
+    return exp(0.5 * (lf[ell+m] + lf[ell-m] - lf[ell+mp] - lf[ell-mp]));
+}
+
+/* ------------------------------------------------------------------ */
+/*  Complex power table builder                                       */
+/* ------------------------------------------------------------------ */
+
+static void build_cpows(const double complex *base,
+                        const double complex *inv,
+                        size_t len, int half,
+                        double complex *out)
+{
+    size_t z = (size_t)half * len;
+    for (size_t k = 0; k < len; ++k) out[z + k] = 1.0;
+    for (int p = 1; p <= half; ++p) {
+        size_t c = (size_t)(half+p)*len, pv = c - len;
+        size_t d = (size_t)(half-p)*len, dv = d + len;
+        for (size_t k = 0; k < len; ++k) {
+            out[c+k] = out[pv+k] * base[k];
+            out[d+k] = out[dv+k] * inv[k];
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Core                                                              */
+/* ------------------------------------------------------------------ */
+
+#define W(mat, ell, r, c, t, n) \
+    ((mat)[(size_t)(r)*(size_t)(2*(ell)+1)*(n) + (size_t)(c)*(n) + (t)])
+
+int wignerD_matrices(const double *q, size_t n, int ellMax,
+                     double complex **matrices)
+{
+    if (!q || !matrices || ellMax < 2 || n == 0) return -1;
+
+    int NL = ellMax - 1, P = 2 * ellMax, PC = 2*P + 1;
+    int lf_size = 2 * ellMax + 2;
+
+    /* ---- Single allocation ---- */
+    size_t cap = (size_t)lf_size * sizeof(double)             /* lf table */
+      + (size_t)n * (
+          2 * sizeof(double complex)                          /* ra_f, rb_f */
+        + 3 * sizeof(size_t)                                  /* i1, i2, i3 */
+        + 4 * sizeof(double complex)                          /* ra, rb, ia, ib */
+        + 2 * (size_t)PC * sizeof(double complex)             /* rapw, rbpw */
+        + sizeof(double)                                      /* arSq */
+        + (size_t)(P+1) * sizeof(double)                      /* arPw */
+        + sizeof(double)                                      /* absR */
+        + (size_t)PC * sizeof(double complex)                 /* cpw */
+        + sizeof(double complex)                              /* cinv */
+      ) + 64 * 24;  /* alignment padding */
+
+    /* Allocate cap + 63 bytes so we can 64-byte-align the usable region.
+     * The BumpSizer assumes offset 0 is 64-byte aligned, but malloc may
+     * return a pointer with any alignment.  By over-allocating and starting
+     * the Bump arena from the first 64-byte-aligned address, the actual
+     * layout matches what the sizer computed.  We keep the original malloc
+     * pointer (mem) for free(). */
+    char *mem = malloc(cap + 63);
+    if (!mem) return -1;
+    char *base = (char *)(((size_t)mem + 63) & ~(size_t)63);
+    Bump B = { base, base + cap };
+
+    /* ---- Log-factorial table: local, no global state ---- */
+    double *lf = BUMP(B, double, lf_size);
+    if (!lf) { free(mem); return -1; }
+    lf[0] = 0.0;
+    for (int i = 1; i < lf_size; ++i) lf[i] = lf[i-1] + log((double)i);
+
+    /* ---- Workspace arrays ---- */
+    double complex *ra_f = BUMP(B, double complex, n);
+    double complex *rb_f = BUMP(B, double complex, n);
+    size_t         *idx  = BUMP(B, size_t, 3 * n);
+    if (!ra_f || !rb_f || !idx) { free(mem); return -1; }
+    size_t *i1 = idx, *i2 = idx + n, *i3 = idx + 2*n;
+
+    const double *q0=q, *q1=q+n, *q2=q+2*n, *q3=q+3*n;
+    size_t n1=0, n2=0, n3=0;
+    for (size_t j = 0; j < n; ++j) {
+        double complex a = q0[j] + I*q3[j], b = q2[j] + I*q1[j];
+        ra_f[j] = a; rb_f[j] = b;
+        double a2 = creal(a)*creal(a) + cimag(a)*cimag(a);
+        double b2 = creal(b)*creal(b) + cimag(b)*cimag(b);
+        if      (a2 < 1e-24) i2[n2++] = j;
+        else if (b2 < 1e-24) i3[n3++] = j;
+        else                  i1[n1++] = j;
+    }
+
+    /* ---- Zero matrices only when edge cases present ---- */
+    /* General case (i1) writes every element; edge cases only write one     */
+    /* column per (ell,m) pair, so off-diagonal entries must start as zero.  */
+    if (n2 > 0 || n3 > 0) {
+        for (int i = 0; i < NL; ++i) {
+            int ell = i + 2;
+            size_t bytes = (size_t)(2*ell+1) * (size_t)(2*ell+1) * n
+                           * sizeof(double complex);
+            memset(matrices[i], 0, bytes);
+        }
+    }
+
+    /* ---- Edge cases (i2 / i3): reuse same workspace region ---- */
+    /* Save bump state so we can reclaim after edge cases */
+    char *saved_ptr = B.ptr;
+
+    double complex *cpw  = BUMP(B, double complex, (size_t)PC * n);
+    double complex *cinv = BUMP(B, double complex, n);
+    if (!cpw || !cinv) { free(mem); return -1; }
+
+    #define DO_EDGE(ni, ia, base_f, row, col, sgn)                      \
+    if (ni > 0) {                                                        \
+        for (size_t k = 0; k < ni; ++k) cinv[k] = 1.0 / base_f[ia[k]]; \
+        for (size_t k = 0; k < ni; ++k) cpw[(size_t)P*ni+k] = 1.0;     \
+        for (int p = 1; p <= P; ++p) {                                   \
+            size_t c=(size_t)(P+p)*ni, pv=c-ni;                          \
+            size_t d=(size_t)(P-p)*ni, dv=d+ni;                          \
+            for (size_t k = 0; k < ni; ++k) {                            \
+                cpw[c+k] = cpw[pv+k] * base_f[ia[k]];                   \
+                cpw[d+k] = cpw[dv+k] * cinv[k];                         \
+            }                                                             \
+        }                                                                 \
+        for (int i = 0; i < NL; ++i) {                                   \
+            int ell = i+2; size_t dim = (size_t)(2*ell+1);               \
+            for (int m = -ell; m <= ell; ++m) {                           \
+                double complex *src = cpw + (size_t)(P+2*m)*ni;          \
+                double complex *dst = matrices[i]                         \
+                    + (size_t)(row)*dim*n + (size_t)(col)*n;             \
+                double s = sgn;                                           \
+                for (size_t k = 0; k < ni; ++k) dst[ia[k]] = s*src[k];  \
+            }                                                             \
+        }                                                                 \
+    }
+
+    DO_EDGE(n2, i2, rb_f, ell+m, ell-m, ((ell+m)&1 ? 1.0 : -1.0))
+    DO_EDGE(n3, i3, ra_f, ell+m, ell+m, 1.0)
+    #undef DO_EDGE
+
+    /* ---- General case (i1) ---- */
+    if (n1 > 0) {
+        /* Reclaim edge-case workspace */
+        B.ptr = saved_ptr;
+
+        double complex *ra   = BUMP(B, double complex, n1);
+        double complex *rb   = BUMP(B, double complex, n1);
+        double complex *ia   = BUMP(B, double complex, n1);
+        double complex *ib   = BUMP(B, double complex, n1);
+        double complex *rapw = BUMP(B, double complex, (size_t)PC * n1);
+        double complex *rbpw = BUMP(B, double complex, (size_t)PC * n1);
+        double         *arSq = BUMP(B, double, n1);
+        double         *arPw = BUMP(B, double, (size_t)(P+1) * n1);
+        double         *absR = BUMP(B, double, n1);
+        if (!ra||!rb||!ia||!ib||!rapw||!rbpw||!arSq||!arPw||!absR)
+            { free(mem); return -1; }
+
+        for (size_t k = 0; k < n1; ++k) {
+            double complex a = ra_f[i1[k]], b = rb_f[i1[k]];
+            ra[k]=a; rb[k]=b; ia[k]=1.0/a; ib[k]=1.0/b;
+            double re_a=creal(a), im_a=cimag(a);
+            double re_b=creal(b), im_b=cimag(b);
+            double a2 = re_a*re_a + im_a*im_a;
+            arSq[k] = a2;
+            absR[k] = (re_b*re_b + im_b*im_b) / a2;
+        }
+
+        build_cpows(ra, ia, n1, P, rapw);
+        build_cpows(rb, ib, n1, P, rbpw);
+
+        for (size_t k = 0; k < n1; ++k) arPw[k] = 1.0;
+        for (int p = 1; p <= P; ++p) {
+            size_t c = (size_t)p*n1, pv = c - n1;
+            for (size_t k = 0; k < n1; ++k)
+                arPw[c+k] = arPw[pv+k] * arSq[k];
+        }
+
+        /* ---- Hot loop: Horner's method ---- */
+        for (int i = 0; i < NL; ++i) {
+            int ell = i + 2;
+            size_t dim = (size_t)(2*ell+1);
+            double complex *mat = matrices[i];
+
+            for (int m = -ell; m <= ell; ++m) {
+                const double *arSq_row = arPw + (size_t)(ell-m)*n1;
+
+                for (int mp = -ell; mp <= ell; ++mp) {
+                    double coef = wigner_coef2(lf, ell, mp, m);
+                    int rhoMin = (mp-m > 0) ? (mp-m) : 0;
+                    int rhoMax = ell+mp;
+                    if (ell-m < rhoMax) rhoMax = ell-m;
+                    int nr = rhoMax - rhoMin + 1;
+
+                    double rc[nr]; /* VLA — small, stack-allocated */
+                    for (int r = 0; r < nr; ++r)
+                        rc[r] = rho_coeff(lf, ell, mp, m, rhoMin + r);
+
+                    const double complex *ar =
+                        rapw + (size_t)(P + m+mp)*n1;
+                    const double complex *br =
+                        rbpw + (size_t)(P + m-mp)*n1;
+                    double complex *dst = mat
+                        + (size_t)(ell+m)*dim*n + (size_t)(ell+mp)*n;
+
+                    for (size_t k = 0; k < n1; ++k) {
+                        double R = absR[k];
+                        double s = rc[nr-1];
+                        for (int r = nr-2; r >= 0; --r)
+                            s = s*R + rc[r];
+                        if      (rhoMin == 1) s *= R;
+                        else if (rhoMin == 2) s *= R*R;
+                        else if (rhoMin > 2) {
+                            double Rp = R*R;
+                            for (int p = 2; p < rhoMin; ++p) Rp *= R;
+                            s *= Rp;
+                        }
+                        dst[i1[k]] = (coef*s)*ar[k]*br[k]*arSq_row[k];
+                    }
+                }
+            }
+        }
+    }
+
+    free(mem);
+    return 0;
+}
+
+PyObject *py_wignerD_matrices(PyObject *self, PyObject *args)
+{
+    PyArrayObject *q_obj;
+    PyObject *mat_list;
+    int ellMax;
+
+    if (!PyArg_ParseTuple(args, "O!iO!",
+            &PyArray_Type, &q_obj,
+            &ellMax,
+            &PyList_Type, &mat_list))
+        return NULL;
+
+    if (PyArray_NDIM(q_obj) != 2 || PyArray_DIM(q_obj, 0) != 4) {
+        PyErr_SetString(PyExc_ValueError, "q must have shape (4, N)");
+        return NULL;
+    }
+    if (ellMax < 2) {
+        PyErr_SetString(PyExc_ValueError, "ellMax must be >= 2");
+        return NULL;
+    }
+
+    int num_ells = ellMax - 1;
+    if (PyList_GET_SIZE(mat_list) != num_ells) {
+        PyErr_Format(PyExc_ValueError,
+                     "matrices list must have length %d", num_ells);
+        return NULL;
+    }
+
+    PyArrayObject *q_arr = (PyArrayObject *)PyArray_ContiguousFromAny(
+        (PyObject *)q_obj, NPY_DOUBLE, 2, 2);
+    if (!q_arr) return NULL;
+
+    npy_intp n = PyArray_DIM(q_arr, 1);
+    const double *q_data = (const double *)PyArray_DATA(q_arr);
+
+    /* Stack-allocated pointer array — no malloc needed.
+     * num_ells = ellMax - 1, so for any reasonable ellMax this is tiny. */
+    double complex *mat_ptrs[num_ells];
+
+    for (int i = 0; i < num_ells; ++i) {
+        int ell = i + 2;
+        int dim = 2 * ell + 1;
+        PyObject *item = PyList_GET_ITEM(mat_list, i);
+
+        if (!PyArray_Check(item)) {
+            PyErr_Format(PyExc_TypeError,
+                         "matrices[%d] is not a numpy array", i);
+            Py_DECREF(q_arr);
+            return NULL;
+        }
+
+        PyArrayObject *mat = (PyArrayObject *)item;
+
+        if (PyArray_NDIM(mat) != 3 ||
+            PyArray_DIM(mat, 0) != dim ||
+            PyArray_DIM(mat, 1) != dim ||
+            PyArray_DIM(mat, 2) != n) {
+            PyErr_Format(PyExc_ValueError,
+                         "matrices[%d] must have shape (%d, %d, %ld)",
+                         i, dim, dim, (long)n);
+            Py_DECREF(q_arr);
+            return NULL;
+        }
+        if (PyArray_TYPE(mat) != NPY_COMPLEX128) {
+            PyErr_Format(PyExc_TypeError,
+                         "matrices[%d] must have dtype complex128", i);
+            Py_DECREF(q_arr);
+            return NULL;
+        }
+        if (!PyArray_IS_C_CONTIGUOUS(mat)) {
+            PyErr_Format(PyExc_ValueError,
+                         "matrices[%d] must be C-contiguous", i);
+            Py_DECREF(q_arr);
+            return NULL;
+        }
+
+        /* Direct pointer into NumPy's buffer — no copy */
+        mat_ptrs[i] = (double complex *)PyArray_DATA(mat);
+    }
+
+    int ret;
+    Py_BEGIN_ALLOW_THREADS
+    ret = wignerD_matrices(q_data, (size_t)n, ellMax, mat_ptrs);
+    Py_END_ALLOW_THREADS
+
+    Py_DECREF(q_arr);
+
+    if (ret != 0) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "wignerD_matrices failed (internal error)");
+        return NULL;
+    }
 
     Py_RETURN_NONE;
 }

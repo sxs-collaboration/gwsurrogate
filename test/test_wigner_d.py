@@ -23,7 +23,16 @@ from gwsurrogate.precessing_utils import _utils
 # ---------------------------------------------------------------------------
 
 def _wignerD_matrices_python(q, ellMax):
-    """Pure-Python reference: the original implementation before C migration."""
+    """Pure-Python reference: the original implementation before C migration.
+
+    The first attempt at C migration happened as part of
+
+    after commit 1946a24f8541fe4471c2b48acc7894838b46332e
+
+    and was completed when PR 73 was merged into the main codebase
+
+    https://github.com/sxs-collaboration/gwsurrogate/pull/73
+    """
     ra = q[0] + 1.j * q[3]
     rb = q[2] + 1.j * q[1]
     ra_small = (abs(ra) < 1.e-12)
