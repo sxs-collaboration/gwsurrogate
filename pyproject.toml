@@ -1,3 +1,10 @@
+[project]
+name = "gwsurrogate"
+requires-python = ">=3.10"
+description = "An easy to use interface to gravitational wave surrogate models"
+readme = "README.md"
+dynamic = ["version", "license", "authors", "dependencies", "entry-points", "classifiers"]
+
 [build-system]
     requires = [
         "setuptools>=61.0",

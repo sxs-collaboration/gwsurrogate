@@ -1,8 +1,30 @@
 import os
+import platform
+import subprocess
 
 from setuptools import setup, Extension
 
 import numpy
+
+# On arm64 macOS, ensure extensions are built for the correct architecture.
+# Detect actual hardware arch (not Rosetta) and add -arch flag directly.
+def _get_arch_flags():
+    if platform.system() != "Darwin":
+        return []
+    # Use sysctl to get the real hardware architecture
+    try:
+        result = subprocess.run(
+            ["sysctl", "-n", "hw.optional.arm64"],
+            capture_output=True, text=True
+        )
+        is_arm64 = result.stdout.strip() == "1"
+    except Exception:
+        is_arm64 = platform.machine() == "arm64"
+    if is_arm64:
+        return ["-arch", "arm64"]
+    return []
+
+_arch_flags = _get_arch_flags()
 
 # all extensions here
 extmods = []
@@ -10,11 +32,15 @@ extmods = []
 # build extension 1: python wrapper to gsl's spline function
 if os.path.isdir("/opt/local/include"):
     IncDirs = ["/opt/local/include"]
+elif os.path.isdir("/opt/homebrew/include"):
+    IncDirs = ["/opt/homebrew/include"]
 else:
     IncDirs = []
 
 if os.path.isdir("/opt/local/lib"):
     LibDirs = ["/opt/local/lib"]
+elif os.path.isdir("/opt/homebrew/lib"):
+    LibDirs = ["/opt/homebrew/lib"]
 else:
     LibDirs = []
 
@@ -22,7 +48,8 @@ extmod = Extension(
     "gwsurrogate.spline_interp_Cwrapper._spline_interp",
     include_dirs=IncDirs,
     libraries=["gsl"],
-    extra_compile_args=["-std=c99"],
+    extra_compile_args=["-std=c99"] + _arch_flags,
+    extra_link_args=_arch_flags,
     library_dirs=LibDirs,
     sources=["gwsurrogate/spline_interp_Cwrapper/_spline_interp.c"],
 )
@@ -34,7 +61,8 @@ extmod = Extension(
     sources=["gwsurrogate/precessing_utils/src/precessing_utils.c"],
     include_dirs=["gwsurrogate/precessing_utils/include", numpy.get_include()],
     language="c",
-    extra_compile_args=["-std=c99", "-fPIC", "-O3", '-Wcpp'],
+    extra_compile_args=["-std=c99", "-fPIC", "-O3", '-Wcpp'] + _arch_flags,
+    extra_link_args=_arch_flags,
 )
 extmods.append(extmod)
 
