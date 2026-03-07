@@ -14,6 +14,7 @@ import h5py
 from gwsurrogate.precessing_utils import _utils
 from gwtools.harmonics import sYlm
 from gwsurrogate.new.surrogate import _splinterp_Cwrapper, _splinterp_Cwrapper_many
+from gwsurrogate.new import _basis_presets
 
 
 ###############################################################################
@@ -676,7 +677,7 @@ dt_ab4 is [t(i0 + 3) - t(i0 + 2), t(i0 + 2) - t(i0 + 1), t(i0 + 1) - t(i0)]
 
 # Utility functions for the CoorbitalWaveformSurrogate:
 
-def _extract_component_data(h5_group, basis_tol=None):
+def _extract_component_data(h5_group, basis_tol=None, verbose=True):
     data = {}
 
     if basis_tol is not None:
@@ -686,7 +687,7 @@ def _extract_component_data(h5_group, basis_tol=None):
         elif 'V' not in h5_group.keys():
             raise Exception("basis_tol is not None, but there is no 'V' in the "
                     "h5 group, which is required to shorten the basis!")
-        else:
+        elif verbose:
             print("Shortening %s basis to %s waveforms"%(h5_group.name[1:],basis_tol))
         slc = np.s_[:basis_tol]
         EI_Basis = h5_group['EIBasis'][()]
@@ -876,6 +877,15 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
         
         basis_tol_opts is a dictionary of datapiece names with corresponding
         basis sizes to restrict to."""
+        if isinstance(basis_tol_opts, str):
+            try:
+                print("Using basis size preset: %s"%(basis_tol_opts))
+                basis_tol_opts = getattr(_basis_presets, basis_tol_opts)
+                verbose = False
+            except AttributeError:
+                raise Exception("Got basis_tol_opts = %s, which is not a valid preset. Got the following presets: %s"%(basis_tol_opts, [attr for attr in dir(_basis_presets) if not attr.startswith("_")])) 
+        else:
+            verbose = True
 
         self._get_fit_params = get_fit_params
         self._get_fit_settings = get_fit_settings
@@ -904,7 +914,7 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
                         else:
                             tol = None
                         self.data['%s_0_%s_sd_%s'%(ell, reim, subdomain)] \
-                                = _extract_component_data(group, basis_tol=tol)
+                                = _extract_component_data(group, basis_tol=tol, verbose=verbose)
 
             for m in range(1, ell+1):
                 # If there are no modes, skip. Assumes if group "*_Re+" exists, then
@@ -921,7 +931,7 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
                                     tol = basis_tol_opts['%s_%s_%s%s_sd_%s'%(ell, m, reim, pm, subdomain)]
                                 else:
                                     tol = None
-                                tmp_data = _extract_component_data(group, basis_tol=tol)
+                                tmp_data = _extract_component_data(group, basis_tol=tol, verbose=verbose)
                                 self.data['%s_%s_%s%s_sd_%s'%(ell, m, reim, pm, subdomain)] = tmp_data
 
     def __call__(self, q, chiA, chiB, ellMax=5):
