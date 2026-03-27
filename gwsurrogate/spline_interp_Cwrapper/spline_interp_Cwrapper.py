@@ -1,8 +1,9 @@
 import ctypes
 from ctypes import c_double, c_long, POINTER, c_int
 import numpy as np
-import os
-from glob import glob
+
+from . import _spline_interp as _mod
+_dll_path = _mod.__file__
 
 def _load_c_func(dll_path, function_name, argtypes, restype=None):
     dll = ctypes.CDLL(dll_path, mode=ctypes.RTLD_GLOBAL)
@@ -12,37 +13,25 @@ def _load_c_func(dll_path, function_name, argtypes, restype=None):
         func.restype = restype
     return func
 
-dll_dir = os.path.dirname(os.path.realpath(__file__))
-dll_path_glob = '%s/_spline_interp*so'%dll_dir
-spline_libs = glob(dll_path_glob)
-if len(spline_libs) == 0:
-  all_files = glob('%s/*'%dll_dir)
-  msg = '_spline_interp library not found! Searched in path %s which has files...\n'%dll_dir
-  for all_file in all_files:
-    msg += all_file+"\n"
-  raise Exception(msg)
-elif len(spline_libs) > 1:
-  raise Exception('there should be only one _spline_interp library!')
-else:
-  c_interp = _load_c_func(spline_libs[0], 'spline_interp', [
-      c_long, c_long,
-      POINTER(c_double), POINTER(c_double),
-      POINTER(c_double), POINTER(c_double),
-  ], restype=c_int)
-  c_interp_multi = _load_c_func(spline_libs[0], 'spline_interp_multi', [
-      c_long, c_long, c_long,
-      POINTER(c_double),
-      POINTER(POINTER(c_double)),
-      POINTER(c_double),
-      POINTER(POINTER(c_double)),
-  ], restype=c_int)
-  c_interp_multi_complex = _load_c_func(spline_libs[0], 'spline_interp_multi_complex', [
-      c_long, c_long, c_long,
-      POINTER(c_double),          # data_x
-      POINTER(POINTER(c_double)), # data_y (interleaved re,im)
-      POINTER(c_double),          # out_x
-      POINTER(POINTER(c_double)), # out_y  (interleaved re,im)
-  ], restype=c_int)
+c_interp = _load_c_func(_dll_path, 'spline_interp', [
+    c_long, c_long,
+    POINTER(c_double), POINTER(c_double),
+    POINTER(c_double), POINTER(c_double),
+], restype=c_int)
+c_interp_multi = _load_c_func(_dll_path, 'spline_interp_multi', [
+    c_long, c_long, c_long,
+    POINTER(c_double),
+    POINTER(POINTER(c_double)),
+    POINTER(c_double),
+    POINTER(POINTER(c_double)),
+], restype=c_int)
+c_interp_multi_complex = _load_c_func(_dll_path, 'spline_interp_multi_complex', [
+    c_long, c_long, c_long,
+    POINTER(c_double),          # data_x
+    POINTER(POINTER(c_double)), # data_y (interleaved re,im)
+    POINTER(c_double),          # out_x
+    POINTER(POINTER(c_double)), # out_y  (interleaved re,im)
+], restype=c_int)
 
 _SPLINE_ERRORS = {
     1: 'Memory allocation failed in spline interpolation',

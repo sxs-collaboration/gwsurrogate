@@ -21,6 +21,7 @@
  * §26.4 which guarantees [re, im] memory layout identical to double[2].
  */
 
+#include <Python.h>
 #include <cassert>
 #include <cmath>      /* std::fma                    */
 #include <complex>    /* std::complex<double>        */
@@ -530,3 +531,15 @@ int spline_interp_multi_complex(const long data_size, const long out_size,
 }
 
 } /* extern "C" */
+
+static struct PyModuleDef _spline_interp_module = {
+    PyModuleDef_HEAD_INIT,
+    "_spline_interp",
+    NULL,
+    -1,
+    NULL
+};
+
+PyMODINIT_FUNC PyInit__spline_interp(void) {
+    return PyModule_Create(&_spline_interp_module);
+}
