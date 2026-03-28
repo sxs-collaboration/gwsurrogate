@@ -808,6 +808,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         Amp_22 = Amp_22[initIdx:]
         phi_22 = phi_22[initIdx:]
         domain = domain[initIdx:]
+        h_coorb = h_coorb[:, initIdx:]
 
         if timesM is not None:
             if timesM[-1] > domain[-1]:
@@ -886,23 +887,21 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             # frequency is 0.
             phi_22 += -phi_22[refIdx]
 
-        h_dict = {}
-        for mode in mode_list:
-            if mode == (2, 2):
-                h_dict[mode] = Amp_22 * np.exp(-1j*phi_22)
-            else:
-                l,m = mode
-                h_coorb_lm = 0
-                if 're' in h_coorb[mode][0]:
-                    h_coorb_lm += h_coorb[mode][0]['re'] + 1j * 0
-                if 'im' in h_coorb[mode][0]:
-                    h_coorb_lm += 1j*h_coorb[mode][0]['im']
+        if do_interp:
+            h_coorb = _splinterp_Cwrapper_many_complex(timesM, domain, h_coorb)
 
-                h_coorb_lm = h_coorb_lm[initIdx:]
-                if do_interp:
-                    h_coorb_lm = _splinterp_Cwrapper(timesM,domain,h_coorb_lm)
+        # Make the (2,2) data meaningful
+        h_coorb[ mode_list.index((2,2)) ] = Amp_22
 
-                h_dict[mode] = h_coorb_lm * np.exp(-1j*m*phi_22/2.)
+        # Reuse this for all m modes -- fewest sin/cos evals possible
+        exp_minus_i_phi_orb = np.exp(-0.5j*phi_22)
+
+        for idx, mode in enumerate(mode_list):
+            _, m = mode
+            h_coorb[idx] *= exp_minus_i_phi_orb**m
+
+        # Return as a dict, for some reason
+        h_dict = { mode: h_coorb[idx] for idx, mode in enumerate(mode_list) }
 
         return timesM, h_dict, None     # None is for dynamics
 
@@ -1037,8 +1036,16 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         self._set_TaylorT3_factor()
         h_22[0]['phase'] += self._TaylorT3_phase_22(x)
 
-        h_coorb = {k: self._eval_sur(x, k) for k in mode_list \
-                        if k != (2,2)}
+        # First index of h_coorb is the same as the position in mode_list
+        h_coorb = np.zeros((len(mode_list), len(h_22[0]['phase'])),
+                           dtype=np.complex128)
+
+        for idx, mode in enumerate(mode_list):
+            eval_lm = self._eval_sur(x, mode)[0]
+            if 're' in eval_lm:
+                h_coorb[idx].real = eval_lm['re']
+            if 'im' in eval_lm:
+                h_coorb[idx].imag = eval_lm['im']
 
         return self._coorbital_to_inertial_frame(h_coorb, h_22, \
             mode_list, dtM, timesM, fM_low, fM_ref, do_not_align)
