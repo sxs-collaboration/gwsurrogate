@@ -30,6 +30,7 @@ THE SOFTWARE.
 # adding "_" prefix to potentially unfamiliar module names
 # so they won't show up in gws' tab completion
 import numpy as np
+from gwsurrogate.precessing_utils import _utils
 from scipy.interpolate import InterpolatedUnivariateSpline as _iuspline
 from gwtools.harmonics import sYlm as _sYlm
 
@@ -893,12 +894,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         # Make the (2,2) data meaningful
         h_coorb[ mode_list.index((2,2)) ] = Amp_22
 
-        # Reuse this for all m modes -- fewest sin/cos evals possible
-        exp_minus_i_phi_orb = np.exp(-0.5j*phi_22)
-
-        for idx, mode in enumerate(mode_list):
-            _, m = mode
-            h_coorb[idx] *= exp_minus_i_phi_orb**m
+        m_list = np.array([m for _,m in mode_list])
+        _utils.coorbital_to_inertial_in_place(h_coorb, phi_22, m_list)
 
         # Return as a dict, for some reason
         h_dict = { mode: h_coorb[idx] for idx, mode in enumerate(mode_list) }
@@ -1037,6 +1034,8 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         h_22[0]['phase'] += self._TaylorT3_phase_22(x)
 
         # First index of h_coorb is the same as the position in mode_list
+        # Some modes are modeled as purely real or purely imaginary in the
+        # coorbital frame, so we have to initialize to 0 instead of empty.
         h_coorb = np.zeros((len(mode_list), len(h_22[0]['phase'])),
                            dtype=np.complex128)
 

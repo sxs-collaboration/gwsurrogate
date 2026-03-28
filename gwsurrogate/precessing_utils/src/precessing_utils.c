@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <numpy/numpyconfig.h>
+#include <complex.h>
 
 // entire block can be removed if building against numpy 1.X is dropped
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
@@ -60,6 +61,7 @@ static PyMethodDef _utils_methods[] = {
     {"ab4_dy", ab4_dy, METH_VARARGS},
     {"binom", binom, METH_VARARGS},
     {"wigner_coef", wigner_coef, METH_VARARGS},
+    {"coorbital_to_inertial_in_place", coorbital_to_inertial_in_place, METH_VARARGS},
     {NULL, NULL} /* Marks the end of this structure */
 };
 
@@ -506,4 +508,127 @@ static PyObject *wigner_coef(PyObject *self, PyObject *args) {
 
     // Return result
     return Py_BuildValue("d", wc);
+}
+
+/*
+ * Co-orbital to inertial in place.
+ * Arguments (with python data types):
+ *      h_coorb: A 2d complex numpy array with first index running over (l,m)
+ *               modes, and second index running over times. Data is in the
+ *               coorbital frame when input, but inertial frame afterwards.
+ *      phi_22:  A 1d real numpy array of the phase of the (2,2) mode
+ *      m_array: A 1d integer array of the m values of modes, in order
+ *
+ * Returns None.
+ */
+static PyObject *coorbital_to_inertial_in_place(PyObject *self, PyObject *args) {
+
+    PyArrayObject *h_coorb, *phi_22, *m_array;
+
+    // Parse tuples
+    if (!PyArg_ParseTuple(args, "O!O!O!",
+            &PyArray_Type, &h_coorb,  // 2d complex
+            &PyArray_Type, &phi_22,   // 1d real
+            &PyArray_Type, &m_array)) // 1d int
+      return NULL;
+
+    if (PyArray_NDIM(h_coorb) != 2) {
+      PyErr_SetString(PyExc_ValueError, "h_coorb must be 2 dimensional");
+      return NULL;
+    }
+
+    if (PyArray_NDIM(phi_22) != 1) {
+      PyErr_SetString(PyExc_ValueError, "phi_22 must be 1 dimensional");
+      return NULL;
+    }
+
+    if (PyArray_NDIM(m_array) != 1) {
+      PyErr_SetString(PyExc_ValueError, "m_array must be 1 dimensional");
+      return NULL;
+    }
+
+    if (!PyArray_ISCOMPLEX(h_coorb)) {
+      PyErr_SetString(PyExc_ValueError, "h_coorb must be complex");
+      return NULL;
+    }
+
+    if (!PyArray_ISFLOAT(phi_22)) {
+      PyErr_SetString(PyExc_ValueError, "phi_22 must be float");
+      return NULL;
+    }
+
+    if (!PyArray_ISINTEGER(m_array)) {
+      PyErr_SetString(PyExc_ValueError, "m_array must be integer");
+      return NULL;
+    }
+
+    npy_intp n_modes, n_times;
+
+    n_modes = PyArray_SHAPE(m_array)[0];
+    n_times = PyArray_SHAPE(phi_22)[0];
+
+    if ((PyArray_SHAPE(h_coorb)[0] != n_modes) ||
+        (PyArray_SHAPE(h_coorb)[1] != n_times)) {
+      PyErr_SetString(PyExc_ValueError,
+                      "shape incompatibility between h_coorb, phi_22, and m_array");
+      return NULL;
+    }
+
+    // Figure out the max value of |m|
+    long max_m = 0;
+
+    for (long j_m = 0; j_m < n_modes; j_m++) {
+      const long this_m = labs(
+          *(long *)PyArray_GETPTR1(m_array, j_m));
+      max_m = (this_m > max_m) ? this_m : max_m;
+    }
+
+    // Storage for all exp's we'll need at a fixed time. They will be ordered
+    // by the m number, going from -max_m to +max_m inclusive. For example, if
+    // max_m = 5,
+    // index:    0  1  2  3  4 5  6  7  8  9 10
+    // m value: -5 -4 -3 -2 -1 0 +1 +2 +3 +4 +5
+    // So there are a total of 2*max_m+1 elements.
+    // Notice that the m=0 element is at twiddle[max_m]. So, a general m value
+    // is stored at twiddle[max_m + m].
+    double complex *twiddle = malloc((2 * max_m + 1) * sizeof(double complex));
+
+    if (!twiddle) {
+      PyErr_SetString(PyExc_ValueError,
+                      "Failed to allocate storage for exponential factors.");
+      return NULL;
+    };
+
+    twiddle[max_m] = CMPLX(1.0, 0.0);
+
+    // Iterate over times the slowest, and modes the fastest, to reuse complex
+    // exponential factors
+    for (long i_t = 0; i_t < n_times; i_t++) {
+      // Precompute all complex exponentials we'll need
+      const double phi_22_i = *(double *)PyArray_GETPTR1(phi_22, i_t);
+      const double complex exp_minus_i_phi_orb =
+          CMPLX(cos(0.5 * phi_22_i), -sin(0.5 * phi_22_i));
+
+      // twiddle[max_m] = 1.0 + 0.0j always
+      double complex this_pow = exp_minus_i_phi_orb;
+      for (long m = 1; m <= max_m;
+           m++, this_pow *= exp_minus_i_phi_orb) {
+        twiddle[max_m + m] = this_pow;
+        twiddle[max_m - m] = conj(this_pow);
+      }
+
+      for (long j_m = 0; j_m < n_modes; j_m++) {
+        const long this_m =
+            *(long *)PyArray_GETPTR1(m_array, j_m);
+
+        double complex *this_h =
+            (double complex *)PyArray_GETPTR2(h_coorb, j_m, i_t);
+
+        *this_h *= twiddle[max_m + this_m];
+      };
+    };
+
+    free(twiddle);
+
+    Py_RETURN_NONE;
 }

@@ -6,6 +6,7 @@ static PyObject *assemble_dydt(PyObject *self, PyObject *args);
 static PyObject *ab4_dy(PyObject *self, PyObject *args);
 static PyObject *binom(PyObject *self, PyObject *args);
 static PyObject *wigner_coef(PyObject *self, PyObject *args);
+static PyObject *coorbital_to_inertial_in_place(PyObject *self, PyObject *args);
 double factorial(int n);
 double factorial_ratio(int n, int k);
 double _binomial(int n, int k);
