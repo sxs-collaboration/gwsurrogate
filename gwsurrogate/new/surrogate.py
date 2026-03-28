@@ -692,7 +692,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         # transform the other modes from coorbital frame to inertial frame.
         self.mode_list = list(coorb_mode_data.keys())
         mode22_idx = [i for i in range(len(self.mode_list)) \
-            if self.mode_list[i] == tuple([2, 2])]
+            if self.mode_list[i] == (2, 2)]
         if len(mode22_idx) != 1:
             raise Exception('Seems to have found multiple or no 22 mode!')
         mode22_idx = mode22_idx[0]
@@ -700,7 +700,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         # shift 22 mode to the first index
         self.mode_list.insert(0, self.mode_list.pop(mode22_idx))
 
-        if self.mode_list[0] != tuple([2, 2]):
+        if self.mode_list[0] != (2, 2):
             raise Exception('Expected the first mode at this point to be the'\
                 ' 22 mode.')
         # make sure shifting the 22 mode index did not delete or add a
@@ -888,7 +888,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
         h_dict = {}
         for mode in mode_list:
-            if mode == tuple([2, 2]):
+            if mode == (2, 2):
                 h_dict[mode] = Amp_22 * np.exp(-1j*phi_22)
             else:
                 l,m = mode
@@ -1031,14 +1031,14 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
 
         # At this stage the phase of the (2,2) mode is the residual after
         # removing the TaylorT3 part (see. Eq.44 of arxiv.1812.07865)
-        h_22 = self._eval_sur(x, tuple([2, 2]))
+        h_22 = self._eval_sur(x, (2, 2))
 
         # Get the TaylorT3 part and add to get the actual phase
         self._set_TaylorT3_factor()
         h_22[0]['phase'] += self._TaylorT3_phase_22(x)
 
         h_coorb = {k: self._eval_sur(x, k) for k in mode_list \
-                        if k != tuple([2,2])}
+                        if k != (2,2)}
 
         return self._coorbital_to_inertial_frame(h_coorb, h_22, \
             mode_list, dtM, timesM, fM_low, fM_ref, do_not_align)
@@ -1364,7 +1364,7 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
 
         h_dict = {}
         for mode in mode_list:
-            if mode == tuple([2, 2]):
+            if mode == (2, 2):
                 h_dict[mode] = (Amp_22+StrainTidalEnhancementFactor(2,2, \
                       qqq,(lambda2A*ell2Adiss),(lambda2B*ell2Bdiss),v_uniform)) \
                       * np.exp(-1j*phi_22)
@@ -1488,14 +1488,14 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
 
         # At this stage the phase of the (2,2) mode is the residual after
         # removing the TaylorT3 part (see. Eq.44 of arxiv.1812.07865)
-        h_22 = self._eval_sur(x_sur, tuple([2, 2]))
+        h_22 = self._eval_sur(x_sur, (2, 2))
 
         # Get the TaylorT3 part and add to get the actual phase
         self._set_TaylorT3_factor()
         h_22[0]['phase'] += self._TaylorT3_phase_22(x_sur)
 
         h_coorb = {k: self._eval_sur(x_sur, k) for k in mode_list \
-                        if k != tuple([2,2])}
+                        if k != (2,2)}
 
         return self._coorbital_to_inertial_frame(h_coorb, h_22, \
             mode_list, dtM, timesM, fM_low, fM_ref, do_not_align, x)
