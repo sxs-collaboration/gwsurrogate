@@ -122,7 +122,7 @@ def test_wignerD_identity_quaternion():
         D = mats[i][:, :, 0]
         size = 2 * ell + 1
         np.testing.assert_allclose(
-            D, np.eye(size, dtype=complex), rtol=1e-7, atol=1e-12,
+            D, np.eye(size, dtype=complex), rtol=1e-12, atol=1e-12,
             err_msg=f"ell={ell}: D(identity quat) is not the identity matrix",
         )
 
@@ -139,7 +139,7 @@ def test_wignerD_unitarity():
             D = mats[i][:, :, k]
             product = D @ D.conj().T
             np.testing.assert_allclose(
-                product, np.eye(size, dtype=complex), rtol=1e-7, atol=1e-11,
+                product, np.eye(size, dtype=complex), rtol=1e-12, atol=1e-11,
                 err_msg=f"ell={ell}, quat #{k}: D @ D† ≠ I",
             )
 
@@ -162,7 +162,7 @@ def test_wignerD_matches_python_reference():
 
     for i, ell in enumerate(range(2, ellMax + 1)):
         np.testing.assert_allclose(
-            mats_c[i], mats_py[i], rtol=1e-7, atol=1e-12,
+            mats_c[i], mats_py[i], rtol=1e-12, atol=1e-12,
             err_msg=f"ell={ell}: C result disagrees with Python reference",
         )
 
@@ -177,7 +177,7 @@ def test_wignerD_edge_case_ra_small():
         size = 2 * ell + 1
         D = mats[i][:, :, 0]
         np.testing.assert_allclose(
-            D @ D.conj().T, np.eye(size, dtype=complex), rtol=1e-7, atol=1e-11,
+            D @ D.conj().T, np.eye(size, dtype=complex), rtol=1e-12, atol=1e-11,
             err_msg=f"ell={ell}: unitarity fails for ra≈0 quaternion",
         )
 
@@ -192,7 +192,7 @@ def test_wignerD_edge_case_rb_small():
         size = 2 * ell + 1
         D = mats[i][:, :, 0]
         np.testing.assert_allclose(
-            D @ D.conj().T, np.eye(size, dtype=complex), rtol=1e-7, atol=1e-11,
+            D @ D.conj().T, np.eye(size, dtype=complex), rtol=1e-12, atol=1e-11,
             err_msg=f"ell={ell}: unitarity fails for rb≈0 quaternion",
         )
 
@@ -207,7 +207,7 @@ def test_wignerD_multiple_identity_quaternions():
         size = 2 * ell + 1
         for k in range(N):
             np.testing.assert_allclose(
-                mats[i][:, :, k], np.eye(size, dtype=complex), rtol=1e-7, atol=1e-12,
+                mats[i][:, :, k], np.eye(size, dtype=complex), rtol=1e-12, atol=1e-12,
                 err_msg=f"ell={ell}, quat #{k}: not identity",
             )
 

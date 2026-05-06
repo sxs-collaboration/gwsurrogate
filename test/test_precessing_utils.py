@@ -38,7 +38,7 @@ def test_normalize_spin_rescales_rows():
 
     result = normalize_spin(chi, chi_norm=chi_norm)
     row_norms = np.sqrt(np.sum(result**2, axis=1))
-    np.testing.assert_allclose(row_norms, chi_norm, rtol=1e-7, atol=1e-14,
+    np.testing.assert_allclose(row_norms, chi_norm, rtol=1e-12, atol=1e-14,
                                err_msg="Row magnitudes after normalize_spin are not chi_norm")
 
 
@@ -47,7 +47,7 @@ def test_normalize_spin_unit_norm():
     chi = RNG.standard_normal((15, 3)) + 1.0
     result = normalize_spin(chi, chi_norm=1.0)
     row_norms = np.sqrt(np.sum(result**2, axis=1))
-    np.testing.assert_allclose(row_norms, 1.0, rtol=1e-7, atol=1e-14)
+    np.testing.assert_allclose(row_norms, 1.0, rtol=1e-12, atol=1e-14)
 
 
 def test_normalize_spin_preserves_direction():
@@ -57,7 +57,7 @@ def test_normalize_spin_preserves_direction():
     result = normalize_spin(chi, chi_norm=chi_norm)
     orig_unit = (chi.T / np.sqrt(np.sum(chi**2, axis=1))).T
     new_unit = (result.T / np.sqrt(np.sum(result**2, axis=1))).T
-    np.testing.assert_allclose(new_unit, orig_unit, rtol=1e-7, atol=1e-14,
+    np.testing.assert_allclose(new_unit, orig_unit, rtol=1e-12, atol=1e-14,
                                err_msg="normalize_spin changed the direction of chi")
 
 
@@ -99,7 +99,7 @@ def test_splinterp_many_vs_single_loop():
     result_loop = np.array([_splinterp_Cwrapper(t_out, t_in, data[i])
                             for i in range(M)])
 
-    np.testing.assert_allclose(result_many, result_loop, rtol=1e-12,
+    np.testing.assert_allclose(result_many, result_loop, rtol=1e-12, atol=0,
                                err_msg="splinterp_many disagrees with single-row loop")
 
 
@@ -112,7 +112,7 @@ def test_splinterp_many_single_row():
     result_many = splinterp_many(t_out, t_in, y[np.newaxis, :])
     result_single = _splinterp_Cwrapper(t_out, t_in, y)
 
-    np.testing.assert_allclose(result_many[0], result_single, rtol=1e-12)
+    np.testing.assert_allclose(result_many[0], result_single, rtol=1e-12, atol=0)
 
 
 def test_splinterp_many_reproduces_knots():
@@ -122,7 +122,7 @@ def test_splinterp_many_reproduces_knots():
     data = _make_smooth_rows(M, t_in)
 
     result = splinterp_many(t_in, t_in, data)
-    np.testing.assert_allclose(result, data, rtol=1e-7, atol=1e-12,
+    np.testing.assert_allclose(result, data, rtol=1e-12, atol=1e-12,
                                err_msg="splinterp_many does not reproduce knot values")
 
 
@@ -141,7 +141,7 @@ def test_splinterp_Cwrapper_many_matches_loop():
     result_loop = np.array([_splinterp_Cwrapper(t_out, t_in, data[i])
                             for i in range(M)])
 
-    np.testing.assert_allclose(result_many, result_loop, rtol=1e-12,
+    np.testing.assert_allclose(result_many, result_loop, rtol=1e-12, atol=0,
                                err_msg="_splinterp_Cwrapper_many disagrees with loop")
 
 

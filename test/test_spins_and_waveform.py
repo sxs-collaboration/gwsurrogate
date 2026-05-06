@@ -30,7 +30,7 @@ EXPECTED_SUM_ABS = 4.955406483976013e-01
 
 # Tolerances — loose enough for numerical round-trip but tight enough to
 # catch real regressions.
-RTOL = 1e-6
+RTOL = 1e-12
 ATOL = 1e-10
 
 
