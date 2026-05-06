@@ -35,7 +35,7 @@ def test_interpolate_polynomial():
     xnew = np.linspace(-1.9, 1.9, 200)
     result = interpolate(xnew, x, y)
     expected = 3.5 * xnew - 1.2
-    np.testing.assert_allclose(result, expected, atol=1e-10,
+    np.testing.assert_allclose(result, expected, rtol=1e-7, atol=1e-10,
                                err_msg="linear polynomial not reproduced")
 
 
@@ -46,7 +46,7 @@ def test_interpolate_matches_scipy():
     xnew = np.linspace(x[0], x[-1], 300)
     result = interpolate(xnew, x, y)
     expected = _natural_scipy(x, y, xnew)
-    np.testing.assert_allclose(result, expected, atol=1e-10,
+    np.testing.assert_allclose(result, expected, rtol=1e-7, atol=1e-10,
                                err_msg="interpolate does not match scipy CubicSpline")
 
 
@@ -55,7 +55,7 @@ def test_interpolate_endpoint_values():
     x = np.linspace(0.0, 1.0, 15)
     y = np.exp(x)
     result = interpolate(x, x, y)
-    np.testing.assert_allclose(result, y, atol=1e-12,
+    np.testing.assert_allclose(result, y, rtol=1e-7, atol=1e-12,
                                err_msg="interpolate does not reproduce knot values")
 
 
@@ -81,8 +81,8 @@ def test_interpolate_complex_via_split():
 
     ref_re = _natural_scipy(x, np.real(y), xnew)
     ref_im = _natural_scipy(x, np.imag(y), xnew)
-    np.testing.assert_allclose(combined.real, ref_re, atol=1e-10)
-    np.testing.assert_allclose(combined.imag, ref_im, atol=1e-10)
+    np.testing.assert_allclose(combined.real, ref_re, rtol=1e-7, atol=1e-10)
+    np.testing.assert_allclose(combined.imag, ref_im, rtol=1e-7, atol=1e-10)
 
 
 # ---------------------------------------------------------------------------
@@ -284,7 +284,7 @@ def test_interpolate_many_matches_scipy():
     result = interpolate_many(xnew, x, y)
     for i in range(M):
         expected = _natural_scipy(x, y[i], xnew)
-        np.testing.assert_allclose(result[i], expected, atol=1e-10,
+        np.testing.assert_allclose(result[i], expected, rtol=1e-7, atol=1e-10,
                                    err_msg=f"Row {i} disagrees with scipy")
 
 
@@ -305,9 +305,9 @@ def test_interpolate_many_complex_matches_split():
     im = interpolate_many(xnew, x, np.imag(y_complex))
     expected = re + 1j * im
 
-    np.testing.assert_allclose(result.real, expected.real, atol=1e-12,
+    np.testing.assert_allclose(result.real, expected.real, rtol=1e-7, atol=1e-12,
                                err_msg="Real part mismatch")
-    np.testing.assert_allclose(result.imag, expected.imag, atol=1e-12,
+    np.testing.assert_allclose(result.imag, expected.imag, rtol=1e-7, atol=1e-12,
                                err_msg="Imag part mismatch")
 
 
@@ -322,9 +322,9 @@ def test_interpolate_many_complex_matches_scipy():
     for i in range(M):
         ref_re = _natural_scipy(x, np.real(y_complex[i]), xnew)
         ref_im = _natural_scipy(x, np.imag(y_complex[i]), xnew)
-        np.testing.assert_allclose(result[i].real, ref_re, atol=1e-10,
+        np.testing.assert_allclose(result[i].real, ref_re, rtol=1e-7, atol=1e-10,
                                    err_msg=f"Row {i} real part disagrees with scipy")
-        np.testing.assert_allclose(result[i].imag, ref_im, atol=1e-10,
+        np.testing.assert_allclose(result[i].imag, ref_im, rtol=1e-7, atol=1e-10,
                                    err_msg=f"Row {i} imag part disagrees with scipy")
 
 
@@ -351,7 +351,7 @@ def test_interpolate_many_complex_single_row():
     re = interpolate(xnew, x, np.real(y))
     im = interpolate(xnew, x, np.imag(y))
 
-    np.testing.assert_allclose(result[0].real, re, atol=1e-12,
+    np.testing.assert_allclose(result[0].real, re, rtol=1e-7, atol=1e-12,
                                err_msg="Single row real part mismatch")
-    np.testing.assert_allclose(result[0].imag, im, atol=1e-12,
+    np.testing.assert_allclose(result[0].imag, im, rtol=1e-7, atol=1e-12,
                                err_msg="Single row imag part mismatch")

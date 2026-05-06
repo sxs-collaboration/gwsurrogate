@@ -5,8 +5,8 @@ Evaluates the surrogate at a fixed parameter point and compares a handful
 of mode values against hard-coded expected values.  Catches any regression
 introduced by changes to the spline, Wigner-D, or dynamics code paths.
 
-Requires the NRSur7dq4 HDF5 file (~512 MB).  The test is skipped
-gracefully if the file is not present.
+Requires the NRSur7dq4 HDF5 file (~512 MB).  The test fails if the file is
+not present.
 """
 
 import os
@@ -35,7 +35,7 @@ ATOL = 1e-10
 
 
 # ---------------------------------------------------------------------------
-# Skip condition
+# Model data check
 # ---------------------------------------------------------------------------
 
 def _model_path():
@@ -49,14 +49,6 @@ def _model_path():
     return candidate if os.path.isfile(candidate) else None
 
 
-_MODEL_AVAILABLE = _model_path() is not None
-
-skip_if_no_model = pytest.mark.skipif(
-    not _MODEL_AVAILABLE,
-    reason="NRSur7dq4.h5 not found — run test/download_regression_models.py first",
-)
-
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -66,6 +58,11 @@ def nrsur7dq4_result():
     """Load the surrogate once per module and return (t, h)."""
     import gwsurrogate as gws  # noqa: PLC0415
     import warnings
+
+    model_path = _model_path()
+    assert model_path is not None, (
+        "NRSur7dq4.h5 not found; run test/download_regression_models.py first"
+    )
 
     sur = gws.LoadSurrogate("NRSur7dq4")
     q = 2.0
@@ -85,7 +82,6 @@ def nrsur7dq4_result():
 # Tests
 # ---------------------------------------------------------------------------
 
-@skip_if_no_model
 def test_no_nan_in_waveform(nrsur7dq4_result):
     """The waveform must be NaN-free at all times."""
     _, h, _ = nrsur7dq4_result
@@ -93,7 +89,6 @@ def test_no_nan_in_waveform(nrsur7dq4_result):
         assert not np.any(np.isnan(values)), f"NaN detected in mode {mode}"
 
 
-@skip_if_no_model
 def test_mode_values_at_t_minus100(nrsur7dq4_result):
     """Mode values at t ≈ -100 M match hard-coded expected values."""
     _, h, idx = nrsur7dq4_result
@@ -103,7 +98,6 @@ def test_mode_values_at_t_minus100(nrsur7dq4_result):
                                    err_msg=f"Mode {mode} regressed")
 
 
-@skip_if_no_model
 def test_total_amplitude_at_t_minus100(nrsur7dq4_result):
     """Sum of |h_lm| across all modes at t ≈ -100 M matches expected."""
     _, h, idx = nrsur7dq4_result
@@ -114,7 +108,6 @@ def test_total_amplitude_at_t_minus100(nrsur7dq4_result):
     )
 
 
-@skip_if_no_model
 def test_time_array_properties(nrsur7dq4_result):
     """Time array should be monotonically increasing and contain t=0."""
     t, _, _ = nrsur7dq4_result

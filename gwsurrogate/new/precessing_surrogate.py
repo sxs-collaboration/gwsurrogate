@@ -40,7 +40,7 @@ def _assemble_powers(thing, powers):
     return np.array([thing**power for power in powers])
 
 def _wignerD_matrices(q, ellMax):
-    """
+    r"""
 Given a quaternion q with shape (4, N) and some maximum ell value ellMax,
 computes W[ell, m', m](t_i) for i=0, ..., N-1, for 2 \leq ell \leq ellMax,
 for -L \leq m', m \leq L.
@@ -391,7 +391,7 @@ cubic interpolation. Use get_time_deriv_from_index when possible.
 
     def __call__(self, q, chiA0, chiB0, init_quat=None, init_orbphase=0.0, \
             t_ref=None, omega_ref=None, omega_low=None):
-        """
+        r"""
 Computes the modeled NR dynamics given the initial conditions.
 
 Arguments:
@@ -937,7 +937,7 @@ omega_ref_max_model: The maximium allowable reference dimensionless
     def __call__(self, x, fM_low=None, fM_ref=None, dtM=None,
             timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
             precessing_opts=None, tidal_opts=None, par_dict=None):
-        """
+        r"""
 Evaluates a precessing surrogate model.
 
 Arguments:
@@ -1265,7 +1265,7 @@ num_subdomains: The total number of subdomains in the surrogate model.
     def __call__(self, x, fM_low=None, fM_ref=None, dtM=None,
             timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
             precessing_opts=None, tidal_opts=None, par_dict=None):
-        """
+        r"""
 Evaluates a precessing surrogate model.
 
 

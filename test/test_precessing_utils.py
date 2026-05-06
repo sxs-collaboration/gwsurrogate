@@ -38,7 +38,7 @@ def test_normalize_spin_rescales_rows():
 
     result = normalize_spin(chi, chi_norm=chi_norm)
     row_norms = np.sqrt(np.sum(result**2, axis=1))
-    np.testing.assert_allclose(row_norms, chi_norm, atol=1e-14,
+    np.testing.assert_allclose(row_norms, chi_norm, rtol=1e-7, atol=1e-14,
                                err_msg="Row magnitudes after normalize_spin are not chi_norm")
 
 
@@ -47,7 +47,7 @@ def test_normalize_spin_unit_norm():
     chi = RNG.standard_normal((15, 3)) + 1.0
     result = normalize_spin(chi, chi_norm=1.0)
     row_norms = np.sqrt(np.sum(result**2, axis=1))
-    np.testing.assert_allclose(row_norms, 1.0, atol=1e-14)
+    np.testing.assert_allclose(row_norms, 1.0, rtol=1e-7, atol=1e-14)
 
 
 def test_normalize_spin_preserves_direction():
@@ -57,7 +57,7 @@ def test_normalize_spin_preserves_direction():
     result = normalize_spin(chi, chi_norm=chi_norm)
     orig_unit = (chi.T / np.sqrt(np.sum(chi**2, axis=1))).T
     new_unit = (result.T / np.sqrt(np.sum(result**2, axis=1))).T
-    np.testing.assert_allclose(new_unit, orig_unit, atol=1e-14,
+    np.testing.assert_allclose(new_unit, orig_unit, rtol=1e-7, atol=1e-14,
                                err_msg="normalize_spin changed the direction of chi")
 
 
@@ -122,7 +122,7 @@ def test_splinterp_many_reproduces_knots():
     data = _make_smooth_rows(M, t_in)
 
     result = splinterp_many(t_in, t_in, data)
-    np.testing.assert_allclose(result, data, atol=1e-12,
+    np.testing.assert_allclose(result, data, rtol=1e-7, atol=1e-12,
                                err_msg="splinterp_many does not reproduce knot values")
 
 
