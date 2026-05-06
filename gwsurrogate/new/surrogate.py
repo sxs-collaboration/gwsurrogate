@@ -894,7 +894,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         # Make the (2,2) data meaningful
         h_coorb[ mode_list.index((2,2)) ] = Amp_22
 
-        m_list = np.array([m for _,m in mode_list])
+        m_list = np.array([m for _,m in mode_list], dtype=np.long)
         _utils.coorbital_to_inertial_in_place(h_coorb, phi_22, m_list)
 
         # Return as a dict, for some reason

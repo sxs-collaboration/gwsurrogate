@@ -547,18 +547,18 @@ static PyObject *coorbital_to_inertial_in_place(PyObject *self, PyObject *args) 
       return NULL;
     }
 
-    if (!PyArray_ISCOMPLEX(h_coorb)) {
-      PyErr_SetString(PyExc_ValueError, "h_coorb must be complex");
+    if (PyArray_TYPE(h_coorb) != NPY_CDOUBLE) {
+      PyErr_SetString(PyExc_ValueError, "h_coorb must have dtype complex128");
       return NULL;
     }
 
-    if (!PyArray_ISFLOAT(phi_22)) {
-      PyErr_SetString(PyExc_ValueError, "phi_22 must be float");
+    if (PyArray_TYPE(phi_22) != NPY_DOUBLE) {
+      PyErr_SetString(PyExc_ValueError, "phi_22 must have dtype float64");
       return NULL;
     }
 
-    if (!PyArray_ISINTEGER(m_array)) {
-      PyErr_SetString(PyExc_ValueError, "m_array must be integer");
+    if (PyArray_TYPE(m_array) != NPY_LONG) {
+      PyErr_SetString(PyExc_ValueError, "m_array must have dtype np.long");
       return NULL;
     }
 
@@ -575,11 +575,11 @@ static PyObject *coorbital_to_inertial_in_place(PyObject *self, PyObject *args) 
     }
 
     // Figure out the max value of |m|
-    long max_m = 0;
+    npy_long max_m = 0;
 
-    for (long j_m = 0; j_m < n_modes; j_m++) {
-      const long this_m = labs(
-          *(long *)PyArray_GETPTR1(m_array, j_m));
+    for (npy_long j_m = 0; j_m < n_modes; j_m++) {
+      const npy_long this_m = labs(
+          *(npy_long *)PyArray_GETPTR1(m_array, j_m));
       max_m = (this_m > max_m) ? this_m : max_m;
     }
 
@@ -611,15 +611,15 @@ static PyObject *coorbital_to_inertial_in_place(PyObject *self, PyObject *args) 
 
       // twiddle[max_m] = 1.0 + 0.0j always
       double complex this_pow = exp_minus_i_phi_orb;
-      for (long m = 1; m <= max_m;
+      for (npy_long m = 1; m <= max_m;
            m++, this_pow *= exp_minus_i_phi_orb) {
         twiddle[max_m + m] = this_pow;
         twiddle[max_m - m] = conj(this_pow);
       }
 
-      for (long j_m = 0; j_m < n_modes; j_m++) {
-        const long this_m =
-            *(long *)PyArray_GETPTR1(m_array, j_m);
+      for (npy_long j_m = 0; j_m < n_modes; j_m++) {
+        const npy_long this_m =
+            *(npy_long *)PyArray_GETPTR1(m_array, j_m);
 
         double complex *this_h =
             (double complex *)PyArray_GETPTR2(h_coorb, j_m, i_t);
