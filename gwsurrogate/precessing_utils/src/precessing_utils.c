@@ -512,6 +512,10 @@ static PyObject *wigner_coef(PyObject *self, PyObject *args) {
 
 /*
  * Co-orbital to inertial in place.
+ * For each mode h_lm(t) in h_coorb, multiply by
+ *   exp(-i * m * phi_22(t) / 2)
+ * where phi_22(t) is the phase of the (2, 2) mode and phi_22 / 2 is the orbital
+ * phase.
  * Arguments (with python data types):
  *      h_coorb: A 2d complex numpy array with first index running over (l,m)
  *               modes, and second index running over times. Data is in the
