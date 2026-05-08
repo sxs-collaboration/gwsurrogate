@@ -73,9 +73,9 @@ def md5(fname):
 #
 #     absolute(`a` - `b`) <= (`atol` + `rtol` * absolute(`b`))
 #
-# Setting atol=0 means we are only testing relative errors
+# Setting atol_default=0 means we are only testing relative errors
 #
-atol = 0.0
+atol_default = 0.0
 # why a high tolerance? For some reason, a high tolerance is needed when 
 # comparing to regression data on different machines
 # TODO: explore the origin of these large discrepancies 
@@ -83,6 +83,7 @@ atol = 0.0
 #       largest relative errors seem to be post-merger
 #       only seems to affect models that use gpr fits and/or gsl calls
 rtol_default           = 1.e-11
+atols = {}
 rtols = {'NRHybSur3dq8':  3.4e-5,
          'NRHybSur2dq15': 2.e-5,
          'NRHybSur3dq8_CCE': 7.e-5,  # higher modes for this GPR-fit model require a bit higher tolerance
@@ -498,11 +499,12 @@ def test_model_regression(generate_regression_data=False):
         # t_indx = np.argmin(np.abs(fp[model+"/parameter%i/time"%i][:] - 90) )
         t_indx = fp[model+"/parameter%i/time"%i][:].shape[0]  # use all time points
 
-        # model-specific relative tolerances. This is needed because certain models
+        # model-specific tolerances. This is needed because certain models
         # have dependencies (e.g. GSL or sklearn) that will break our tests!
+        local_atol = atols.get(model, atol_default)
         local_rtol = rtols.get(model, rtol_default)
 
-        print("Model %s uses a relative error tolerance of %e"%(model,local_rtol))
+        print("Model %s uses an absolute error tolerance of %e and relative error tolerance of %e"%(model,local_atol,local_rtol))
 
         for j, mode in enumerate(fp[model+"/parameter%i/modes"%i][:]): # test mode-by-mode
           err_msg="Failed: model %s for mode index %i (ell = %i,m = %i)"%(model,j,mode[0],mode[1])
@@ -510,14 +512,14 @@ def test_model_regression(generate_regression_data=False):
           # test hp and hc separately 
           # Note: because hp and hc oscillate about 0, this test can easily fail (relative error check) 
           # if hp/hc change by very small amounts
-          #np.testing.assert_allclose(hp_regression[j,:t_indx], hp_comparison[j,:t_indx], rtol=local_rtol, atol=atol, err_msg=err_msg)
-          #np.testing.assert_allclose(hc_regression[j,:t_indx], hc_comparison[j,:t_indx], rtol=local_rtol, atol=atol, err_msg=err_msg)
+          #np.testing.assert_allclose(hp_regression[j,:t_indx], hp_comparison[j,:t_indx], rtol=local_rtol, atol=local_atol, err_msg=err_msg)
+          #np.testing.assert_allclose(hc_regression[j,:t_indx], hc_comparison[j,:t_indx], rtol=local_rtol, atol=local_atol, err_msg=err_msg)
 
           # test complexified h.
           # This is a more robust relative-error test because the |h| does not pass through 0
           h_regression = hp_regression[j,:t_indx] + 1.0j*hc_regression[j,:t_indx]
           h_comparison = hp_comparison[j,:t_indx] + 1.0j*hc_comparison[j,:t_indx]
-          np.testing.assert_allclose(h_regression, h_comparison, rtol=local_rtol, atol=atol, err_msg=err_msg)
+          np.testing.assert_allclose(h_regression, h_comparison, rtol=local_rtol, atol=local_atol, err_msg=err_msg)
 
 
         # when debugging the tests, it can be useful to dump the data
