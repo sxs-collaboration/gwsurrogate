@@ -67,28 +67,36 @@ def md5(fname):
       hash_md5.update(chunk)
   return hash_md5.hexdigest()
 
-# set global tolerances for floating point comparisons. 
-# From documentation on np.testing.assert_allclose
-# the comparison is
+# Set global tolerances for floating point comparisons.
+# From the documentation on np.testing.assert_allclose, each sample is tested
+# pointwise using
 #
 #     absolute(`a` - `b`) <= (`atol` + `rtol` * absolute(`b`))
 #
-# The absolute tolerance combines a fixed floor and a mode-scaled term:
+# The `rtol` contribution therefore shrinks wherever the comparison waveform
+# itself is small. 
 #
-#     mode_atol = atol_default + atol_scale_default * max(abs(h_regression))
+# To handle that, we use an absolute tolerance with two pieces:
 #
-# This keeps very small modes from being judged only by relative error, while
-# retaining a tighter absolute allowance for small modes than for dominant modes.
+#     mode_atol = (
+#         mode_atol_floor_default
+#         + mode_scale_fraction_default * max(abs(h_regression[(mode)]))
+#     )
 #
-atol_default = 1.e-12
-atol_scale_default = 1.e-7
+# The second term is "relative-like" at the mode level, but differs from NumPy's
+# pointwise `rtol`: it sets one absolute allowance for the whole mode based on
+# that mode's characteristic amplitude. Small modes still receive tighter
+# absolute allowances than dominant modes.
+#
+mode_atol_floor_default = 1.e-12
+mode_scale_fraction_default = 1.e-7
 # Model-specific tolerances are needed because some models show larger
 # cross-platform numerical differences, especially post-merger. The regression
 # data is stored in single precision, and the largest discrepancies have tended
 # to affect models that use GPR fits and/or GSL calls.
-rtol_default           = 1.e-11
-atols = {}
-atol_scales = {'NRHybSur3dq8_CCE': 4.e-7}  # Higher modes need a looser mode-scaled absolute tolerance.
+rtol_default = 1.e-11
+mode_atol_floors = {}
+mode_scale_fractions = {'NRHybSur3dq8_CCE': 4.e-7}  # Higher modes need a looser mode-scaled absolute tolerance.
 rtols = {'NRHybSur3dq8':  3.4e-5,
          'NRHybSur2dq15': 1.e-8,
          'NRHybSur3dq8_CCE': 1.e-8,
@@ -506,11 +514,11 @@ def test_model_regression(generate_regression_data=False):
 
         # model-specific tolerances. This is needed because certain models
         # have dependencies (e.g. GSL or sklearn) that will break our tests!
-        local_atol_floor = atols.get(model, atol_default)
-        local_atol_scale = atol_scales.get(model, atol_scale_default)
+        mode_atol_floor = mode_atol_floors.get(model, mode_atol_floor_default)
+        mode_scale_fraction = mode_scale_fractions.get(model, mode_scale_fraction_default)
         local_rtol = rtols.get(model, rtol_default)
 
-        print("Model %s uses an absolute error floor of %e, absolute mode scale of %e, and relative error tolerance of %e"%(model,local_atol_floor,local_atol_scale,local_rtol))
+        print("Model %s uses an absolute error floor of %e, mode scale fraction of %e, and relative error tolerance of %e"%(model,mode_atol_floor,mode_scale_fraction,local_rtol))
 
         for j, mode in enumerate(fp[model+"/parameter%i/modes"%i][:]): # test mode-by-mode
           err_msg="Failed: model %s for mode index %i (ell = %i,m = %i)"%(model,j,mode[0],mode[1])
@@ -518,17 +526,21 @@ def test_model_regression(generate_regression_data=False):
           # test hp and hc separately 
           # Note: because hp and hc oscillate about 0, this test can easily fail (relative error check) 
           # if hp/hc change by very small amounts
-          #np.testing.assert_allclose(hp_regression[j,:t_indx], hp_comparison[j,:t_indx], rtol=local_rtol, atol=local_atol_floor, err_msg=err_msg)
-          #np.testing.assert_allclose(hc_regression[j,:t_indx], hc_comparison[j,:t_indx], rtol=local_rtol, atol=local_atol_floor, err_msg=err_msg)
+          #np.testing.assert_allclose(hp_regression[j,:t_indx], hp_comparison[j,:t_indx], rtol=local_rtol, atol=mode_atol_floor, err_msg=err_msg)
+          #np.testing.assert_allclose(hc_regression[j,:t_indx], hc_comparison[j,:t_indx], rtol=local_rtol, atol=mode_atol_floor, err_msg=err_msg)
 
           # Test complexified h. This is more robust than comparing hp and hc
-          # separately because |h| does not pass through 0 as readily. The
-          # comparison combines relative tolerance with a mode-scaled absolute
-          # tolerance.
+          # separately because |h| does not pass through 0 as readily.
+          #
+          # np.testing.assert_allclose applies `rtol` pointwise through
+          #     |actual_i - desired_i| <= atol + rtol * |desired_i|
+          # so the relative allowance becomes especially small for samples with
+          # small |desired_i|. The mode-scaled absolute tolerance below supplies
+          # a mode-level floor without relaxing `rtol` everywhere.
           h_regression = hp_regression[j,:t_indx] + 1.0j*hc_regression[j,:t_indx]
           h_comparison = hp_comparison[j,:t_indx] + 1.0j*hc_comparison[j,:t_indx]
           mode_scale = np.max(np.abs(h_regression))
-          mode_atol = local_atol_floor + local_atol_scale * mode_scale
+          mode_atol = mode_atol_floor + mode_scale_fraction * mode_scale
           np.testing.assert_allclose(h_regression, h_comparison, rtol=local_rtol, atol=mode_atol, err_msg=err_msg)
 
 
