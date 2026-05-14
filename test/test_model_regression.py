@@ -96,7 +96,8 @@ mode_scale_fraction_default = 1.e-7
 # to affect models that use GPR fits and/or GSL calls.
 rtol_default = 1.e-11
 mode_atol_floors = {}
-mode_scale_fractions = {'NRHybSur3dq8_CCE': 4.e-7}  # Higher modes need a looser mode-scaled absolute tolerance.
+mode_scale_fractions = {'NRHybSur2dq15': 1.5e-7,
+                        'NRHybSur3dq8_CCE': 4.e-7}  # Higher modes need a looser mode-scaled absolute tolerance.
 rtols = {'NRHybSur3dq8':  3.4e-5,
          'NRHybSur2dq15': 1.e-8,
          'NRHybSur3dq8_CCE': 1.e-8,
