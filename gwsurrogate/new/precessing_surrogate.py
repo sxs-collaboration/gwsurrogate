@@ -145,28 +145,6 @@ def _eval_scalar_fit(fit_data, fit_params, fit_settings):
         fit_params, q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
     return val
 
-def _eval_vector_fit(fit_data, size, fit_params, fit_settings):
-    """ Evaluates a vector fit, where each element is a scalar fit.
-
-        Arguments:
-        ==========
-        fit_data: fit data for each specific datapiece
-        fit_params: numpy array of fit parameters (already transformed)
-        fit_settings: tuple (q_fit_offset, q_fit_slope, q_max_bfOrder,
-                      chi_max_bfOrder) — model-specific constants, cached
-                      once at init time.
-
-        Notes:
-        ======
-        fit_params and fit_settings should come from each surrogate model's
-        class definition. For example, for the NRSur7dq4 model, these are defined
-        in NRSur7dq4(SurrogateEvaluator)
-    """
-    val = np.empty(size)
-    for i in range(size):
-        val[i] = _eval_scalar_fit(fit_data[i], fit_params, fit_settings)
-    return val
-
 ###############################################################################
 
 class DynamicsSurrogate:
