@@ -488,8 +488,11 @@ static PyObject *eval_fit_batch_dydt(PyObject *self, PyObject *args) {
     eval_fits_into(fit_list, 9, x_powers,
                    q_max_bfOrder, chi_max_bfOrder, results);
 
-    /* Assemble dydt from results: ooxy=results[0:2], omega=results[2],
-       cAdot=results[3:6], cBdot=results[6:9] */
+    /* Assemble dydt from batched fit results:
+       results[0:2] = ooxy_coorb components,
+       results[2]   = orbital phase derivative omega,
+       results[3:6] = chiA time derivative in the coorbital frame,
+       results[6:9] = chiB time derivative in the coorbital frame. */
     npy_intp dims[1] = {11};
     PyArrayObject *dydt = (PyArrayObject *) PyArray_SimpleNew(1, dims, NPY_DOUBLE);
     if (!dydt) return NULL;
@@ -498,7 +501,7 @@ static PyObject *eval_fit_batch_dydt(PyObject *self, PyObject *args) {
     double cp = cos(y_data[4]);
     double sp = sin(y_data[4]);
 
-    /* Rotate ooxy from coorbital to coprecessing frame */
+    /* Rotate ooxy_coorb from the coorbital frame to the coprecessing frame. */
     double ooxy_x = results[0]*cp - results[1]*sp;
     double ooxy_y = results[0]*sp + results[1]*cp;
 
@@ -551,7 +554,7 @@ static PyObject *assemble_dydt(PyObject *self, PyObject *args) {
     // Parse tuples
     if (!PyArg_ParseTuple(args, "O!O!dO!O!",
             &PyArray_Type, &y,      // length 11, has quat, orbphase, chiA_copr, chiB_copr
-            &PyArray_Type, &ooxy,   // length 2 with x and y components of \Omega^{copr}
+            &PyArray_Type, &ooxy,   // length 2 with x and y components of \Omega^{coorb}
             &omega,                 // double, orbital frequency \omega
             &PyArray_Type, &cAdot,  // length 3, coprecessing chiA time derivative
             &PyArray_Type, &cBdot)) return NULL;

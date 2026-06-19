@@ -145,6 +145,28 @@ def _eval_scalar_fit(fit_data, fit_params, fit_settings):
         fit_params, q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
     return val
 
+def _eval_vector_fit(fit_data, size, fit_params, fit_settings):
+    """ Evaluates a vector fit, where each element is a scalar fit.
+
+        Arguments:
+        ==========
+        fit_data: fit data for each specific datapiece
+        fit_params: numpy array of fit parameters (already transformed)
+        fit_settings: tuple (q_fit_offset, q_fit_slope, q_max_bfOrder,
+                      chi_max_bfOrder) — model-specific constants, cached
+                      once at init time.
+
+        Notes:
+        ======
+        fit_params and fit_settings should come from each surrogate model's
+        class definition. For example, for the NRSur7dq4 model, these are defined
+        in NRSur7dq4(SurrogateEvaluator)
+    """
+    val = np.empty(size)
+    for i in range(size):
+        val[i] = _eval_scalar_fit(fit_data[i], fit_params, fit_settings)
+    return val
+
 ###############################################################################
 
 class DynamicsSurrogate:
@@ -252,6 +274,17 @@ These time derivatives are given to the AB4 ODE solver.
         # Setup fit variables
         x = _utils.get_ds_fit_x(y, q)
         fit_params = self._get_fit_params(x)
+
+        # Reference implementation for the fused C path below:
+        #
+        # data = self.fit_data[i0]
+        # ooxy_coorb = _eval_vector_fit(data['omega_orb'], 2, fit_params, self._fit_settings)
+        # omega = _eval_scalar_fit(data['omega'], fit_params, self._fit_settings)
+        # cAdot_coorb = _eval_vector_fit(data['chiA'], 3, fit_params, self._fit_settings)
+        # cBdot_coorb = _eval_vector_fit(data['chiB'], 3, fit_params, self._fit_settings)
+        # dydt = _utils.assemble_dydt(
+        #     y, ooxy_coorb, omega, cAdot_coorb, cBdot_coorb
+        # )
 
         # Fused: evaluate 9 fits + assemble dydt in one C call
         q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder = self._fit_settings
