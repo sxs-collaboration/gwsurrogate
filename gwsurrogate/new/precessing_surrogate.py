@@ -694,7 +694,7 @@ def _extract_component_data(h5_group, basis_tol=None, verbose=True):
         V = h5_group['V'][slc,:]
         RB = V @ EI_Basis
         V = V[:, slc]
-        data['EI_basis'] = np.linalg.solve(V, RB)
+        data['EI_basis'] = np.ascontiguousarray(np.linalg.solve(V, RB))
         data['nodeIndices'] = h5_group['nodeIndices'][slc]
     else:
         data['EI_basis'] = h5_group['EIBasis'][()]
@@ -889,6 +889,7 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
 
         self._get_fit_params = get_fit_params
         self._get_fit_settings = get_fit_settings
+        self._fit_settings = get_fit_settings()
 
         self.ellMax = 2
         while 'hCoorb_%s_%s_Re+_subdomain_0'%(self.ellMax+1, self.ellMax+1) in h5file.keys():
