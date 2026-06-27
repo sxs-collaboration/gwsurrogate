@@ -990,7 +990,7 @@ ellMax: The maximum ell mode to evaluate.
                 }
             x = np.append(q, np.append(chiA[ni], chiB[ni]))
             fit_params = self._get_fit_params(x)
-            nodes.append(_eval_scalar_fit(fit_data, fit_params, self._get_fit_settings))
+            nodes.append(_eval_scalar_fit(fit_data, fit_params, self._fit_settings))
 
         return np.array(nodes).dot(data['EI_basis'])
 
