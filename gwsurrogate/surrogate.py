@@ -2849,6 +2849,10 @@ SURROGATE_CLASSES = {
 #    "SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5":EvaluateSurrogate # model SpEC_q1_10_NoSpin
         }
 
+SURROGATES_WITH_BASIS_SIZE_OPTS = [
+   "NRSur7dq4v2",
+   ]
+
 # TODO: would this be better off as a function as opposed to a class?
 class LoadSurrogate(object):
     """
@@ -2924,8 +2928,9 @@ class LoadSurrogate(object):
                     print("Surrogate data not found for %s. Downloading now."%surrogate_name)
                     catalog.pull(surrogate_name)
         
-        if basis_size_opts is not None and surrogate_name != "NRSur7dq4v2":
-            raise ValueError("basis_size_opts is only used for NRSur7dq4v2 surrogate, but surrogate_name is %s"%surrogate_name)
+        if basis_size_opts is not None and surrogate_name not in SURROGATES_WITH_BASIS_SIZE_OPTS:
+            raise ValueError("basis_size_opts is only used for surrogates in SURROGATES_WITH_BASIS_SIZE_OPTS," \
+                             " but %s is not in this list"%surrogate_name)
 
         if surrogate_name not in SURROGATE_CLASSES.keys():
             raise Exception('Invalid surrogate : %s'%surrogate_name)
