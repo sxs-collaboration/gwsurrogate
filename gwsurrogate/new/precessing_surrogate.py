@@ -865,8 +865,20 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
         get_fit_settings is a function that provides information about
         model-specific surrogate fits
         
-        basis_tol_opts is a dictionary of datapiece names with corresponding
-        basis sizes to restrict to."""
+        basis_tol_opts is a dictionary of basis tolerances to be used to construct the coorbital surrogate.
+        The format of the dictionary is {
+                                  'datapiece_name': basis_size,
+                                  ...
+                                }.
+        Here, 'datapiece_name' is the name of the datapiece whose basis size is to be restricted.
+        It can be one of the following formats:
+        - For m=0 modes: '%s_0_%s_sd_%s'%(ell, reim, subdomain), 
+        where ell is the ell mode index, reim is either 'real' or 'imag', and subdomain is either '0' or '1'.
+        - For m!=0 modes: '%s_%s_%s%s_sd_%s'%(ell, m, reim, pm, subdomain), 
+        where ell, m are the harmonic mode indices, reim is either 'Re' or 'Im', pm is either '+' or '-', and subdomain is either '0' or '1'.
+        The basis_size is an integer specifying the number of basis elements to be used for that datapiece. 
+        For an example of such a dictionary, see gwsurrogate.new._basis_presets.py.
+        """
         if isinstance(basis_tol_opts, str):
             try:
                 print("Using basis size preset: %s"%(basis_tol_opts))
@@ -1083,11 +1095,10 @@ get_fit_settings: A function that provides information about
 ellMax_model: The maximum ell mode supported by the surrogate model
 omega_ref_max_model: The maximium allowable reference dimensionless
                      orbital angular frequency supported by the surrogate model
-basis_tol_opts: A dictionary of basis tolerances to be used in the coorbital surrogate fits. 
-                    The keys should be the same as the keys in the dictionary returned by 
-                    get_fit_settings("basis_tol_opts"), and the values should be the desired 
-                    basis tolerances to use for this surrogate. If None, uses the basis tolerances 
-                    specified by get_fit_settings("basis_tol_opts").
+basis_tol_opts: A dictionary of basis tolerances to be used to construct the coorbital surrogate. 
+                    The dictionary format is as specified in the docstring of surrogate.LoadSurrogate.
+                    The dictionary keys must be those specified in the __init__() method of the coorbital surrogate.
+                    See the docstring of DomainDecomposedCoorbitalWaveformSurrogate for the dictionary key format of NRSur7dq4v2.
         """
         if isinstance(filename, h5py._hl.group.Group) or isinstance(filename, h5py._hl.files.File):
             h5file = filename

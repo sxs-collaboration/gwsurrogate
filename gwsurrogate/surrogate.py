@@ -2891,9 +2891,21 @@ class LoadSurrogate(object):
                                 NRHybSur3dq8Tidal) as SURROGATE_NAME_SPLICED.
                                 
         BASIS_SIZE_OPTS: A dictionary of basis sizes to be used in the coorbital
-                                frame surrogate. This is only used for the NRSur7dq4v2
-                                surrogate, which is a domain-decomposed modification of
-                                NRSur7dq4."""
+                                frame surrogate. If None, the full basis of each datapiece 
+                                is used.
+                                The dictionary should have the following format:
+                                {
+                                  'datapiece_name': basis_size,
+                                  ...
+                                }
+                                where each key names a datapiece and each value is the
+                                desired number of basis elements to retain for the specified datapiece.
+                                This is currently only used for the NRSur7dq4v2 surrogate,
+                                which is a domain-decomposed modification of NRSur7dq4.
+                                See the basis_tol_opts description in the docstring of
+                                gwsurrogate.new.precessing_surrogate.DomainDecomposedCoorbitalWaveformSurrogate
+                                for the supported datapiece name formats.
+                                """
 
         # the "output" of this if-block is surrogate_h5file and surrogate_name
         # to be used for "SURROGATE_CLASSES[surrogate_name](surrogate_h5file)"
