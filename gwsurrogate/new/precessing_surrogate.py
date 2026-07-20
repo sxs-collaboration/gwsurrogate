@@ -734,7 +734,10 @@ class CoorbitalWaveformSurrogate:
         model-specific surrogate fits
         
         basis_tol_opts is a dictionary of options to pass to shorten the basis.
-        It is only present for compatibility, and is not used in this surrogate."""
+        It is only present for compatibility, and is not used in this surrogate.
+        See the docstring for DomainDecomposedCoorbitalWaveformSurrogate for a full
+        description of the option's use.
+        """
 
         self._get_fit_params = get_fit_params
         self._get_fit_settings = get_fit_settings
