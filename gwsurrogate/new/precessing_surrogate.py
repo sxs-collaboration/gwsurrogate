@@ -977,6 +977,9 @@ ellMax: The maximum ell mode to evaluate.
 
     def _eval_comp(self, data, q, chiA, chiB):
         nodes = []
+        x = np.empty(7)
+        x[0] = q
+
         for orders, coefs, ni in zip(data['orders'], data['coefs'],
                 data['nodeIndices']):
 
@@ -984,7 +987,9 @@ ellMax: The maximum ell mode to evaluate.
                 'bfOrders': orders,
                 'coefs': coefs,
                 }
-            x = np.append(q, np.append(chiA[ni], chiB[ni]))
+            x[1:4] = chiA[ni]
+            x[4:7] = chiB[ni]
+
             fit_params = self._get_fit_params(x)
             nodes.append(_eval_scalar_fit(fit_data, fit_params, self._fit_settings))
 
