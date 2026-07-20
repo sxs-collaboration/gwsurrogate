@@ -839,26 +839,16 @@ ellMax: The maximum ell mode to evaluate.
         Returns true or False """
 
         return group_name in h5file
-    
-    def _iter_component_keys(self, ellMax):
-        for ell in range(2, ellMax+1):
-            if (ell, 0) in self.mode_list:
-                yield f"{ell}_0_real"
-                yield f"{ell}_0_imag"
-            for m in range(1, ell+1):
-                if (ell, m) in self.mode_list:
-                    for reim in ["Re", "Im"]:
-                        for pm in ["+", "-"]:
-                            yield f"{ell}_{m}_{reim}{pm}"
 
     def total_components(self, ellMax):
-        return sum(1 for _ in self._iter_component_keys(ellMax))
+        return 2*(ellMax+3)*(ellMax-1)
 
     def total_node_evals(self, ellMax):
         # total scalar-fit evaluations done inside _eval_comp across all components
         total = 0
-        for key in self._iter_component_keys(ellMax):
-            total += len(self.data[key]['nodeIndices'])
+        for key, component_data in self.data.items():
+            if int(key.split("_")[0]) <= ellMax:
+                total += len(component_data['nodeIndices'])
         return total
 
 class DomainDecomposedCoorbitalWaveformSurrogate:
@@ -1001,33 +991,22 @@ ellMax: The maximum ell mode to evaluate.
         Returns true or False """
 
         return group_name in h5file
-    
-    def _iter_component_keys(self, ellMax):
-        for ell in range(2, ellMax+1):
-            if (ell, 0) in self.mode_list:
-                for sd in ["0", "1"]:
-                    yield f"{ell}_0_real_sd_{sd}"
-                    yield f"{ell}_0_imag_sd_{sd}"
-            for m in range(1, ell+1):
-                if (ell, m) in self.mode_list:
-                    for reim in ["Re", "Im"]:
-                        for pm in ["+", "-"]:
-                            for sd in ["0", "1"]:
-                                yield f"{ell}_{m}_{reim}{pm}_sd_{sd}"
 
     def extract_basis_sizes(self, ellMax):
         basis_sizes = {}
-        for key in self._iter_component_keys(ellMax):
-            basis_sizes[key] = len(self.data[key]['nodeIndices'])
+        for key, component_data in self.data.items():
+            if int(key.split("_")[0]) <= ellMax:
+                basis_sizes[key] = len(component_data['nodeIndices'])
         return basis_sizes
 
     def total_components(self, ellMax):
-        return sum(1 for _ in self._iter_component_keys(ellMax))
+        return 4*(ellMax+3)*(ellMax-1)
 
     def total_node_evals(self, ellMax):
         total = 0
-        for key in self._iter_component_keys(ellMax):
-            total += len(self.data[key]['nodeIndices'])
+        for key, component_data in self.data.items():
+            if int(key.split("_")[0]) <= ellMax:
+                total += len(component_data['nodeIndices'])
         return total
 
 ##############################################################################
