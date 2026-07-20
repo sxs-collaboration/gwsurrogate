@@ -2545,7 +2545,7 @@ See the __call__ method on how to evaluate waveforms.
             basis_tol_opts=basis_tol_opts)
 
     def _load_dimless_surrogate(self, basis_tol_opts=None):
-      # needed to convert user input x to parameters used by surrogate fits
+        # needed to convert user input x to parameters used by surrogate fits
         def get_fit_params(x):
             """ Converts from x=[q, chi1x, chi1y, chi1z, chi2x, chi2y, chi2z]
                 to x = [np.log(q), (chi1x+chi2x)/2, (chi1x-chi2x)/2, chiHat, (chi1y+chi2y)/2, (chi1y-chi2y)/2, chi1z]

@@ -905,7 +905,6 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
             # If there are no modes, skip. Assumes if group "*_real_subdomain_0" exists, then
             # "*_real_subdomain_1", "*_imag_subdomain_0" and "*_imag_subdomain_1" exist as well.
             if self._check_h5group_exists(h5file,'hCoorb_%s_0_real_subdomain_0'%ell):
-                #print("Loading (ell=%s,0) mode"%(ell))
                 self.mode_list.append( (ell,0) )
                 for reim in ['real', 'imag']:
                     for subdomain in ['0', '1']:
@@ -921,7 +920,6 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
                 # If there are no modes, skip. Assumes if group "*_Re+" exists, then
                 # "*_Re-", "*_Im+", and "_Im-" exists as well.
                 if self._check_h5group_exists(h5file,'hCoorb_%s_%s_Re+_subdomain_0'%(ell, m)):
-                    #print("Loading (ell=%s,m=\pm%s) modes"%(ell, m))
                     self.mode_list.append( (ell,m) )
                     self.mode_list.append( (ell,-m) )
                     for reim in ['Re', 'Im']:
@@ -958,7 +956,6 @@ ellMax: The maximum ell mode to evaluate.
                 im_0 = self._eval_comp(self.data['%s_0_imag_sd_0'%(ell)], q, chiA, chiB)
                 im_1 = self._eval_comp(self.data['%s_0_imag_sd_1'%(ell)], q, chiA, chiB)
                 modes[ell*(ell+1) - 4] = (re_0+ 1.j*im_0)*self.masks[0]+ (re_1+ 1.j*im_1)*self.masks[1]
-                #print("evaluation ell=%s, m=0"%ell)
 
             # NOTE: similar to previous for-loop, skipping means "set mode to zero".
             for m in range(1, ell+1):
@@ -975,7 +972,6 @@ ellMax: The maximum ell mode to evaluate.
                     h_posm_1, h_negm_1 = _assemble_mode_pair(rep_1, rem_1, imp_1, imm_1)
                     modes[ell*(ell+1) - 4 + m] = h_posm_0*self.masks[0] + h_posm_1*self.masks[1]
                     modes[ell*(ell+1) - 4 - m] = h_negm_0*self.masks[0] + h_negm_1*self.masks[1]
-                    #print("evaluation ell=%s, m=%s"%(ell,m))
 
         return modes
 
