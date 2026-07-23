@@ -981,24 +981,26 @@ ellMax: The maximum ell mode to evaluate.
         return modes
 
     def _eval_comp(self, data, q, chiA, chiB):
-        nodes = []
+        # Reuse one raw-parameter buffer across nodes. All seven entries are
+        # overwritten before each fit transformation.
+        q_float = float(q)
         x = np.empty(7)
-        x[0] = q
-
-        for orders, coefs, ni in zip(data['orders'], data['coefs'],
-                data['nodeIndices']):
-
-            fit_data = {
-                'bfOrders': orders,
-                'coefs': coefs,
-                }
+        n_nodes = len(data['nodeIndices'])
+        nodes = np.empty(n_nodes)
+        # Unpack fit_settings once to avoid per-iteration tuple unpacking in
+        # _eval_scalar_fit, and inline the C call to skip dict creation.
+        q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder \
+            = self._fit_settings
+        for idx, (orders, coefs, ni) in enumerate(zip(
+                data['orders'], data['coefs'], data['nodeIndices'])):
+            x[0] = q_float
             x[1:4] = chiA[ni]
             x[4:7] = chiB[ni]
-
             fit_params = self._get_fit_params(x)
-            nodes.append(_eval_scalar_fit(fit_data, fit_params, self._fit_settings))
+            nodes[idx] = _utils.eval_fit(orders, coefs, fit_params,
+                q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
 
-        return np.array(nodes).dot(data['EI_basis'])
+        return nodes.dot(data['EI_basis'])
 
     def _check_h5group_exists(self, h5file, group_name):
         """ Check if h5 group GROUP_NAME has valid data to load.
