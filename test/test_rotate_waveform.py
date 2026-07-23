@@ -5,7 +5,7 @@ Tests:
   - Identity quaternion leaves waveform unchanged
   - Shape and dtype preserved
   - Unitarity: rotating by q then q^{-1} recovers original
-  - Consistency between Python batched-matmul and C implementation (once added)
+  - Analytic phase change under a time-dependent z-axis rotation
 """
 
 import numpy as np
@@ -56,7 +56,7 @@ class TestRotateWaveformShape:
 
         h_rot = rotateWaveform(quat.copy(), h)
         assert h_rot.shape == h.shape
-        assert h_rot.dtype == np.complex128
+        assert h_rot.dtype == h.dtype
 
 
 class TestRotateWaveformRoundtrip:
@@ -95,31 +95,32 @@ class TestRotateWaveformUnitarity:
         np.testing.assert_allclose(norm_rot, norm_orig, rtol=1e-12)
 
 
-class TestRotateWaveformConstantQuat:
-    """A constant (non-identity) quaternion should give consistent results."""
+class TestRotateWaveformZRotation:
+    """A z-axis rotation should apply the known phase to every mode."""
 
-    def test_z_rotation_diagonal(self):
+    @pytest.mark.parametrize(
+        ("n_modes", "ell_max"), [(5, 2), (12, 3), (21, 4)]
+    )
+    def test_z_rotation_diagonal(self, n_modes, ell_max):
         """Z-rotation: D-matrix is diagonal, so each mode picks up a phase."""
         N = 30
         rng = np.random.default_rng(55)
-        angle = np.pi / 2
+        angle = np.linspace(-0.7 * np.pi, 0.6 * np.pi, N)
         quat = np.zeros((4, N))
         quat[0] = np.cos(angle / 2)
         quat[3] = np.sin(angle / 2)
 
-        h = _random_waveform(5, N, rng)  # ellMax=2
+        h = _random_waveform(n_modes, N, rng)
         h_rot = rotateWaveform(quat.copy(), h)
 
-        # Z-rotation → diagonal D-matrix, each mode gets a pure phase.
-        # Verify that |h_rot[i]| == |h[i]| per mode (no mixing).
-        for idx in range(5):
-            np.testing.assert_allclose(
-                np.abs(h_rot[idx]), np.abs(h[idx]), atol=1e-12
-            )
+        # Under this convention a z-axis rotation is diagonal, with the
+        # (ell, m) mode acquiring exp(-i*m*angle).
+        expected = np.empty_like(h)
+        offset = 0
+        for ell in range(2, ell_max + 1):
+            for m in range(-ell, ell + 1):
+                idx = offset + m + ell
+                expected[idx] = h[idx] * np.exp(-1j * m * angle)
+            offset += 2 * ell + 1
 
-        # Verify that the phase ratio h_rot/h is constant across time for each mode.
-        for idx in range(5):
-            ratio = h_rot[idx] / h[idx]
-            np.testing.assert_allclose(
-                ratio, ratio[0] * np.ones(N), atol=1e-12
-            )
+        np.testing.assert_allclose(h_rot, expected, rtol=1e-12, atol=1e-12)
