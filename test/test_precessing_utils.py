@@ -8,7 +8,11 @@ Unit tests for precessing surrogate utility functions:
 import numpy as np
 import pytest
 
-from gwsurrogate.new.precessing_surrogate import normalize_spin, splinterp_many
+from gwsurrogate.new.precessing_surrogate import (
+    normalize_spin,
+    rotate_spin,
+    splinterp_many,
+)
 from gwsurrogate.new.surrogate import _splinterp_Cwrapper, _splinterp_Cwrapper_many
 
 
@@ -20,7 +24,7 @@ RNG = np.random.default_rng(99)
 # ---------------------------------------------------------------------------
 
 def test_normalize_spin_zero_norm_returns_unchanged():
-    """chi_norm == 0 → chi returned unmodified."""
+    """chi_norm == 0 leaves chi unmodified."""
     chi = RNG.standard_normal((10, 3))
     chi_orig = chi.copy()
     normalize_spin(chi, chi_norm=0.0)
@@ -53,7 +57,7 @@ def test_normalize_spin_unit_norm():
 def test_normalize_spin_preserves_direction():
     """normalize_spin only rescales; the direction (unit vector) is unchanged."""
     chi = RNG.standard_normal((12, 3)) + 0.5
-    original_chi = np.copy(chi)
+    original_chi = chi.copy()
     chi_norm = 0.4
     normalize_spin(chi, chi_norm=chi_norm)
     orig_unit = (original_chi.T / np.sqrt(np.sum(original_chi**2, axis=1))).T
@@ -63,12 +67,38 @@ def test_normalize_spin_preserves_direction():
 
 
 def test_normalize_spin_shape_preserved():
-    """Output shape equals input shape."""
+    """In-place normalization preserves the input shape."""
     chi = RNG.standard_normal((8, 3))
-    original_chi = np.copy(chi)
+    original_shape = chi.shape
     normalize_spin(chi, chi_norm=0.5)
-    assert original_chi.shape == chi.shape
+    assert chi.shape == original_shape
 
+
+# ---------------------------------------------------------------------------
+# rotate_spin
+# ---------------------------------------------------------------------------
+
+def test_rotate_spin_cached_trig_matches_uncached_path():
+    """Precomputed sine and cosine values produce the standard rotation."""
+    phase = np.linspace(-np.pi, np.pi, 12)
+    chi = RNG.standard_normal((len(phase), 3))
+
+    expected = rotate_spin(chi, phase)
+    result = rotate_spin(
+        chi, cp=np.cos(phase), sp=np.sin(phase)
+    )
+
+    np.testing.assert_allclose(result, expected, rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("provided", ["cp", "sp"])
+def test_rotate_spin_requires_cached_trig_pair(provided):
+    """Supplying only one cached trigonometric value is an error."""
+    phase = np.linspace(0, 1, 4)
+    kwargs = {provided: np.ones_like(phase)}
+
+    with pytest.raises(ValueError, match="cp and sp must be provided together"):
+        rotate_spin(np.ones((len(phase), 3)), **kwargs)
 
 # ---------------------------------------------------------------------------
 # splinterp_many  (delegates to _splinterp_Cwrapper_many)

@@ -789,9 +789,8 @@ ellMax: The maximum ell mode to evaluate.
         return modes
 
     def _eval_comp(self, data, q, chiA, chiB):
-        # Pre-allocate x once and nodes array.
-        # get_fit_params modifies x in-place, so x[0] must be reset to q
-        # (raw mass ratio) each iteration since it gets overwritten with log(q).
+        # Reuse one raw-parameter buffer across nodes. All seven entries are
+        # overwritten before each fit transformation.
         q_float = float(q)
         x = np.empty(7)
         n_nodes = len(data['nodeIndices'])
@@ -802,7 +801,7 @@ ellMax: The maximum ell mode to evaluate.
             = self._fit_settings
         for idx, (orders, coefs, ni) in enumerate(zip(
                 data['orders'], data['coefs'], data['nodeIndices'])):
-            x[0] = q_float   # reset: get_fit_params overwrites with log(q)
+            x[0] = q_float
             x[1:4] = chiA[ni]
             x[4:7] = chiB[ni]
             fit_params = self._get_fit_params(x)
@@ -822,12 +821,19 @@ ellMax: The maximum ell mode to evaluate.
 ##############################################################################
 # Utility functions
 
-def rotate_spin(chi, phase, cp=None, sp=None):
-    """For transforming spins between the coprecessing and coorbital frames.
-    If cp and sp are provided, they are used directly instead of computing
-    cos(phase) and sin(phase)."""
+def rotate_spin(chi, phase=None, *, cp=None, sp=None):
+    """Transform spins between the coprecessing and coorbital frames.
+
+    Provide exactly one representation of the rotation: either ``phase``, or
+    both ``cp=cos(phase)`` and ``sp=sin(phase)``. Precomputed ``cp`` and ``sp``
+    values can be reused when rotating multiple spin arrays by the same phase.
+    """
+    if (cp is None) != (sp is None):
+        raise ValueError("cp and sp must be provided together")
+    if (phase is None) == (cp is None):
+        raise ValueError("provide either phase or cp and sp, but not both")
     v = chi.T
-    if cp is None:
+    if phase is not None:
         sp = np.sin(phase)
         cp = np.cos(phase)
     res = 1.*v
@@ -838,8 +844,8 @@ def rotate_spin(chi, phase, cp=None, sp=None):
 def coorb_spins_from_copr_spins(chiA_copr, chiB_copr, orbphase):
     sp = np.sin(orbphase)
     cp = np.cos(orbphase)
-    chiA_coorb = rotate_spin(chiA_copr, orbphase, cp=cp, sp=sp)
-    chiB_coorb = rotate_spin(chiB_copr, orbphase, cp=cp, sp=sp)
+    chiA_coorb = rotate_spin(chiA_copr, cp=cp, sp=sp)
+    chiB_coorb = rotate_spin(chiB_copr, cp=cp, sp=sp)
     return chiA_coorb, chiB_coorb
 
 def inertial_waveform_modes(t, orbphase, quat, h_coorb):
@@ -860,6 +866,7 @@ def mode_sum(h_modes, ellMax, theta, phi):
     return np.array(coefs).dot(h_modes)
 
 def normalize_spin(chi, chi_norm):
+    """Rescale writable floating-point spin rows in place."""
     if chi_norm > 0.:
         chi *= chi_norm / np.linalg.norm(chi, axis=1, keepdims=True)
 
