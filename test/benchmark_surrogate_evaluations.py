@@ -86,7 +86,7 @@ HYBRID_CONFIG = {
     },
 }
 
-PRECESSING_MODELS = ["NRSur7dq4", "SEOBNRv4PHMSur"]
+PRECESSING_MODELS = ["NRSur7dq4", "NRSur7dq4v2", "SEOBNRv4PHMSur"]
 HYBRID_MODELS = ["NRHybSur3dq8", "NRHybSur2dq15", "NRHybSur3dq8_CCE"]
 
 MODEL_CONFIGS: dict[str, dict[str, Any]] = {
