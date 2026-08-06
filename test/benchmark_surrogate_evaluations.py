@@ -68,7 +68,7 @@ PRECESSING_CONFIG = {
     "mks": {
         "dt": [1.0 / 4096.0, 1.0 / 8192.0],
         "f_low": [0, 20],
-        "extra_kwargs": {"f_ref": 20, "ellMax": None, "M": 70, "dist_mpc": 100, "units": "mks"},
+        "extra_kwargs": {"f_ref": 20, "ellMax": 4, "M": 70, "dist_mpc": 100, "units": "mks"},
     },
 }
 
