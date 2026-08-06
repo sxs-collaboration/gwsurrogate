@@ -24,6 +24,15 @@ Note: --compare-ref is the git ref that gets checked out for comparison.
 They can be the same for a local branch, but often differ for refs like
 FETCH_HEAD, origin/testing, or pull-request refs.
 
+When benchmarking a comparison ref (e.g. coming from a PR), this runner creates a temporary worktree
+for that ref. If the worktree contains a compatible copy of this benchmark
+script, the comparison run uses that ref-side script; otherwise it falls back
+to the script from the current checkout. This lets PRs add model-specific
+benchmark configuration, such as a new ENABLED_MODELS entry, while still
+allowing older refs to be compared when they do not have this script yet.
+If a model exists only in one run, the reports show that model with blank
+timing cells for refs that cannot evaluate it.
+
 Add another model by adding its input parameters to MODEL_CONFIGS and adding
 its name to ENABLED_MODELS.
 """
@@ -413,6 +422,11 @@ def run_single_benchmark(args: argparse.Namespace, repo_root: Path) -> dict[str,
             "profile": True,
             "profile_limit": args.profile_limit,
         },
+        "script_source": {
+            "kind": args.script_source_kind,
+            "ref": args.script_source_ref,
+            "path": args.script_source_path,
+        },
         "context": collect_context(repo_root),
         "results": results,
     }
@@ -459,8 +473,17 @@ def case_timing(result: dict[str, Any] | None) -> dict[str, Any]:
 def cases_for_model(run: dict[str, Any], model: str) -> list[dict[str, Any]]:
     """Return the benchmark cases associated with model in a run."""
     if "cases_by_model" in run:
-        return run["cases_by_model"][model]
+        return run["cases_by_model"].get(model, [])
     return run.get("cases", [])
+
+
+def cases_for_model_across_runs(runs: list[dict[str, Any]], model: str) -> list[dict[str, Any]]:
+    """Return cases for a model from the first run that includes them."""
+    for run in runs:
+        cases = cases_for_model(run, model)
+        if cases:
+            return cases
+    return []
 
 
 def case_dt_label(case: dict[str, Any]) -> str:
@@ -489,7 +512,16 @@ def format_speedup(baseline: float | None, comparison: float | None) -> str:
 def model_parameter_label(model: str, benchmark: dict[str, Any]) -> str:
     """Return a concise label describing the configured model parameters."""
     runs = benchmark.get("runs", [benchmark])
-    config = runs[0].get("model_configs", {}).get(model, model_config(model))
+    config = None
+    for run in runs:
+        config = run.get("model_configs", {}).get(model)
+        if config:
+            break
+    if config is None:
+        try:
+            config = model_config(model)
+        except ValueError:
+            return f"{model}: parameters unavailable"
     params = config.get("params", config)
     mks_kwargs = config.get("mks", {}).get("extra_kwargs", {})
     ell_max = mks_kwargs.get("ellMax")
@@ -510,7 +542,7 @@ def png_table_data(benchmark: dict[str, Any]) -> list[list[str]]:
 
     for model in models:
         rows.append([model_parameter_label(model, benchmark), *[""] * (column_count - 1)])
-        cases = cases_for_model(runs[0], model)
+        cases = cases_for_model_across_runs(runs, model)
         for case in cases:
             row = [model, case["group"], case_dt_label(case), case_f_low_label(case)]
             run_timings = [
@@ -815,7 +847,7 @@ def html_model_table(benchmark: dict[str, Any], model: str) -> str:
     """Render the HTML timing table for one model."""
     runs = benchmark.get("runs", [benchmark])
     run_lookups = [result_lookup(run) for run in runs]
-    cases = cases_for_model(runs[0], model)
+    cases = cases_for_model_across_runs(runs, model)
     parameter_label = model_parameter_label(model, benchmark)
     header_top = ["<th rowspan=\"2\">units</th>", "<th rowspan=\"2\">dt</th>", "<th rowspan=\"2\">f_low</th>"]
     header_bottom = []
@@ -944,6 +976,37 @@ def html_appendix(benchmark: dict[str, Any]) -> str:
     """
 
 
+def html_script_sources(benchmark: dict[str, Any]) -> str:
+    """Render the benchmark-script source metadata for each run."""
+    runs = benchmark.get("runs", [benchmark])
+    rows = []
+    for run in runs:
+        source = run.get("script_source", {})
+        kind = source.get("kind", "current checkout")
+        ref = source.get("ref") or run.get("label", "unknown")
+        path = source.get("path", "test/benchmark_surrogate_evaluations.py")
+        rows.append(
+            "<tr>"
+            f"<th>{escape_html(run['label'])}</th>"
+            f"<td>{escape_html(kind)}</td>"
+            f"<td>{escape_html(ref)}</td>"
+            f"<td><code>{escape_html(path)}</code></td>"
+            "</tr>"
+        )
+    return f"""
+      <div class="notice script-source">
+        <strong>Benchmark script sources</strong>
+        <p>The table below shows which checkout supplied the benchmark script for each run.</p>
+        <table class="notice-table">
+          <thead>
+            <tr><th>run</th><th>script source</th><th>ref</th><th>path</th></tr>
+          </thead>
+          <tbody>{''.join(rows)}</tbody>
+        </table>
+      </div>
+    """
+
+
 def write_html_dashboard(path: Path, benchmark: dict[str, Any]) -> None:
     """Write a self-contained static HTML benchmark dashboard."""
     runs = benchmark.get("runs", [benchmark])
@@ -964,8 +1027,11 @@ def write_html_dashboard(path: Path, benchmark: dict[str, Any]) -> None:
       .notices { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-bottom: 18px; }
       .notice { border: 2px solid #d6a500; background: #fff8d6; border-radius: 8px; padding: 14px 16px; }
       .notice.hardware { border-color: #d9534f; background: #fff1f1; }
+      .notice.script-source { border-color: #78a3c9; background: #edf6ff; }
       .notice strong { display: block; margin-bottom: 6px; }
       .notice p { margin: 6px 0 0; }
+      .notice-table { margin-top: 10px; font-size: 13px; }
+      .notice-table th, .notice-table td { background: rgba(255,255,255,.45); padding: 6px 8px; }
       .warning-text { color: #b42318; font-weight: 700; }
       .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
       .metric { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: white; }
@@ -1022,6 +1088,7 @@ def write_html_dashboard(path: Path, benchmark: dict[str, Any]) -> None:
         <p>Speedup is computed from best times as <code>baseline best time / comparison best time</code>.</p>
         <p>Values above <code>1x</code> mean the comparison run is faster than the baseline.</p>
       </div>
+      {html_script_sources(benchmark)}
     </section>
     <section class="grid">
       <div class="panel"><h3>Benchmark Settings</h3><p class="small">repeat={escape_html(settings.get('repeat', 'unknown'))}, number={escape_html(settings.get('number', 'unknown'))}, profile_limit={escape_html(settings.get('profile_limit', 'unknown'))}</p></div>
@@ -1085,6 +1152,15 @@ def write_png_table(path: Path, benchmark: dict[str, Any]) -> None:
     plt.close(fig)
 
 
+def compatible_benchmark_script(script_path: Path) -> bool:
+    """Return whether a benchmark script supports this runner's hidden CLI."""
+    if not script_path.exists():
+        return False
+    text = script_path.read_text(encoding="utf-8")
+    required_flags = ["--single-run", "--repo-root", "--json-output", "--html-output"]
+    return all(flag in text for flag in required_flags)
+
+
 def run_subprocess_for_ref(
     script_path: Path,
     repo_root: Path,
@@ -1104,12 +1180,24 @@ def run_subprocess_for_ref(
     symlink_surrogate_downloads(repo_root, worktree)
     build_runtime_artifacts(worktree)
     try:
+        try:
+            relative_script_path = script_path.relative_to(repo_root)
+        except ValueError:
+            relative_script_path = Path("test") / "benchmark_surrogate_evaluations.py"
+        ref_script_path = worktree / relative_script_path
+        command_script_path = ref_script_path if compatible_benchmark_script(ref_script_path) else script_path
+        if command_script_path == ref_script_path:
+            script_source_kind = "comparison ref worktree"
+            script_source_path = str(relative_script_path)
+        else:
+            script_source_kind = "current checkout fallback"
+            script_source_path = str(script_path)
         json_path = temp_root / f"{label.replace('/', '_')}.json"
         md_path = temp_root / f"{label.replace('/', '_')}.md"
         png_path = temp_root / f"{label.replace('/', '_')}.png"
         command = [
             sys.executable,
-            str(script_path),
+            str(command_script_path),
             "--single-run",
             "--repo-root",
             str(worktree),
@@ -1123,6 +1211,12 @@ def run_subprocess_for_ref(
             str(png_path),
             "--html-output",
             str(temp_root / f"{label.replace('/', '_')}.html"),
+            "--script-source-kind",
+            script_source_kind,
+            "--script-source-ref",
+            label,
+            "--script-source-path",
+            script_source_path,
             "--repeat",
             str(args.repeat),
             "--number",
@@ -1170,6 +1264,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--html-output", type=Path, default=Path("test/benchmark_surrogate_evaluations.html"))
     parser.add_argument("--single-run", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--repo-root", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--script-source-kind", help=argparse.SUPPRESS)
+    parser.add_argument("--script-source-ref", help=argparse.SUPPRESS)
+    parser.add_argument("--script-source-path", help=argparse.SUPPRESS)
     parser.add_argument("--compare-ref", action="append", default=[], help="Git ref to benchmark in a temporary worktree.")
     parser.add_argument("--compare-label", action="append", default=[], help="Label for the matching --compare-ref.")
     parser.add_argument(
@@ -1191,6 +1288,15 @@ def main() -> int:
     if not args.run_label:
         branch = git_value(["branch", "--show-current"], repo_root)
         args.run_label = branch if branch != "unknown" else "current"
+    if not args.script_source_kind:
+        args.script_source_kind = "current checkout"
+    if not args.script_source_ref:
+        args.script_source_ref = args.run_label
+    if not args.script_source_path:
+        try:
+            args.script_source_path = str(script_path.relative_to(repo_root))
+        except ValueError:
+            args.script_source_path = str(script_path)
 
     if args.single_run:
         run = run_single_benchmark(args, repo_root)
