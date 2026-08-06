@@ -93,7 +93,10 @@ The benchmark can also be run directly on an HPC system. The exact module and co
    python test/benchmark_surrogate_evaluations.py \
      --fetch-ref pull/70/head \
      --compare-ref FETCH_HEAD \
-     --compare-label pr-70
+     --compare-label pr-70 \
+     --md-output "$PWD/benchmark_surrogate_evaluations.md" \
+     --png-output "$PWD/benchmark_surrogate_evaluations.png" \
+     --html-output "$PWD/benchmark_surrogate_evaluations.html"
    ```
 
 8. Inspect the generated output files on the HPC filesystem:
