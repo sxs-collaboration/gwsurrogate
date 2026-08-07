@@ -706,6 +706,89 @@ def _extract_component_data(h5_group, basis_tol=None, verbose=True):
                       for i in range(len(data['nodeIndices']))]
     return data
 
+
+def _validate_and_resolve_basis_size_opts(h5file, basis_size_opts):
+    """Resolve a named preset and validate requested component basis sizes."""
+    # None requests the complete, unmodified bases for every datapiece.
+    if basis_size_opts is None:
+        return {}, True
+
+    # Resolve preset names before applying the same validation used for a
+    # user-supplied dictionary.
+    if isinstance(basis_size_opts, str):
+        presets = {
+            name: value for name, value in vars(_basis_presets).items()
+            if not name.startswith("_") and isinstance(value, dict)
+        }
+        # Fail early when a user mistypes a preset name.
+        if basis_size_opts not in presets:
+            raise ValueError(
+                "Unknown basis_size_opts preset %r. Available presets: %s"
+                % (basis_size_opts, sorted(presets))
+            )
+        resolved_opts = presets[basis_size_opts]
+        print("Using basis size preset: %s" % basis_size_opts)
+        verbose = False
+    # Explicit dictionaries allow individual datapieces to be restricted.
+    elif isinstance(basis_size_opts, dict):
+        resolved_opts = basis_size_opts
+        verbose = True
+    # Reject other containers here so they do not fail later with obscure
+    # attribute or indexing errors.
+    else:
+        raise TypeError(
+            "basis_size_opts must be None, a preset-name string, or a "
+            "dictionary of datapiece basis sizes"
+        )
+
+    available_sizes = {}
+    for group_name in h5file.keys():
+        group = h5file[group_name]
+        # Only coorbital subdomain groups with empirical nodes correspond to
+        # supported basis-size dictionary entries.
+        if (group_name.startswith("hCoorb_")
+                and "_subdomain_" in group_name
+                and isinstance(group, h5py.Group)
+                and "nodeIndices" in group):
+            datapiece_name = group_name[len("hCoorb_"):].replace(
+                "_subdomain_", "_sd_"
+            )
+            available_sizes[datapiece_name] = len(group["nodeIndices"])
+
+    # Catch misspelled datapiece names instead of silently leaving them at
+    # their full basis sizes.
+    unknown_keys = [
+        key for key in resolved_opts if key not in available_sizes
+    ]
+    if unknown_keys:
+        raise ValueError(
+            "Unknown basis_size_opts datapiece key(s): %s"
+            % ", ".join(sorted(repr(key) for key in unknown_keys))
+        )
+
+    validated_opts = {}
+    for datapiece_name, basis_size in resolved_opts.items():
+        # Slices require integer counts; booleans are integers in Python but
+        # are not meaningful basis sizes.
+        if (isinstance(basis_size, (bool, np.bool_))
+                or not isinstance(basis_size, (int, np.integer))):
+            raise TypeError(
+                "Basis size for %r must be an integer; got %r"
+                % (datapiece_name, basis_size)
+            )
+
+        full_basis_size = available_sizes[datapiece_name]
+        # Non-positive sizes can create empty or unintended slices, while an
+        # oversized request has no corresponding basis functions.
+        if not 1 <= basis_size <= full_basis_size:
+            raise ValueError(
+                "Basis size for %r must be between 1 and %d; got %d"
+                % (datapiece_name, full_basis_size, basis_size)
+            )
+        validated_opts[datapiece_name] = int(basis_size)
+
+    return validated_opts, verbose
+
 def _assemble_mode_pair(rep, rem, imp, imm):
     # hplus = rep + 1j*imp, hminus = rem + 1j*imm
     # return (hplus - hminus).conj(), hplus + hminus
@@ -889,15 +972,9 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
         The reason this truncation defines a nested surrogate, and its expected
         accuracy--cost tradeoff, are described in arXiv:XXXX.XXXXX.
         """
-        if isinstance(basis_tol_opts, str):
-            try:
-                print("Using basis size preset: %s"%(basis_tol_opts))
-                basis_tol_opts = getattr(_basis_presets, basis_tol_opts)
-                verbose = False
-            except AttributeError:
-                raise Exception("Got basis_tol_opts = %s, which is not a valid preset. Got the following presets: %s"%(basis_tol_opts, [attr for attr in dir(_basis_presets) if not attr.startswith("_")])) 
-        else:
-            verbose = True
+        basis_tol_opts, verbose = _validate_and_resolve_basis_size_opts(
+            h5file, basis_tol_opts
+        )
 
         self._get_fit_params = get_fit_params
         self._get_fit_settings = get_fit_settings
