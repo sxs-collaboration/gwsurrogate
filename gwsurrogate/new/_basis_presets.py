@@ -1,3 +1,11 @@
+"""Basis-size presets for ``NRSur7dq4v2``.
+
+``Fast`` is the preset called ``NRSur7dq4v2_Fast`` arXiv:XXXX.XXXXX. 
+The paper describes the basis-truncation method and validates the
+preset's accuracy--evaluation-cost tradeoff. These sizes
+apply to the NRSur7dq4v2 model's hdf5 file. 
+"""
+
 Fast = {
     # Subdomain 0
 "2_0_imag_sd_0": 25,
