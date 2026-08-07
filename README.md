@@ -132,6 +132,9 @@ notebooks.
 - [NRSur7dq4](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRSur7dq4.ipynb):
   For generically precessing BBHs, trained on mass ratios q≤4. Paper:
   [arxiv:1905.09300](https://arxiv.org/abs/1905.09300).
+- [NRSur7dq4v2](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRSur7dq4v2.ipynb):
+  A multi-domain extension of NRSur7dq4 with improved merger-ringdown accuracy
+  and modes through ell=5. Paper: arXiv:XXXX.XXXXX.
 - [NRHybSur3dq8](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRHybSur3dq8.ipynb):
   For nonprecessing BBHs, trained on mass ratios q≤8. Paper:
   [arxiv:1812.07865](https://arxiv.org/abs/1812.07865).

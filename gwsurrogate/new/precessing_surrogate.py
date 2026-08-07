@@ -856,7 +856,11 @@ ellMax: The maximum ell mode to evaluate.
 
 class DomainDecomposedCoorbitalWaveformSurrogate:
     """This surrogate models the waveform in the coorbital frame with a two
-    subdomains in time"""
+-    subdomains in time.
+
+    The inspiral and ringdown data pieces are modeled independently and joined
+    with smooth, precomputed blending masks. See arXiv:XXXX.XXXXX.
+    """
 
     def __init__(self, h5file, get_fit_params, get_fit_settings, basis_tol_opts=None):
         """h5file is a h5py.File containing the surrogate data
@@ -868,7 +872,8 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
         get_fit_settings is a function that provides information about
         model-specific surrogate fits
         
-        basis_tol_opts is a dictionary of basis tolerances to be used to construct the coorbital surrogate.
+        basis_tol_opts is either a dictionary of basis sizes or the name of a
+        preset in gwsurrogate.new._basis_presets.
         The format of the dictionary is {
                                   'datapiece_name': basis_size,
                                   ...
@@ -881,6 +886,8 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
         where ell, m are the harmonic mode indices, reim is either 'Re' or 'Im', pm is either '+' or '-', and subdomain is either '0' or '1'.
         The basis_size is an integer specifying the number of basis elements to be used for that datapiece. 
         For an example of such a dictionary, see gwsurrogate.new._basis_presets.py.
+        The reason this truncation defines a nested surrogate, and its expected
+        accuracy--cost tradeoff, are described in arXiv:XXXX.XXXXX.
         """
         if isinstance(basis_tol_opts, str):
             try:
@@ -901,6 +908,9 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
             self.ellMax += 1
 
         self.t = h5file['t_coorb'][()]
+        # Shape (2, len(self.t)): row 0 blends the inspiral contribution and
+        # row 1 the ringdown contribution. Together they form a smooth
+        # partition of unity across the overlap region.
         self.masks = h5file['masks'][()]
 
         self.data = {}
@@ -948,6 +958,10 @@ ellMax: The maximum ell mode to evaluate.
         """
         nmodes = ellMax*ellMax + 2*ellMax - 3
         modes = 1.j*np.zeros((nmodes, len(self.t)))
+
+        # Each subdomain surrogate is evaluated independently below. The two
+        # stored masks smoothly blend their outputs across the overlap region
+        # into one full waveform; see the multi-domain construction in arXiv:XXXX.XXXXX
 
         for ell in range(2, ellMax+1):
 
@@ -1100,7 +1114,8 @@ get_fit_settings: A function that provides information about
 ellMax_model: The maximum ell mode supported by the surrogate model
 omega_ref_max_model: The maximium allowable reference dimensionless
                      orbital angular frequency supported by the surrogate model
-basis_tol_opts: A dictionary of basis tolerances to be used to construct the coorbital surrogate. 
+basis_tol_opts: Basis sizes or a named preset used to construct the coorbital
+                surrogate.
                     The dictionary format is as specified in the docstring of surrogate.LoadSurrogate.
                     The dictionary keys must be those specified in the __init__() method of the coorbital surrogate.
                     See the docstring of DomainDecomposedCoorbitalWaveformSurrogate for the dictionary key format of NRSur7dq4v2.
@@ -1221,6 +1236,10 @@ Arguments:
                 return_dynamics:
                     Return the frame dynamics and spin evolution along with
                     the waveform. Default: False.
+                debug_work_stats:
+                    Print the number of evaluated coorbital data pieces and
+                    scalar-fit nodes. Intended for performance diagnostics.
+                    Default: False.
                 Example: precessing_opts = {
                                     'init_orbphase': 0,
                                     'init_quat': [1,0,0,0],
