@@ -323,7 +323,7 @@ def pull(surr_name,sdir=download_path()):
     # download the surrogate
     os.makedirs(sdir, exist_ok=True) # Ensure the target directory exists (mimicking wget's --directory-prefix functionality)
     filename = surr_url.split("/")[-1]
-    if "NRSur7dq4v2.h5" in filename:
+    if "NRSur7dq4v2.h5" in filename: # TODO: Remove this if when surrogate file moved to Zenodo
       filename = "NRSur7dq4v2.h5"
     output_path = os.path.join(sdir, filename)
     with requests.get(surr_url, stream=True) as r, open(output_path, "wb") as f:
