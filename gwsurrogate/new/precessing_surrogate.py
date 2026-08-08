@@ -940,13 +940,16 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
                                   'datapiece_name': basis_size,
                                   ...
                                 }.
+        Each value is the number of basis elements retained for that datapiece.
+        Datapieces omitted from the dictionary retain their complete bases.
+        Datapiece names and requested sizes are validated against the loaded
+        HDF5 file before the surrogate data are constructed.
         Here, 'datapiece_name' is the name of the datapiece whose basis size is to be restricted.
         It can be one of the following formats:
         - For m=0 modes: '%s_0_%s_sd_%s'%(ell, reim, subdomain), 
         where ell is the ell mode index, reim is either 'real' or 'imag', and subdomain is either '0' or '1'.
         - For m!=0 modes: '%s_%s_%s%s_sd_%s'%(ell, m, reim, pm, subdomain), 
         where ell, m are the harmonic mode indices, reim is either 'Re' or 'Im', pm is either '+' or '-', and subdomain is either '0' or '1'.
-        The basis_size is an integer specifying the number of basis elements to be used for that datapiece. 
         For an example of such a dictionary, see gwsurrogate.new._basis_presets.py.
         The reason this truncation defines a nested surrogate, and its expected
         accuracy--cost tradeoff, are described in arXiv:XXXX.XXXXX.

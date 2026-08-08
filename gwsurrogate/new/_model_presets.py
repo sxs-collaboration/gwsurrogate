@@ -1,4 +1,10 @@
-"""Model-scoped presets for controlling evaluation cost and accuracy."""
+"""Model-scoped presets for controlling evaluation cost and accuracy.
+
+The registry uses ``MODEL_PRESETS[model_name][preset_name]`` to select a set of
+preset options. For NRSur7dq4v2, those options map datapiece names to the number
+of basis elements retained. Other models may add their own preset names and
+model-specific complexity options in the future.
+"""
 
 import copy
 from gwsurrogate.new import _basis_presets

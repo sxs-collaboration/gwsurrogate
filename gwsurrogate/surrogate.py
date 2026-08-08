@@ -2532,6 +2532,16 @@ q \in [1, 4] and |chi1|/|chi2| \in [-0.8, 0.8]. Its ability to extrapolate
 into the above range is essentially identical to that of NRSur7dq4. See
 arXiv:XXXX.XXXXX for extrapolation tests and limitations.
 
+NRSur7dq4v2 supports basis-size model presets, which retain fewer basis
+elements for selected coorbital datapieces to reduce evaluation cost at the
+expense of some accuracy. The packaged ``"Fast"`` preset provides the tested
+accuracy--cost tradeoff described in arXiv:XXXX.XXXXX. Advanced users can
+inspect the preset definitions in
+``gwsurrogate.new._model_presets.MODEL_PRESETS`` and see
+``tutorial/website/NRSur7dq4v2.ipynb`` for custom-preset guidance. See the
+paper for details of the basis construction, truncation method, and accuracy
+studies.
+
 See the __call__ method on how to evaluate waveforms.
     """
     def __init__(self, h5filename, basis_tol_opts=None):
@@ -2854,10 +2864,6 @@ SURROGATE_CLASSES = {
 #    "SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5":EvaluateSurrogate # model SpEC_q1_10_NoSpin
         }
 
-SURROGATES_WITH_BASIS_SIZE_OPTS = [
-   "NRSur7dq4v2",
-   ]
-
 # TODO: would this be better off as a function as opposed to a class?
 class LoadSurrogate(object):
     """
@@ -2867,7 +2873,7 @@ class LoadSurrogate(object):
     """
 
     #NOTE: __init__ is never called for LoadSurrogate
-    def __new__(self, surrogate_name, surrogate_name_spliced=None, basis_size_opts=None, model_preset=None):
+    def __new__(self, surrogate_name, surrogate_name_spliced=None, model_preset=None):
         """ Returns a SurrogateEvaluator derived object based on name.
 
         INPUT
@@ -2895,29 +2901,15 @@ class LoadSurrogate(object):
                                 surrogate name and (ii) the model name (e.g.
                                 NRHybSur3dq8Tidal) as SURROGATE_NAME_SPLICED.
                                 
-        BASIS_SIZE_OPTS: A dictionary of basis sizes to be used in the coorbital
-                                frame surrogate, or None.
-                                If None, the full basis of each datapiece is used.
-                                The dictionary should have the following format:
-                                {
-                                  'datapiece_name': basis_size,
-                                  ...
-                                }
-                                where each key names a datapiece and each value is the
-                                desired number of basis elements to retain for the specified datapiece.
-                                Datapieces omitted from the dictionary retain
-                                their full basis size.
-                                This is currently only used for the NRSur7dq4v2 surrogate,
-                                which is a domain-decomposed modification of NRSur7dq4.
-                                See the basis_tol_opts description in the docstring of
-                                gwsurrogate.new.precessing_surrogate.DomainDecomposedCoorbitalWaveformSurrogate
-                                for the supported datapiece name formats.
-
         MODEL_PRESET:           The name of a model-specific preset, or None.
                                 Presets may control basis sizes or other
-                                model-complexity options. ``"Fast"`` selects
-                                the ``NRSur7dq4v2_Fast`` preset for
-                                NRSur7dq4v2, as described in arXiv:XXXX.XXXXX.
+                                model-complexity options. Consult the selected
+                                model's class docstring for its supported
+                                preset names and their behavior. For
+                                NRSur7dq4v2, ``"Fast"`` selects the tested
+                                basis-size reduction that trades a small
+                                amount of accuracy for faster evaluation, as
+                                described in arXiv:XXXX.XXXXX.
                                 """
 
         # the "output" of this if-block is surrogate_h5file and surrogate_name
@@ -2953,21 +2945,14 @@ class LoadSurrogate(object):
                     print("Surrogate data not found for %s. Downloading now."%surrogate_name)
                     catalog.pull(surrogate_name)
         
-        if model_preset is not None and basis_size_opts is not None:
-            raise ValueError("Provide either model_preset or basis_size_opts, not both")
-
         if model_preset is not None:
-            basis_size_opts = _model_presets.resolve_model_preset(surrogate_name, model_preset)
+            preset_opts = _model_presets.resolve_model_preset(surrogate_name, model_preset)
             print("Using model preset: %s" % model_preset)
-
-        if basis_size_opts is not None and surrogate_name not in SURROGATES_WITH_BASIS_SIZE_OPTS:
-            raise ValueError("basis_size_opts is only used for surrogates in SURROGATES_WITH_BASIS_SIZE_OPTS," \
-                             " but %s is not in this list"%surrogate_name)
 
         if surrogate_name not in SURROGATE_CLASSES.keys():
             raise Exception('Invalid surrogate : %s'%surrogate_name)
         else:
-            if basis_size_opts is not None:
-                return SURROGATE_CLASSES[surrogate_name](surrogate_h5file, basis_tol_opts=basis_size_opts)
+            if model_preset is not None:
+                return SURROGATE_CLASSES[surrogate_name](surrogate_h5file, basis_tol_opts=preset_opts)
             else:
                 return SURROGATE_CLASSES[surrogate_name](surrogate_h5file)
