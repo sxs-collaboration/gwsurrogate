@@ -29,18 +29,6 @@ gwsurrogate requires:
 will automatically get gwtools. If you are installing gwsurrogate from
 source, please see https://bitbucket.org/chadgalley/gwtools/
 
-2) gsl. For speed, the long (hybrid) surrogates use gsl's spline function.
-To build gwsurrogate you must have gsl installed. Fortunately, this is a
-common library and can be easily installed with a package manager.
-
-Note that at runtime (ie when you do import gwsurrogate) you may need to let
-gsl know where your BLAS library is installed. This can be done by setting
-your LD_PRELOAD or LD_LIBRARY_PATH environment variables. A relevant example:
-
-```
->>> export LD_PRELOAD=~/anaconda3/envs/python27/lib/libgslcblas.so
-```
-
 ## From pip ##
 
 The python package pip supports installing from PyPI (the Python Package
@@ -52,9 +40,7 @@ Index). gwsurrogate can be installed to the standard location
 ```
 
 If there is no binary/wheel package already available for your operating system, the installer will
-try to build the package from the sources. For that, you would need to have `gsl` installed already.
-The installer will look for `GSL` inside `/opt/local/`. You may provide additional paths with the
-`CPPFLAGS` and `LDFLAGS` environment variables. 
+try to build the package from the sources.
 
 In the case of an `homebrew` installation, you may install the package like this:
 

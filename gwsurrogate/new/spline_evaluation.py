@@ -2,7 +2,7 @@
 Tensor spline evaluation code.
 The intended use case is when we have very many different splines which
 all have the same domain (breakpoints). Careful usage of numpy keeps the
-added computational cost of using python vs. (for example) C with gsl
+added computational cost of using python vs. (for example) C
 minimal when evaluating all splines simultaneously at the same parameter
 value.
 """

@@ -41,7 +41,6 @@ full surrogate uses dynamics output.
     (i) NRHybSur3dq8_CCE
             sklearn 1.2.2
             numpy   1.24.3
-            GSL     2.4
             python  3.11
 """
 
@@ -93,7 +92,7 @@ mode_scale_fraction_default = 1.e-7
 # Model-specific tolerances are needed because some models show larger
 # cross-platform numerical differences, especially post-merger. The regression
 # data is stored in single precision, and the largest discrepancies have tended
-# to affect models that use GPR fits and/or GSL calls.
+# to affect models that use GPR fits and/or calls to spline interpolation in C.
 rtol_default = 1.e-11
 mode_atol_floors = {}
 mode_scale_fractions = {'NRHybSur2dq15': 1.5e-7,
@@ -518,7 +517,7 @@ def test_model_regression(generate_regression_data=False):
         t_indx = fp[model+"/parameter%i/time"%i][:].shape[0]  # use all time points
 
         # model-specific tolerances. This is needed because certain models
-        # have dependencies (e.g. GSL or sklearn) that will break our tests!
+        # have dependencies (e.g. sklearn) that will break our tests!
         mode_atol_floor = mode_atol_floors.get(model, mode_atol_floor_default)
         mode_scale_fraction = mode_scale_fractions.get(model, mode_scale_fraction_default)
         local_rtol = rtols.get(model, rtol_default)
