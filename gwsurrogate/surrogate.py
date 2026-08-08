@@ -2953,6 +2953,7 @@ class LoadSurrogate(object):
             raise Exception('Invalid surrogate : %s'%surrogate_name)
         else:
             if model_preset is not None:
+                # currently the only model-preset is the one that controls basis sizes for NRSur7dq4v2
                 return SURROGATE_CLASSES[surrogate_name](surrogate_h5file, basis_tol_opts=preset_opts)
             else:
                 return SURROGATE_CLASSES[surrogate_name](surrogate_h5file)
