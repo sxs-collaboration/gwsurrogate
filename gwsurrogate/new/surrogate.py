@@ -89,7 +89,7 @@ def _splinterp_Cwrapper_many_complex(xout, xin, yin):
     return spline_interp_Cwrapper.interpolate_many_complex(xout, xin, yin)
 
 def _splinterp_Cwrapper(xout, xin, yin):
-    """Uses gsl splines with a wrapper to interpolate real or complex data.
+    """Uses splines with a wrapper to interpolate real or complex data.
     Uses natural boundary conditions instead of not-a-knot boundary conditions
     like InterpolatedUnivariateSpline."""
     if len(xin) != len(yin):
@@ -480,8 +480,7 @@ class FastTensorSplineSurrogate(SimpleH5Object):
     each mode to keep numpy busy. Obtained ~25ms evaluation time per waveform
     for 12 waveform modes. This was ~66ms when using the python class
     hierarchy, and using a separate call to numpy for each tensor spline
-    interpolation. Note that similar C code written with gsl splines takes
-    ~50ms, but should have room for optimization.
+    interpolation.
     """
 
     def __init__(self, name=None, domain=None, param_space=None,

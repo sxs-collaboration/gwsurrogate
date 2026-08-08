@@ -67,7 +67,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get -yq install gcc libgsl-dev
+          sudo apt-get -yq install gcc
 
       - name: Cache surrogate downloads
         uses: actions/cache@v4
@@ -89,8 +89,6 @@ jobs:
         run: |
           python --version
           python -m pip list
-          echo "GSL version..."
-          gsl-config --version
 
       - name: Run benchmark
         env:

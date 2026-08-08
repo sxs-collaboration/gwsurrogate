@@ -31,7 +31,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 pytest wheel requests
         sudo apt-get -yq install gcc
-        sudo apt-get -yq install libgsl-dev
 #    - name: Lint with flake8
 #      run: |
 #        # stop the build if there are Python syntax errors or undefined names
@@ -45,8 +44,6 @@ jobs:
         cd gwsurrogate
         pwd
         pip list
-        echo "GSL version..."
-        gsl-config --version
         python test/download_regression_models.py
         pytest -v -s -k package_versions
         pytest

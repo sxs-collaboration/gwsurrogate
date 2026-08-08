@@ -1,4 +1,4 @@
-# A python wrapper for GSL cubic spline interpolation in C.
+# A python wrapper for cubic spline interpolation in C.
 
 This extension should be built from the gwsurrogate-level setup.py
 script. However, if you wish to do it locally, then
