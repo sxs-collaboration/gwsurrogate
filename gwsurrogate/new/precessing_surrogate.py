@@ -14,7 +14,6 @@ import h5py
 from gwsurrogate.precessing_utils import _utils
 from gwtools.harmonics import sYlm
 from gwsurrogate.new.surrogate import _splinterp_Cwrapper, _splinterp_Cwrapper_many
-from gwsurrogate.new import _basis_presets
 
 
 ###############################################################################
@@ -707,39 +706,19 @@ def _extract_component_data(h5_group, basis_tol=None, verbose=True):
     return data
 
 
-def _validate_and_resolve_basis_size_opts(h5file, basis_size_opts):
-    """Resolve a named preset and validate requested component basis sizes."""
+def _validate_basis_size_opts(h5file, basis_size_opts):
+    """Validate requested component basis sizes against a model file."""
     # None requests the complete, unmodified bases for every datapiece.
     if basis_size_opts is None:
-        return {}, True
+        return {}
 
-    # Resolve preset names before applying the same validation used for a
-    # user-supplied dictionary.
-    if isinstance(basis_size_opts, str):
-        presets = {
-            name: value for name, value in vars(_basis_presets).items()
-            if not name.startswith("_") and isinstance(value, dict)
-        }
-        # Fail early when a user mistypes a preset name.
-        if basis_size_opts not in presets:
-            raise ValueError(
-                "Unknown basis_size_opts preset %r. Available presets: %s"
-                % (basis_size_opts, sorted(presets))
-            )
-        resolved_opts = presets[basis_size_opts]
-        print("Using basis size preset: %s" % basis_size_opts)
-        verbose = False
     # Explicit dictionaries allow individual datapieces to be restricted.
-    elif isinstance(basis_size_opts, dict):
+    if isinstance(basis_size_opts, dict):
         resolved_opts = basis_size_opts
-        verbose = True
     # Reject other containers here so they do not fail later with obscure
     # attribute or indexing errors.
     else:
-        raise TypeError(
-            "basis_size_opts must be None, a preset-name string, or a "
-            "dictionary of datapiece basis sizes"
-        )
+        raise TypeError("basis_size_opts must be None or a dictionary of datapiece basis sizes")
 
     available_sizes = {}
     for group_name in h5file.keys():
@@ -787,7 +766,7 @@ def _validate_and_resolve_basis_size_opts(h5file, basis_size_opts):
             )
         validated_opts[datapiece_name] = int(basis_size)
 
-    return validated_opts, verbose
+    return validated_opts
 
 def _assemble_mode_pair(rep, rem, imp, imm):
     # hplus = rep + 1j*imp, hminus = rem + 1j*imm
@@ -955,8 +934,8 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
         get_fit_settings is a function that provides information about
         model-specific surrogate fits
         
-        basis_tol_opts is either a dictionary of basis sizes or the name of a
-        preset in gwsurrogate.new._basis_presets.
+        basis_tol_opts is a dictionary of basis sizes. Named model presets are
+        resolved by surrogate.LoadSurrogate before reaching this class.
         The format of the dictionary is {
                                   'datapiece_name': basis_size,
                                   ...
@@ -972,9 +951,11 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
         The reason this truncation defines a nested surrogate, and its expected
         accuracy--cost tradeoff, are described in arXiv:XXXX.XXXXX.
         """
-        basis_tol_opts, verbose = _validate_and_resolve_basis_size_opts(
-            h5file, basis_tol_opts
-        )
+        basis_tol_opts = _validate_basis_size_opts(h5file, basis_tol_opts)
+
+        # This controls the per-datapiece "Shortening ..." messages, not the model-preset message.
+        # Set it to True when using custom basis sizes to verify that the requested sizes are loaded.
+        verbose = False
 
         self._get_fit_params = get_fit_params
         self._get_fit_settings = get_fit_settings
@@ -1191,8 +1172,7 @@ get_fit_settings: A function that provides information about
 ellMax_model: The maximum ell mode supported by the surrogate model
 omega_ref_max_model: The maximium allowable reference dimensionless
                      orbital angular frequency supported by the surrogate model
-basis_tol_opts: Basis sizes or a named preset used to construct the coorbital
-                surrogate.
+basis_tol_opts: Basis sizes used to construct the coorbital surrogate.
                     The dictionary format is as specified in the docstring of surrogate.LoadSurrogate.
                     The dictionary keys must be those specified in the __init__() method of the coorbital surrogate.
                     See the docstring of DomainDecomposedCoorbitalWaveformSurrogate for the dictionary key format of NRSur7dq4v2.

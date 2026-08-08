@@ -49,6 +49,7 @@ import copy
 
 from .new import surrogate as new_surrogate
 from .new import precessing_surrogate
+from .new import _model_presets
 from . import catalog
 from .catalog import get_modelID_from_filename
 
@@ -2866,7 +2867,7 @@ class LoadSurrogate(object):
     """
 
     #NOTE: __init__ is never called for LoadSurrogate
-    def __new__(self, surrogate_name, surrogate_name_spliced=None, basis_size_opts=None):
+    def __new__(self, surrogate_name, surrogate_name_spliced=None, basis_size_opts=None, model_preset=None):
         """ Returns a SurrogateEvaluator derived object based on name.
 
         INPUT
@@ -2895,7 +2896,7 @@ class LoadSurrogate(object):
                                 NRHybSur3dq8Tidal) as SURROGATE_NAME_SPLICED.
                                 
         BASIS_SIZE_OPTS: A dictionary of basis sizes to be used in the coorbital
-                                frame surrogate, the string ``"Fast"``, or None.
+                                frame surrogate, or None.
                                 If None, the full basis of each datapiece is used.
                                 The dictionary should have the following format:
                                 {
@@ -2908,12 +2909,15 @@ class LoadSurrogate(object):
                                 their full basis size.
                                 This is currently only used for the NRSur7dq4v2 surrogate,
                                 which is a domain-decomposed modification of NRSur7dq4.
-                                ``"Fast"`` selects the ``NRSur7dq4v2_Fast``
-                                preset described in Ravishankar et al.
-                                (arXiv:XXXX.XXXXX).
                                 See the basis_tol_opts description in the docstring of
                                 gwsurrogate.new.precessing_surrogate.DomainDecomposedCoorbitalWaveformSurrogate
                                 for the supported datapiece name formats.
+
+        MODEL_PRESET:           The name of a model-specific preset, or None.
+                                Presets may control basis sizes or other
+                                model-complexity options. ``"Fast"`` selects
+                                the ``NRSur7dq4v2_Fast`` preset for
+                                NRSur7dq4v2, as described in arXiv:XXXX.XXXXX.
                                 """
 
         # the "output" of this if-block is surrogate_h5file and surrogate_name
@@ -2949,6 +2953,13 @@ class LoadSurrogate(object):
                     print("Surrogate data not found for %s. Downloading now."%surrogate_name)
                     catalog.pull(surrogate_name)
         
+        if model_preset is not None and basis_size_opts is not None:
+            raise ValueError("Provide either model_preset or basis_size_opts, not both")
+
+        if model_preset is not None:
+            basis_size_opts = _model_presets.resolve_model_preset(surrogate_name, model_preset)
+            print("Using model preset: %s" % model_preset)
+
         if basis_size_opts is not None and surrogate_name not in SURROGATES_WITH_BASIS_SIZE_OPTS:
             raise ValueError("basis_size_opts is only used for surrogates in SURROGATES_WITH_BASIS_SIZE_OPTS," \
                              " but %s is not in this list"%surrogate_name)
