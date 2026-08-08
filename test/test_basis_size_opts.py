@@ -82,9 +82,10 @@ def _nrsur7dq4v2_path():
     )
 
 
-def test_full_size_dictionary_reproduces_nrsur7dq4v2():
-    """Full-size reconstruction reproduces every NRSur7dq4v2 coorbital mode."""
+def test_full_size_dictionary_reproduces_nrsur7dq4v2(monkeypatch):
+    """A custom full-size preset reproduces every NRSur7dq4v2 coorbital mode."""
     import gwsurrogate as gws
+    from gwsurrogate.new import _model_presets
 
     model_path = _nrsur7dq4v2_path()
     assert os.path.isfile(model_path), (
@@ -105,10 +106,11 @@ def test_full_size_dictionary_reproduces_nrsur7dq4v2():
     del full_surrogate
     gc.collect()
 
-    restricted_surrogate = gws.LoadSurrogate(
-        "NRSur7dq4v2",
-        basis_size_opts=full_basis_sizes,
+    custom_preset_name = "TestFullBasisSizes"
+    monkeypatch.setitem(
+        _model_presets.MODEL_PRESETS["NRSur7dq4v2"], custom_preset_name, full_basis_sizes
     )
+    restricted_surrogate = gws.LoadSurrogate("NRSur7dq4v2", model_preset=custom_preset_name)
     restricted_coorbital = restricted_surrogate._sur_dimless.coorb_sur
     restricted_modes = restricted_coorbital(2.0, chi_a, chi_b, ellMax=5)
 

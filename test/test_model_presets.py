@@ -63,34 +63,5 @@ def test_load_surrogate_resolves_model_preset(tmp_path, monkeypatch):
         model_name,
         {"Fast": {"datapiece": 3}},
     )
-    monkeypatch.setattr(
-        surrogate_module,
-        "SURROGATES_WITH_BASIS_SIZE_OPTS",
-        [model_name],
-    )
-
-    model = surrogate_module.LoadSurrogate(
-        str(model_path), model_preset="Fast"
-    )
+    model = surrogate_module.LoadSurrogate(str(model_path), model_preset="Fast")
     assert model.basis_tol_opts == {"datapiece": 3}
-
-
-def test_load_surrogate_rejects_preset_with_custom_basis_sizes(
-        tmp_path, monkeypatch):
-    """Preset guarantees cannot be mixed with unvalidated custom overrides."""
-    class FutureModel:
-        pass
-
-    model_name = "FutureModel"
-    model_path = tmp_path / (model_name + ".h5")
-    model_path.touch()
-    monkeypatch.setitem(
-        surrogate_module.SURROGATE_CLASSES, model_name, FutureModel
-    )
-
-    with pytest.raises(ValueError, match="either model_preset or"):
-        surrogate_module.LoadSurrogate(
-            str(model_path),
-            model_preset="Fast",
-            basis_size_opts={"datapiece": 1},
-        )
