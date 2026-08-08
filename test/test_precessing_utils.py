@@ -1,5 +1,6 @@
 """
 Unit tests for precessing surrogate utility functions:
+  - shared coorbital component evaluation and node counting
   - normalize_spin
   - splinterp_many  (batch spline interpolation)
   - _splinterp_Cwrapper / _splinterp_Cwrapper_many (low-level wrappers)
@@ -9,6 +10,8 @@ import numpy as np
 import pytest
 
 from gwsurrogate.new.precessing_surrogate import (
+    _eval_coorbital_component,
+    _total_node_evals,
     normalize_spin,
     rotate_spin,
     splinterp_many,
@@ -17,6 +20,55 @@ from gwsurrogate.new.surrogate import _splinterp_Cwrapper, _splinterp_Cwrapper_m
 
 
 RNG = np.random.default_rng(99)
+
+
+# ---------------------------------------------------------------------------
+# Shared coorbital-surrogate helpers
+# ---------------------------------------------------------------------------
+
+def test_eval_coorbital_component_reconstructs_node_fits(monkeypatch):
+    """The shared evaluator must preserve node ordering and EI reconstruction."""
+    from gwsurrogate.new import precessing_surrogate
+
+    data = {
+        'nodeIndices': np.array([1, 0]),
+        'orders': [np.array([0]), np.array([1])],
+        'coefs': [10., 20.],
+        'EI_basis': np.array([[1., 2.], [3., 4.]]),
+    }
+    chiA = np.array([[1., 2., 3.], [4., 5., 6.]])
+    chiB = np.array([[7., 8., 9.], [10., 11., 12.]])
+    fit_settings = (0.1, 0.2, 3, 2)
+    fit_inputs = []
+
+    def get_fit_params(x):
+        fit_inputs.append(x.copy())
+        return x
+
+    def eval_fit(orders, coefs, fit_params, *settings):
+        assert settings == fit_settings
+        return coefs + np.sum(fit_params)
+
+    monkeypatch.setattr(precessing_surrogate._utils, 'eval_fit', eval_fit)
+    result = _eval_coorbital_component(
+        data, 2., chiA, chiB, get_fit_params, fit_settings
+    )
+
+    np.testing.assert_array_equal(result, [216., 328.])
+    np.testing.assert_array_equal(fit_inputs[0], [2., 4., 5., 6., 10., 11., 12.])
+    np.testing.assert_array_equal(fit_inputs[1], [2., 1., 2., 3., 7., 8., 9.])
+
+
+def test_total_node_evals_respects_ell_maximum():
+    """Shared work accounting must exclude datapieces above the requested ell."""
+    data = {
+        '2_0_real': {'nodeIndices': np.arange(2)},
+        '3_1_Re+': {'nodeIndices': np.arange(1)},
+        '4_2_Im-_sd_0': {'nodeIndices': np.arange(3)},
+    }
+
+    assert _total_node_evals(data, ellMax=3) == 3
+    assert _total_node_evals(data, ellMax=4) == 6
 
 
 # ---------------------------------------------------------------------------

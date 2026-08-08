@@ -768,6 +768,39 @@ def _validate_basis_size_opts(h5file, basis_size_opts):
 
     return validated_opts
 
+
+def _eval_coorbital_component(data, q, chiA, chiB, get_fit_params, fit_settings):
+    """Evaluate the scalar fits and reconstruct one coorbital datapiece."""
+    # Reuse one raw-parameter buffer across nodes. All seven entries are
+    # overwritten before each fit transformation.
+    q_float = float(q)
+    x = np.empty(7)
+    n_nodes = len(data['nodeIndices'])
+    nodes = np.empty(n_nodes)
+    # Unpack fit_settings once to avoid per-iteration tuple unpacking in
+    # _eval_scalar_fit, and inline the C call to skip dict creation.
+    q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder = fit_settings
+    for idx, (orders, coefs, ni) in enumerate(zip(
+            data['orders'], data['coefs'], data['nodeIndices'])):
+        x[0] = q_float
+        x[1:4] = chiA[ni]
+        x[4:7] = chiB[ni]
+        fit_params = get_fit_params(x)
+        nodes[idx] = _utils.eval_fit(orders, coefs, fit_params,
+            q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
+
+    return nodes.dot(data['EI_basis'])
+
+
+def _total_node_evals(data, ellMax):
+    """Count scalar-fit evaluations for datapieces through ``ellMax``."""
+    total = 0
+    for key, component_data in data.items():
+        if int(key.split("_")[0]) <= ellMax:
+            total += len(component_data['nodeIndices'])
+    return total
+
+
 def _assemble_mode_pair(rep, rem, imp, imm):
     # hplus = rep + 1j*imp, hminus = rem + 1j*imm
     # return (hplus - hminus).conj(), hplus + hminus
@@ -817,7 +850,7 @@ class CoorbitalWaveformSurrogate:
             # m=0 has a different file naming convention
             # If there are no modes, skip. Assumes if group "*_real" exists, then
             # "*_imag" exists as well.
-            if self._check_h5group_exists(h5file,'hCoorb_%s_0_real'%ell):
+            if 'hCoorb_%s_0_real'%ell in h5file:
                 #print("Loading (ell=%s,0) mode"%(ell))
                 self.mode_list.append( (ell,0) )
                 for reim in ['real', 'imag']:
@@ -828,7 +861,7 @@ class CoorbitalWaveformSurrogate:
             for m in range(1, ell+1):
                 # If there are no modes, skip. Assumes if group "*_Re+" exists, then
                 # "*_Re-", "*_Im+", and "_Im-" exists as well.
-                if self._check_h5group_exists(h5file,'hCoorb_%s_%s_Re+'%(ell, m)):
+                if 'hCoorb_%s_%s_Re+'%(ell, m) in h5file:
                     #print("Loading (ell=%s,m=\pm%s) modes"%(ell, m))
                     self.mode_list.append( (ell,m) )
                     self.mode_list.append( (ell,-m) )
@@ -877,44 +910,14 @@ ellMax: The maximum ell mode to evaluate.
         return modes
 
     def _eval_comp(self, data, q, chiA, chiB):
-        # Reuse one raw-parameter buffer across nodes. All seven entries are
-        # overwritten before each fit transformation.
-        q_float = float(q)
-        x = np.empty(7)
-        n_nodes = len(data['nodeIndices'])
-        nodes = np.empty(n_nodes)
-        # Unpack fit_settings once to avoid per-iteration tuple unpacking in
-        # _eval_scalar_fit, and inline the C call to skip dict creation.
-        q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder \
-            = self._fit_settings
-        for idx, (orders, coefs, ni) in enumerate(zip(
-                data['orders'], data['coefs'], data['nodeIndices'])):
-            x[0] = q_float
-            x[1:4] = chiA[ni]
-            x[4:7] = chiB[ni]
-            fit_params = self._get_fit_params(x)
-            nodes[idx] = _utils.eval_fit(orders, coefs, fit_params,
-                q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
-
-        return nodes.dot(data['EI_basis'])
-
-    def _check_h5group_exists(self, h5file, group_name):
-        """ Check if h5 group GROUP_NAME has valid data to load.
-
-        Returns true or False """
-
-        return group_name in h5file
+        return _eval_coorbital_component(data, q, chiA, chiB,
+            self._get_fit_params, self._fit_settings)
 
     def total_components(self, ellMax):
         return 2*(ellMax+3)*(ellMax-1)
 
     def total_node_evals(self, ellMax):
-        # total scalar-fit evaluations done inside _eval_comp across all components
-        total = 0
-        for key, component_data in self.data.items():
-            if int(key.split("_")[0]) <= ellMax:
-                total += len(component_data['nodeIndices'])
-        return total
+        return _total_node_evals(self.data, ellMax)
 
 class DomainDecomposedCoorbitalWaveformSurrogate:
     """This surrogate models the waveform in the coorbital frame with a two
@@ -980,7 +983,7 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
             # m=0 has a different file naming convention
             # If there are no modes, skip. Assumes if group "*_real_subdomain_0" exists, then
             # "*_real_subdomain_1", "*_imag_subdomain_0" and "*_imag_subdomain_1" exist as well.
-            if self._check_h5group_exists(h5file,'hCoorb_%s_0_real_subdomain_0'%ell):
+            if 'hCoorb_%s_0_real_subdomain_0'%ell in h5file:
                 self.mode_list.append( (ell,0) )
                 for reim in ['real', 'imag']:
                     for subdomain in ['0', '1']:
@@ -995,7 +998,7 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
             for m in range(1, ell+1):
                 # If there are no modes, skip. Assumes if group "*_Re+" exists, then
                 # "*_Re-", "*_Im+", and "_Im-" exists as well.
-                if self._check_h5group_exists(h5file,'hCoorb_%s_%s_Re+_subdomain_0'%(ell, m)):
+                if 'hCoorb_%s_%s_Re+_subdomain_0'%(ell, m) in h5file:
                     self.mode_list.append( (ell,m) )
                     self.mode_list.append( (ell,-m) )
                     for reim in ['Re', 'Im']:
@@ -1056,33 +1059,8 @@ ellMax: The maximum ell mode to evaluate.
         return modes
 
     def _eval_comp(self, data, q, chiA, chiB):
-        # Reuse one raw-parameter buffer across nodes. All seven entries are
-        # overwritten before each fit transformation.
-        q_float = float(q)
-        x = np.empty(7)
-        n_nodes = len(data['nodeIndices'])
-        nodes = np.empty(n_nodes)
-        # Unpack fit_settings once to avoid per-iteration tuple unpacking in
-        # _eval_scalar_fit, and inline the C call to skip dict creation.
-        q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder \
-            = self._fit_settings
-        for idx, (orders, coefs, ni) in enumerate(zip(
-                data['orders'], data['coefs'], data['nodeIndices'])):
-            x[0] = q_float
-            x[1:4] = chiA[ni]
-            x[4:7] = chiB[ni]
-            fit_params = self._get_fit_params(x)
-            nodes[idx] = _utils.eval_fit(orders, coefs, fit_params,
-                q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
-
-        return nodes.dot(data['EI_basis'])
-
-    def _check_h5group_exists(self, h5file, group_name):
-        """ Check if h5 group GROUP_NAME has valid data to load.
-
-        Returns true or False """
-
-        return group_name in h5file
+        return _eval_coorbital_component(data, q, chiA, chiB,
+            self._get_fit_params, self._fit_settings)
 
     def extract_basis_sizes(self, ellMax):
         basis_sizes = {}
@@ -1095,11 +1073,7 @@ ellMax: The maximum ell mode to evaluate.
         return 4*(ellMax+3)*(ellMax-1)
 
     def total_node_evals(self, ellMax):
-        total = 0
-        for key, component_data in self.data.items():
-            if int(key.split("_")[0]) <= ellMax:
-                total += len(component_data['nodeIndices'])
-        return total
+        return _total_node_evals(self.data, ellMax)
 
 ##############################################################################
 # Utility functions
