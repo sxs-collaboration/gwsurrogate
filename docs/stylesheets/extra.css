@@ -1,0 +1,11 @@
+
+[data-md-color-scheme="sxs"] {
+    /* primary-fg-color equals the background color of the menu bar on black-holes.org */
+    --md-primary-fg-color:             #C4663E;
+    --md-primary-fg-color--light:      #F7A87D;
+    --md-primary-fg-color--dark:       #793E25;
+    --md-accent-fg-color:              #A65B3B;
+    --md-accent-fg-color--transparent: #A65B3B1A;
+    --md-typeset-a-color: var(--md-primary-fg-color);
+    --md-hue: 18;
+}

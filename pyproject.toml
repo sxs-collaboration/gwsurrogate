@@ -18,6 +18,14 @@ dynamic = ["version", "license", "authors", "dependencies", "entry-points", "cla
     ]
     build-backend = "setuptools.build_meta"
 
+[project.optional-dependencies]
+docs = [
+  "mkdocs",
+  "mkdocstrings-python",
+  "mkdocs-material",
+  "mkdocs-jupyter"
+]
+
 [tool.pytest.ini_options]
 addopts = "--tb=short"
 

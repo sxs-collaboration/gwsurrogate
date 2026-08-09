@@ -1,0 +1,3 @@
+# `LALsurrogate` module
+
+::: gwsurrogate.LALsurrogate

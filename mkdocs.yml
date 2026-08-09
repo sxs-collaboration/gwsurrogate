@@ -1,0 +1,83 @@
+site_name: gwsurrogate
+
+repo_url: https://github.com/sxs-collaboration/gwsurrogate
+
+plugins:
+  - search
+  - mkdocs-jupyter:
+      ignore_h1_titles: True
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: true
+
+nav:
+  - Home: "index.md"
+  - Tutorials:
+      - "tutorial/website/NRSur7dq4.ipynb"
+      - "tutorial/website/NRSur7dq4v2.ipynb"
+      - "tutorial/website/NRHybSur3dq8.ipynb"
+      - "tutorial/website/NRHybSur2dq15.ipynb"
+      - "tutorial/website/NRHybSur3dq8_CCE.ipynb"
+      - "tutorial/website/BHPTNRSur1dq1e4.ipynb"
+      - "tutorial/website/SEOBNRv4PHM.ipynb"
+  - API:
+      - gwsurrogate: "api/gwsurrogate.md"
+      - gwsurrogate.catalog: "api/catalog.md"
+      - gwsurrogate.eval_pysur: "api/eval_pysur.md"
+      - gwsurrogate.LALsurrogate: "api/LALsurrogate.md"
+      - gwsurrogate.new:
+          - gwsurrogate.new.nodeFunction: "api/new/nodeFunction.md"
+          - gwsurrogate.new.precessing_surrogate: "api/new/precessing_surrogate.md"
+          - gwsurrogate.new.saveH5Object: "api/new/saveH5Object.md"
+          - gwsurrogate.new.spline_evaluation: "api/new/spline_evaluation.md"
+          - gwsurrogate.new.surrogate: "api/new/surrogate.md"
+          - gwsurrogate.new.tidal_functions: "api/new/tidal_functions.md"
+      - gwsurrogate.parametric_funcs: "api/parametric_funcs.md"
+      - gwsurrogate.pycbc: "api/pycbc.md"
+      - gwsurrogate.surrogate: "api/surrogate.md"
+      - gwsurrogate.surrogateIO: "api/surrogateIO.md"
+
+theme:
+  name: "material" # "readthedocs", "mkdocs", "material"
+  #custom_dir: "docs/html"
+  highlightjs: true
+  hljs_languages:
+    - python
+    - julia
+    - mathematica
+  palette:
+    scheme: sxs
+  favicon: images/favicon.ico
+  icon:
+    logo: material/library
+    #logo: images/sxs_logo.png
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.tracking
+    # - navigation.tabs
+    # - navigation.tabs.sticky
+    # - navigation.sections
+    # - toc.integrate
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascript/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: "#"
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.blocks.details
+  - pymdownx.superfences
