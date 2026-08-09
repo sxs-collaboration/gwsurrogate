@@ -9,6 +9,12 @@ build:
   os: ubuntu-24.04
   tools:
     python: "3.14"
+  jobs:
+    post_checkout:
+      # Tell git to use https instead of ssh
+      - git config --global url."https://github.com/".insteadOf "git@github.com:"
+      - git submodule init
+      - git submodule update
 
 # Build documentation with Mkdocs
 mkdocs:
@@ -24,7 +30,12 @@ python:
       extra_requirements:
         - docs
 
-# Tell Read the Docs to clone submodules
-submodules:
-  include: all
-  recursive: true
+# Don't use the submodules section, because we use post_checkout above to
+# instruct git to use https instead of ssh. We don't have a chance to run git
+# config before the RTD code handles the submodules section below,  which is why
+# we use the post_checkout hook above to do it manually.
+
+# # Tell Read the Docs to clone submodules
+# submodules:
+#   include: all
+#   recursive: true
