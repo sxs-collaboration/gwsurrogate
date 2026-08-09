@@ -1,0 +1,3 @@
+# `pycbc` module
+
+::: gwsurrogate.pycbc

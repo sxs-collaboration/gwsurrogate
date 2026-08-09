@@ -117,6 +117,12 @@ setup(
         "gwtools",
         "matplotlib",
     ],
+    extra_requires={
+        "docs": ["mkdocs",
+                 "mkdocstrings-python",
+                 "mkdocs-material",
+                 "mkdocs-jupyter"]
+    },
     setup_requires=["numpy"],
     classifiers=[
         "Intended Audience :: Other Audience",

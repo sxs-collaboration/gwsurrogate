@@ -1,0 +1,3 @@
+# `gwsurrogate` module
+
+::: gwsurrogate

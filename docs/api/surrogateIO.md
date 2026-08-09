@@ -1,0 +1,3 @@
+# `surrogateIO` module
+
+::: gwsurrogate.surrogateIO
