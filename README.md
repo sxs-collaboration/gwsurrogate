@@ -1,5 +1,6 @@
 [![PyPI version](https://badge.fury.io/py/gwsurrogate.svg)](https://pypi.org/project/gwsurrogate/)
 [![Conda Version](https://img.shields.io/conda/vn/conda-forge/gwsurrogate.svg)](https://anaconda.org/conda-forge/gwsurrogate)
+[![Documentation](https://app.readthedocs.org/projects/gwsurrogate/badge/?version=latest)](https://gwsurrogate.readthedocs.io/en/latest/?badge=latest)
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.07073/status.svg)](https://doi.org/10.21105/joss.07073)
 [![arXiv:2504.08839](https://img.shields.io/badge/arXiv-2504.08839-B31B1B.svg)](https://arxiv.org/abs/2504.08839)
 
@@ -115,31 +116,31 @@ To get a list of all available surrogate models, do:
 ### Current NR models
 The most up-to-date models trained on numerical relativity data are listed below, along with links to example
 notebooks.
-- [NRSur7dq4](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRSur7dq4.ipynb):
+- [NRSur7dq4](https://gwsurrogate.readthedocs.io/en/latest/tutorial/website/NRSur7dq4/):
   For generically precessing BBHs, trained on mass ratios q≤4. Paper:
   [arxiv:1905.09300](https://arxiv.org/abs/1905.09300).
-- [NRSur7dq4v2](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRSur7dq4v2.ipynb):
+- [NRSur7dq4v2](https://gwsurrogate.readthedocs.io/en/latest/tutorial/website/NRSur7dq4v2/):
   A multi-domain extension of NRSur7dq4 with improved merger-ringdown accuracy
   and modes through ell=5. Paper: arXiv:XXXX.XXXXX.
-- [NRHybSur3dq8](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRHybSur3dq8.ipynb):
+- [NRHybSur3dq8](https://gwsurrogate.readthedocs.io/en/latest/tutorial/website/NRHybSur3dq8/):
   For nonprecessing BBHs, trained on mass ratios q≤8. Paper:
   [arxiv:1812.07865](https://arxiv.org/abs/1812.07865).
-- [NRHybSur2dq15](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRHybSur2dq15.ipynb):
+- [NRHybSur2dq15](https://gwsurrogate.readthedocs.io/en/latest/tutorial/website/NRHybSur2dq15/):
   For nonprecessing BBHs, trained on q≤15, chi1≤0.5, chi2=0. Paper:
   [arxiv:2203.10109](https://arxiv.org/abs/2203.10109).
-- [NRHybSur3dq8_CCE](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/NRHybSur3dq8_CCE.ipynb):
+- [NRHybSur3dq8_CCE](https://gwsurrogate.readthedocs.io/en/latest/tutorial/website/NRHybSur3dq8_CCE/):
   For nonprecessing BBHs, trained on CCE (Cauchy-characteristic evolution) waveforms of mass ratios q≤8. Unlike all of the other models, NRHybSur3dq8_CCE includes memory effects. Paper:
   [arxiv:2306.03148](https://arxiv.org/abs/2306.03148).
   
 ### Current point-particle blackhole perturbation theory models
 The most up-to-date models are trained on point-particle blackhole perturbation data and calibrated to numerical relativity (NR) in the comparable mass regime.
-- [BHPTNRSur1dq1e4](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/BHPTNRSur1dq1e4.ipynb):
+- [BHPTNRSur1dq1e4](https://gwsurrogate.readthedocs.io/en/latest/tutorial/website/BHPTNRSur1dq1e4/):
   Nonspinning BBHs, trained on mass ratios q≤10000 and harmonics up to ell=10. Paper:
   [arxiv:2204.01972](https://arxiv.org/abs/2204.01972).
 
 ### Current effective one body models
 The most up-to-date effective one body surrogate models.
-- [SEOBNRv4PHMSur](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website/SEOBNRv4PHM.ipynb):
+- [SEOBNRv4PHMSur](https://gwsurrogate.readthedocs.io/en/latest/tutorial/website/SEOBNRv4PHM/):
   precessing binary black hole with 2<=ell<=5 modes in inertial frame. Trained on mass ratios q ≤20. Paper:
   [arxiv:2204.01972](https://arxiv.org/abs/2204.01972).
 
