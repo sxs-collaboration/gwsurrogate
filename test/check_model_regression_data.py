@@ -15,8 +15,7 @@ fp_new = h5py.File("model_regression_data.h5",'r')
 # name of new model with regression data in fp_new but not fp_old
 # this will exclude NEW_MODEL from the check
 # set this to a nonsenese name if we want to check all models
-new_model = "NRHybSur3dq8_CCE"
-
+new_model = "NRSur7dq4v2"
 
 # Visual check: all enteries are the same except the new one added to fp_new
 print("models in new datafile")
