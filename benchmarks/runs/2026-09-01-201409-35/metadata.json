@@ -1,0 +1,11 @@
+{
+  "run_id": "2026-09-01-201409-35",
+  "created_at_utc": "2026-09-01T20:14:09+00:00",
+  "run_number": "35",
+  "run_attempt": "1",
+  "run_url": "https://github.com/sxs-collaboration/gwsurrogate/actions/runs/33552135565",
+  "archive_label": "PR-67",
+  "compare_ref": "pull/67/head",
+  "compare_label": "PR-67",
+  "workflow_sha": "5d076870ef24cadd7417cbbba91596a233c820c3"
+}
