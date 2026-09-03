@@ -23,7 +23,7 @@ except:
   os.system('tar -xf test/gws_regression_data_v2.tar.gz -C test/')
 
 path_to_surrogate = \
-'tutorial/TutorialSurrogate/EOB_q1_2_NoSpin_Mode22/l2_m2_len12239M_SurID19poly/'
+'docs/tutorial/TutorialSurrogate/EOB_q1_2_NoSpin_Mode22/l2_m2_len12239M_SurID19poly/'
 EOBNRv2_sur = gws.EvaluateSingleModeSurrogate(path_to_surrogate)
 
 

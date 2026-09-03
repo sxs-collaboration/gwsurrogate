@@ -5,7 +5,7 @@ Simple unit tests.
 from __future__ import division
 import gwsurrogate as gws
 
-path_to_surrogate = 'tutorial/TutorialSurrogate/EOB_q1_2_NoSpin_Mode22/'
+path_to_surrogate = 'docs/tutorial/TutorialSurrogate/EOB_q1_2_NoSpin_Mode22/'
 
 def test_orbital_symmetry_flags():
   # TODO: add 4d2s -- this will give non-trival combinations of this flag

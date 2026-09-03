@@ -358,7 +358,7 @@ def test_model_regression(generate_regression_data=False):
       
  
   # also test the tutorial surrogate
-  models_to_test["EOBNRv2_tutorial"] = gws.__path__[0] + "/../tutorial/TutorialSurrogate/EOB_q1_2_NoSpin_Mode22/"
+  models_to_test["EOBNRv2_tutorial"] = gws.__path__[0] + "/../docs/tutorial/TutorialSurrogate/EOB_q1_2_NoSpin_Mode22/"
 
   # remove models from testing...
   for i in dont_test:
