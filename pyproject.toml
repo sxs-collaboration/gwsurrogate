@@ -5,6 +5,11 @@ description = "An easy to use interface to gravitational wave surrogate models"
 readme = "README.md"
 dynamic = ["version", "license", "authors", "dependencies", "entry-points", "classifiers"]
 
+[project.urls]
+Documentation = "https://gwsurrogate.readthedocs.io/en/latest/"
+Repository = "https://github.com/sxs-collaboration/gwsurrogate.git"
+"Bug Tracker" = "https://github.com/sxs-collaboration/gwsurrogate/issues"
+
 [build-system]
     requires = [
         "setuptools>=61.0",
