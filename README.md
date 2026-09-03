@@ -97,7 +97,7 @@ your local code edits to be automatically seen by the system-wide installation.
 
 # Documentation
  
- Explore our [Jupyter Notebooks](https://github.com/sxs-collaboration/gwsurrogate/blob/master/tutorial/website) for a comprehensive overview of individual models and the user-level API. For an introductory explanation of the surrogate modeling methodology used in GWSurrogate, check out these videos:
+ Explore our [Jupyter Notebooks](https://gwsurrogate.readthedocs.io/en/latest/tutorial/) for a comprehensive overview of individual models and the user-level API. For an introductory explanation of the surrogate modeling methodology used in GWSurrogate, check out these videos:
 
   - [Introduction to the GWSurrogate package](https://icerm.brown.edu/video_archive/2413)
   - [Overview of surrogate modeling methodology](https://icerm.brown.edu/video_archive/2412)

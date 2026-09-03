@@ -17,6 +17,7 @@ plugins:
 nav:
   - Home: "index.md"
   - Tutorials:
+      - "tutorial/index.md"
       - "tutorial/website/NRSur7dq4.ipynb"
       - "tutorial/website/NRSur7dq4v2.ipynb"
       - "tutorial/website/NRHybSur3dq8.ipynb"
@@ -59,6 +60,7 @@ theme:
   features:
     - navigation.instant
     - navigation.tracking
+    - navigation.indexes
     # - navigation.tabs
     # - navigation.tabs.sticky
     # - navigation.sections
