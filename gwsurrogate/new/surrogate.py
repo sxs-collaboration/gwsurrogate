@@ -935,71 +935,79 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             precessing_opts=None, tidal_opts=None, par_dict=None,
             return_dynamics=False, do_not_align=False):
         """
-    Return dimensionless surrogate modes.
-    Arguments:
-    x :             The intrinsic parameters EXCLUDING total Mass (see
-                    self.param_space)
+        Return dimensionless surrogate modes.
 
-    fM_low :        Initial frequency of (2,2) mode in units of cycles/M.
-                    If 0, will use the entire data of the surrogate.
-                    Default None.
+        Parameters
+        ----------
+        x
+            The intrinsic parameters EXCLUDING total Mass (see `param_space`)
 
-    fM_ref:         Frequency used to set the reference epoch at which
-                    the reference frame is defined and the spins are specified.
-                    See below for definition of the reference frame.
-                    Default: None.
+        fM_low : float or None
+            Initial frequency of (2,2) mode in units of cycles/M. If 0, will use
+            the entire data of the surrogate.
 
-                    For time domain models, f_ref is used to determine a t_ref,
-                    such that the frequency of the (2, 2) mode equals f_ref at
-                    t=t_ref.
+        fM_ref : float or None
+            Frequency used to set the reference epoch at which the reference
+            frame is defined and the spins are specified.  See below for
+            definition of the reference frame.
 
-    dtM :           Uniform time step to use, in units of M. If None, the
-                    returned time array will be the array used in the
-                    construction of the surrogate, which can be nonuniformly
-                    sampled.
-                    Default None.
+            For time domain models, `f_ref` is used to determine a `t_ref`, such
+            that the frequency of the (2, 2) mode equals `f_ref` at t=`t_ref`.
 
-    timesM:         Time samples to evaluate the waveform at. Use either dtM or
-                    timesM, not both.
+        dtM : float or None
+            Uniform time step to use, in units of M. If None, the returned time
+            array will be the array used in the construction of the surrogate,
+            which can be nonuniformly sampled.
 
-    dfM :           This should always be None as for now we are assuming
-                    a time domain model.
+        timesM : array_like of float, or None
+            Time samples to evaluate the waveform at. Use either `dtM` or
+            `timesM`, not both.
 
-    freqsM:         Frequency samples to evaluate the waveform at. Use either
-                    dfM or freqsM, not both.
+        dfM : None
+            This should always be None as for now we are assuming a time domain
+            model.
 
-    ellMax:         Maximum ell index for modes to include. All available m
-                    indicies for each ell will be included automatically.
-                    Default: None, in which case all available modes wll be
-                    included.
+        freqsM : array_like of float, or None
+            Frequency samples to evaluate the waveform at. Use either `dfM` or
+            `freqsM`, not both.
 
-    mode_list :     A list of (ell, m) modes to be evaluated.
-                    Default None, which evaluates all avilable modes.
-                    Will deduce the m<0 modes from m>0 modes.
+        ellMax : int or None
+            Maximum ell index for modes to include. All available m indicies for
+            each ell will be included automatically.  If None, all available
+            modes wll be included.
 
-    par_dict:       This should always be None for this model.
+        mode_list : list of tuple of (int, int), or None
+            A list of (ell, m) modes to be evaluated.  If None, evaluate all
+            avilable modes.  Will deduce the m<0 modes from m>0 modes.
 
-    do_not_align:   Ignore fM_ref and do not align the waveform. This should be
-                    True only when converting from pySurrogate format to
-                    gwsurrogate format as we may want to do some checks that
-                    the waveform has not been modified.
+        par_dict : None
+            This should always be None for this model.
 
-    Returns
-    timesM, h, dynamics:
-        timesM : time array in units of M.
-        h : A dictionary of waveform modes sampled at timesM with
-            (ell, m) keys.
-        dynamics: None, since this is a nonprecessing model.
+        do_not_align : bool
+            Ignore `fM_ref` and do not align the waveform. This should be True
+            only when converting from pySurrogate format to gwsurrogate format
+            as we may want to do some checks that the waveform has not been
+            modified.
 
+        Returns
+        -------
+        timesM : ndarray of float
+            time array in units of M.
 
-    IMPORTANT NOTES:
-    ===============
+        h : dict
+            A dictionary of waveform modes sampled at `timesM` with (ell, m)
+            keys.
 
-    The reference frame (or inertial frame) is defined as follows:
-        The +ve z-axis is along the orbital angular momentum at the reference
-        epoch. The separation vector from the lighter BH to the heavier BH at
-        the reference epoch is along the +ve x-axis. The y-axis completes the
-        right-handed triad. The reference epoch is set using f_ref.
+        dynamics : None
+            None, since this is a nonprecessing model.
+
+        Notes
+        -----
+        The reference frame (or inertial frame) is defined as follows: The +ve
+        z-axis is along the orbital angular momentum at the reference epoch. The
+        separation vector from the lighter BH to the heavier BH at the reference
+        epoch is along the +ve x-axis. The y-axis completes the right-handed
+        triad. The reference epoch is set using `f_ref`.
         """
 
         if dfM is not None:
@@ -1399,71 +1407,89 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
         precessing_opts=None, tidal_opts=None, par_dict=None,
         do_not_align=False):
         """
-    Return dimensionless surrogate modes.
-    Arguments:
-    x :             The intrinsic parameters EXCLUDING total Mass (see
-                    self.param_space)
+        Return dimensionless surrogate modes.
 
-    fM_low :        Initial frequency of (2,2) mode in units of cycles/M.
-                    If 0, will use the entire data of the surrogate.
-                    Default None.
+        Parameters
+        ----------
+        x
+            The intrinsic parameters EXCLUDING total Mass (see self.param_space)
 
-    fM_ref:         Frequency used to set the reference epoch at which
-                    the reference frame is defined and the spins are specified.
-                    See below for definition of the reference frame.
-                    Default: None.
+        fM_low : float or None
+            Initial frequency of (2,2) mode in units of cycles/M.  If 0, will
+            use the entire data of the surrogate.
 
-                    For time domain models, f_ref is used to determine a t_ref,
-                    such that the frequency of the (2, 2) mode equals f_ref at
-                    t=t_ref.
+        fM_ref : float or None
+            Frequency used to set the reference epoch at which the reference
+            frame is defined and the spins are specified.  See below for
+            definition of the reference frame.
 
-    dtM :           Uniform time step to use, in units of M. If None, the
-                    returned time array will be the array used in the
-                    construction of the surrogate, which can be nonuniformly
-                    sampled.
-                    Default None.
+            For time domain models, `f_ref` is used to determine a `t_ref`, such
+            that the frequency of the (2, 2) mode equals `f_ref` at t=`t_ref`.
 
-    timesM:         Time samples to evaluate the waveform at. Use either dtM or
-                    timesM, not both.
+        dtM : array_like of float, or None
+            Uniform time step to use, in units of M. If None, the returned time
+            array will be the array used in the construction of the
+            surrogate, which can be nonuniformly sampled.
 
-    dfM :           This should always be None as for now we are assuming
-                    a time domain model.
+        timesM : array_like of float, or None
+            Time samples to evaluate the waveform at. Use either `dtM` or
+            `timesM`, not both.
 
-    freqsM:         Frequency samples to evaluate the waveform at. Use either
-                    dfM or freqsM, not both.
+        dfM : None
+            This should always be None as for now we are assuming a time domain
+            model.
 
-    ellMax:         Maximum ell index for modes to include. All available m
-                    indicies for each ell will be included automatically.
-                    Default: None, in which case all available modes wll be
-                    included.
+        freqsM : array_like of float, or None
+            Frequency samples to evaluate the waveform at. Use either `dfM` or
+            `freqsM`, not both.
 
-    mode_list :     A list of (ell, m) modes to be evaluated.
-                    Default None, which evaluates all avilable modes.
-                    Will deduce the m<0 modes from m>0 modes.
+        ellMax : int or None
+            Maximum ell index for modes to include. All available m indicies for
+            each ell will be included automatically.  If None, all available
+            modes wll be included.
 
-    par_dict:       This should always be None for this model.
+        mode_list : list of tuple of (int, int), or None
+            A list of (ell, m) modes to be evaluated. If None, evaluate all
+            avilable modes. Will deduce the m<0 modes from m>0 modes.
 
-    do_not_align:   Ignore fM_ref and do not align the waveform. This should be
-                    True only when converting from pySurrogate format to
-                    gwsurrogate format as we may want to do some checks that
-                    the waveform has not been modified.
+        tidal_opts : dict or None
+            A dictionary containing optional parameters for a tidal
+            surrogate model.
+            Allowed keys are:
+                Lambda1
+                    The tidal deformability parameter for the heavier object.
+                Lambda2
+                    The tidal deformability parameter for the lighter object.
+            Example: tidal_opts = {'Lambda1': 200, 'Lambda2': 300}
 
-    Returns
-    timesM, h, dynamics:
-        timesM : time array in units of M.
-        h : A dictionary of waveform modes sampled at timesM with
-            (ell, m) keys.
-        dynamics: None, since this is a nonprecessing model.
+        par_dict : None
+            This should always be None for this model.
 
+        do_not_align : bool
+            Ignore `fM_ref` and do not align the waveform. This should be True
+            only when converting from pySurrogate format to gwsurrogate format
+            as we may want to do some checks that the waveform has not been
+            modified.
 
-    IMPORTANT NOTES:
-    ===============
+        Returns
+        -------
+        timesM : ndarray of float
+            time array in units of M.
 
-    The reference frame (or inertial frame) is defined as follows:
-        The +ve z-axis is along the orbital angular momentum at the reference
-        epoch. The separation vector from the lighter BH to the heavier BH at
-        the reference epoch is along the +ve x-axis. The y-axis completes the
-        right-handed triad. The reference epoch is set using f_ref.
+        h : dict
+            A dictionary of waveform modes sampled at `timesM` with (ell, m)
+            keys.
+
+        dynamics : None
+            None, since this is a nonprecessing model.
+
+        Notes
+        -----
+        The reference frame (or inertial frame) is defined as follows: The +ve
+        z-axis is along the orbital angular momentum at the reference epoch. The
+        separation vector from the lighter BH to the heavier BH at the reference
+        epoch is along the +ve x-axis. The y-axis completes the right-handed
+        triad. The reference epoch is set using `f_ref`.
         """
 
         if par_dict is not None:
@@ -1516,18 +1542,37 @@ class SpEC_nonspinning_q10_surrogate(MultiModalSurrogate):
                  fake_neg_modes=True):
         """
         Return surrogate evaluation.
-        Arguments:
-            x : The intrinsic parameters (see self.param_space)
-            theta/phi : polar and azimuthal angles of the direction of
-                        gravitational wave emission. If given, sums up modes
-                        and returns h_plus and h_cross (default returns modes)
-            modes : A list of (ell, m) modes to be evaluated (default: all)
-            fake_neg_modes: Deduce (ell, -m) modes from (ell, m) modes for m>0.
-        Returns h:
-            h : If theta and phi are None, h is a dictionary of waveform modes
-                sampled at self.domain with (ell, m) keys.
-                If theta and phi are given, h = h_plus - i * h_cross is a
-                complex array given by the sum of the modes.
+
+        Parameters
+        ----------
+        x
+            The intrinsic parameters (see `param_space`)
+
+        theta : float or None
+            polar angle of the direction of gravitational wave emission.
+            If both `theta` and `phi` are given, sum up modes and return h_plus
+            and h_cross.
+            If None, return modes.
+
+        phi : float or None
+            azimuthal angle of the direction of gravitational wave emission.
+            If both `theta` and `phi` are given, sum up modes and return h_plus
+            and h_cross.
+            If None, return modes.
+
+        modes : list of tuple of (int, int), or None
+            A list of (ell, m) modes to be evaluated (default: all)
+
+        fake_neg_modes : bool
+            Deduce (ell, -m) modes from (ell, m) modes for m>0.
+
+        Returns
+        -------
+        h : dict
+            If `theta` and `phi` are None, `h` is a dictionary of waveform modes
+            sampled at `domain` with (ell, m) keys.  If `theta` and `phi` are
+            given, h = h_plus - i * h_cross is a complex array given by the sum
+            of the modes.
         """
         if modes is None:
             modes = self.modes
