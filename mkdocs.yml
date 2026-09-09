@@ -6,6 +6,7 @@ plugins:
   - search
   - mkdocs-jupyter:
       ignore_h1_titles: True
+      execute: False
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -16,6 +17,10 @@ plugins:
 
 nav:
   - Home: "index.md"
+  - Models:
+      - "models/index.md"
+      - "models/NRSur7dq4.md"
+      - "models/NRSur7dq4v2.md"
   - Tutorials:
       - "tutorial/index.md"
       - "tutorial/website/NRSur7dq4.ipynb"

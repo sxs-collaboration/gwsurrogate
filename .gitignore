@@ -13,3 +13,7 @@ surrogate_downloads
 build/
 dist/
 gwsurrogate.egg-info/
+
+# mkdocs build output and cache
+site/
+.cache/
