@@ -924,7 +924,7 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
 -    subdomains in time.
 
     The inspiral and ringdown data pieces are modeled independently and joined
-    with smooth, precomputed blending masks. See arXiv:XXXX.XXXXX.
+    with smooth, precomputed blending masks. See arXiv:2609.07873.
     """
 
     def __init__(self, h5file, get_fit_params, get_fit_settings, basis_tol_opts=None):
@@ -955,7 +955,7 @@ class DomainDecomposedCoorbitalWaveformSurrogate:
         where ell, m are the harmonic mode indices, reim is either 'Re' or 'Im', pm is either '+' or '-', and subdomain is either '0' or '1'.
         For an example of such a dictionary, see gwsurrogate.new._basis_presets.py.
         The reason this truncation defines a nested surrogate, and its expected
-        accuracy--cost tradeoff, are described in arXiv:XXXX.XXXXX.
+        accuracy--cost tradeoff, are described in arXiv:2609.07873.
         """
         basis_tol_opts = _validate_basis_size_opts(h5file, basis_tol_opts)
 
@@ -1025,7 +1025,7 @@ ellMax: The maximum ell mode to evaluate.
 
         # Each subdomain surrogate is evaluated independently below. The two
         # stored masks smoothly blend their outputs across the overlap region
-        # into one full waveform; see the multi-domain construction in arXiv:XXXX.XXXXX
+        # into one full waveform; see the multi-domain construction in arXiv:2609.07873.
 
         for ell in range(2, ellMax+1):
 

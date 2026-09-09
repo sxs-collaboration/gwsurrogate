@@ -158,7 +158,7 @@ _surrogate_world['NRSur7dq4v2'] = \
    '''Surrogate model with improved ringdown for precessing binary black holes
      with mass ratio q<=4 and spin magnitudes <=0.8. All ell<=5 modes are
      included. The spin and frame dynamics are also modeled.''',
-     '''arXiv:XXXX.XXXXX''',
+     '''arXiv:2609.07873''',
      '2bef4cfdb12d73904bd727015bef629c')
 
 _surrogate_world['SEOBNRv4PHMSur'] = \
@@ -323,8 +323,6 @@ def pull(surr_name,sdir=download_path()):
     # download the surrogate
     os.makedirs(sdir, exist_ok=True) # Ensure the target directory exists (mimicking wget's --directory-prefix functionality)
     filename = surr_url.split("/")[-1]
-    if "NRSur7dq4v2.h5" in filename: # TODO: Remove this if when surrogate file moved to Zenodo
-      filename = "NRSur7dq4v2.h5"
     output_path = os.path.join(sdir, filename)
     with requests.get(surr_url, stream=True) as r, open(output_path, "wb") as f:
       r.raise_for_status()
