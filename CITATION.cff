@@ -11,6 +11,9 @@ authors:
     equal-contrib: true
   - family-names: "Blackman"
     given-names: "Jonathan"
+  - family-names: "Deppe"
+    given-names: "Nils"
+    orcid: "https://orcid.org/0000-0003-4557-4115"
   - family-names: "Gadre"
     given-names: "Bhooshan"
     orcid: "https://orcid.org/0000-0002-1534-9761"
