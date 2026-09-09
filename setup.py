@@ -64,6 +64,7 @@ entries = {
     "pycbc.waveform.td": [
         "GWS-NRHybSur3dq8 = gwsurrogate.pycbc:gws_td_gen",
         "GWS-NRSur7dq4 = gwsurrogate.pycbc:gws_td_gen",
+        "GWS-NRSur7dq4v2 = gwsurrogate.pycbc:gws_td_gen",
         "GWS-NRHybSur3dq8Tidal = gwsurrogate.pycbc:gws_td_gen",
     ]
 }
