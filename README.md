@@ -121,7 +121,7 @@ notebooks.
   [arxiv:1905.09300](https://arxiv.org/abs/1905.09300).
 - [NRSur7dq4v2](https://gwsurrogate.readthedocs.io/en/latest/tutorial/website/NRSur7dq4v2/):
   A multi-domain extension of NRSur7dq4 with improved merger-ringdown accuracy
-  and modes through ell=5. Paper: arXiv:XXXX.XXXXX.
+  and modes through ell=5. Paper: [arXiv:2609.07873](https://arxiv.org/abs/2609.07873).
 - [NRHybSur3dq8](https://gwsurrogate.readthedocs.io/en/latest/tutorial/website/NRHybSur3dq8/):
   For nonprecessing BBHs, trained on mass ratios q≤8. Paper:
   [arxiv:1812.07865](https://arxiv.org/abs/1812.07865).
