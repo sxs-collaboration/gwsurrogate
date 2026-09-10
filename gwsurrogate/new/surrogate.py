@@ -972,13 +972,13 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
             `freqsM`, not both.
 
         ellMax : int or None
-            Maximum ell index for modes to include. All available m indicies for
+            Maximum ell index for modes to include. All available m indices for
             each ell will be included automatically.  If None, all available
-            modes wll be included.
+            modes will be included.
 
         mode_list : list of tuple of (int, int), or None
             A list of (ell, m) modes to be evaluated.  If None, evaluate all
-            avilable modes.  Will deduce the m<0 modes from m>0 modes.
+            available modes.  Will deduce the m<0 modes from m>0 modes.
 
         par_dict : None
             This should always be None for this model.
@@ -1426,7 +1426,7 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
             For time domain models, `f_ref` is used to determine a `t_ref`, such
             that the frequency of the (2, 2) mode equals `f_ref` at t=`t_ref`.
 
-        dtM : array_like of float, or None
+        dtM : float or None
             Uniform time step to use, in units of M. If None, the returned time
             array will be the array used in the construction of the
             surrogate, which can be nonuniformly sampled.
@@ -1444,13 +1444,13 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
             `freqsM`, not both.
 
         ellMax : int or None
-            Maximum ell index for modes to include. All available m indicies for
+            Maximum ell index for modes to include. All available m indices for
             each ell will be included automatically.  If None, all available
-            modes wll be included.
+            modes will be included.
 
         mode_list : list of tuple of (int, int), or None
             A list of (ell, m) modes to be evaluated. If None, evaluate all
-            avilable modes. Will deduce the m<0 modes from m>0 modes.
+            available modes. Will deduce the m<0 modes from m>0 modes.
 
         tidal_opts : dict or None
             A dictionary containing optional parameters for a tidal
