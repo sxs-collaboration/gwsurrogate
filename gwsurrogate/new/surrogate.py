@@ -940,7 +940,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         Parameters
         ----------
         x
-            The intrinsic parameters EXCLUDING total Mass (see `param_space`)
+            The intrinsic parameters EXCLUDING total mass (see `param_space`)
 
         fM_low : float or None
             Initial frequency of (2,2) mode in units of cycles/M. If 0, will use
@@ -992,7 +992,7 @@ class AlignedSpinCoOrbitalFrameSurrogate(ManyFunctionSurrogate):
         Returns
         -------
         timesM : ndarray of float
-            time array in units of M.
+            Time array in units of M.
 
         h : dict
             A dictionary of waveform modes sampled at `timesM` with (ell, m)
@@ -1412,7 +1412,7 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
         Parameters
         ----------
         x
-            The intrinsic parameters EXCLUDING total Mass (see self.param_space)
+            The intrinsic parameters EXCLUDING total mass (see self.param_space)
 
         fM_low : float or None
             Initial frequency of (2,2) mode in units of cycles/M.  If 0, will
@@ -1474,7 +1474,7 @@ class AlignedSpinCoOrbitalFrameSurrogateTidal(AlignedSpinCoOrbitalFrameSurrogate
         Returns
         -------
         timesM : ndarray of float
-            time array in units of M.
+            Time array in units of M.
 
         h : dict
             A dictionary of waveform modes sampled at `timesM` with (ell, m)
@@ -1549,13 +1549,13 @@ class SpEC_nonspinning_q10_surrogate(MultiModalSurrogate):
             The intrinsic parameters (see `param_space`)
 
         theta : float or None
-            polar angle of the direction of gravitational wave emission.
+            Polar angle of the direction of gravitational wave emission.
             If both `theta` and `phi` are given, sum up modes and return h_plus
             and h_cross.
             If None, return modes.
 
         phi : float or None
-            azimuthal angle of the direction of gravitational wave emission.
+            Azimuthal angle of the direction of gravitational wave emission.
             If both `theta` and `phi` are given, sum up modes and return h_plus
             and h_cross.
             If None, return modes.
