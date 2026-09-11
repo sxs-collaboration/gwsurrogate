@@ -1957,6 +1957,10 @@ class SurrogateEvaluator(object):
                     The inertial frame chiA with shape (L, 3)
                 chiB = dynamics['chiB']
                     The inertial frame chiB with shape (L, 3)
+                chiA_copr = dynamics['chiA_copr']
+                    The coprecessing frame chiA with shape (L, 3)
+                chiB_copr = dynamics['chiB_copr']
+                    The coprecessing frame chiB with shape (L, 3)
 
 
     IMPORTANT NOTES:

@@ -110,7 +110,7 @@ below.
 | `tidal_opts` | dict | — | **Not supported**: `NRSur7dq4v2` is not a tidal model; passing this raises an error. |
 | `par_dict` | dict | — | **Not supported**: not used by `NRSur7dq4v2`; passing anything but `None` raises an error. |
 | `units` | `'dimensionless'` \| `'mks'` | `'dimensionless'` | Unit system for all quantities above. See [Units](#units). |
-| `skip_param_checks` | bool | `False` | Skip range checks, forcing evaluation outside the [validity region](#parameter-space-of-validity). |
+| `skip_param_checks` | bool | `False` | Skip all input validation checks. This is primarily intended to permit extrapolation outside the [validity region](#parameter-space-of-validity). |
 | `taper_end_duration` | float | `None` | Taper the last `taper_end_duration` (in $M$) of the waveform. |
 
 ### Spin convention
@@ -177,6 +177,8 @@ The `dynamics` dict (with $L$ = `len(domain)`) contains:
 | `orbphase` | `(L,)` | Orbital phase in the coprecessing frame. |
 | `chiA` | `(L, 3)` | Inertial-frame spin of the heavier BH. |
 | `chiB` | `(L, 3)` | Inertial-frame spin of the lighter BH. |
+| `chiA_copr` | `(L, 3)` | Coprecessing-frame spin of the heavier BH. |
+| `chiB_copr` | `(L, 3)` | Coprecessing-frame spin of the lighter BH. |
 
 !!! note "Reference frame convention"
     The reference (inertial) frame is defined at the reference epoch (set by
