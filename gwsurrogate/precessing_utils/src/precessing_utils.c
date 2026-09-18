@@ -1686,7 +1686,15 @@ static PyObject *py_rotate_waveform(PyObject *self, PyObject *args)
             &PyArray_Type, &out_obj))
         return NULL;
 
-    /* Validate q: shape (4, N), float64, C-contiguous */
+    /* rotateWaveform currently supports ell=2,...,8 mode blocks.  Validate
+     * before using ellMax in mode-count arithmetic or as an array bound. */
+    if (ellMax < 2 || ellMax > 8) {
+        PyErr_SetString(PyExc_ValueError, "ellMax must be between 2 and 8");
+        return NULL;
+    }
+
+    /* Validate q: shape (4, N).  It is converted to native, aligned
+     * float64 below. */
     if (PyArray_NDIM(q_obj) != 2 || PyArray_DIM(q_obj, 0) != 4) {
         PyErr_SetString(PyExc_ValueError, "q must have shape (4, N)");
         return NULL;
@@ -1699,7 +1707,8 @@ static PyObject *py_rotate_waveform(PyObject *self, PyObject *args)
     for (int ell = 2; ell <= ellMax; ell++)
         n_modes += 2 * ell + 1;
 
-    /* Validate h: shape (n_modes, N), complex128, C-contiguous */
+    /* Validate h: shape (n_modes, N).  Raw C access requires native,
+     * aligned, C-contiguous complex128 data. */
     if (PyArray_NDIM(h_obj) != 2 ||
         PyArray_DIM(h_obj, 0) != n_modes ||
         PyArray_DIM(h_obj, 1) != N) {
@@ -1707,12 +1716,18 @@ static PyObject *py_rotate_waveform(PyObject *self, PyObject *args)
                      "h must have shape (%ld, %ld)", (long)n_modes, (long)N);
         return NULL;
     }
-    if (PyArray_TYPE(h_obj) != NPY_COMPLEX128 || !PyArray_IS_C_CONTIGUOUS(h_obj)) {
-        PyErr_SetString(PyExc_TypeError, "h must be C-contiguous complex128");
+    if (PyArray_TYPE(h_obj) != NPY_COMPLEX128 ||
+        !PyArray_IS_C_CONTIGUOUS(h_obj) ||
+        !PyArray_ISALIGNED(h_obj) ||
+        PyArray_ISBYTESWAPPED(h_obj)) {
+        PyErr_SetString(
+            PyExc_TypeError,
+            "h must be an aligned, native-byte-order, C-contiguous complex128 array");
         return NULL;
     }
 
-    /* Validate out: same shape as h, complex128, C-contiguous */
+    /* Validate out: shape (n_modes, N), with the same memory layout as h
+     * and safe for raw writes. */
     if (PyArray_NDIM(out_obj) != 2 ||
         PyArray_DIM(out_obj, 0) != n_modes ||
         PyArray_DIM(out_obj, 1) != N) {
@@ -1720,8 +1735,17 @@ static PyObject *py_rotate_waveform(PyObject *self, PyObject *args)
                      "out must have shape (%ld, %ld)", (long)n_modes, (long)N);
         return NULL;
     }
-    if (PyArray_TYPE(out_obj) != NPY_COMPLEX128 || !PyArray_IS_C_CONTIGUOUS(out_obj)) {
-        PyErr_SetString(PyExc_TypeError, "out must be C-contiguous complex128");
+    if (PyArray_TYPE(out_obj) != NPY_COMPLEX128 ||
+        !PyArray_IS_C_CONTIGUOUS(out_obj) ||
+        !PyArray_ISALIGNED(out_obj) ||
+        PyArray_ISBYTESWAPPED(out_obj)) {
+        PyErr_SetString(
+            PyExc_TypeError,
+            "out must be an aligned, native-byte-order, C-contiguous complex128 array");
+        return NULL;
+    }
+    if (!PyArray_ISWRITEABLE(out_obj)) {
+        PyErr_SetString(PyExc_ValueError, "out must be writable");
         return NULL;
     }
 
