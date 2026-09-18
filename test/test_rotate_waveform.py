@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 from gwsurrogate.new.precessing_surrogate import rotateWaveform, quatInv
+from gwsurrogate.precessing_utils import _utils
 
 
 def _random_unit_quaternion(n, rng):
@@ -124,3 +125,64 @@ class TestRotateWaveformZRotation:
             offset += 2 * ell + 1
 
         np.testing.assert_allclose(h_rot, expected, rtol=1e-12, atol=1e-12)
+
+
+class TestRotateWaveformNativeValidation:
+    """The native wrapper must reject arrays that are unsafe for raw access."""
+
+    @staticmethod
+    def _inputs(n_times=4):
+        quat = np.zeros((4, n_times), dtype=np.float64)
+        quat[0] = 1.0
+        h = np.arange(5 * n_times, dtype=np.complex128).reshape(5, n_times)
+        return quat, h, np.empty_like(h)
+
+    @pytest.mark.parametrize("ell_max", [-1, 0, 1, 9])
+    def test_invalid_ellmax(self, ell_max):
+        quat, _, _ = self._inputs(n_times=1)
+        h = np.empty((0, 1), dtype=np.complex128)
+        with pytest.raises(ValueError, match="ellMax must be between 2 and 8"):
+            _utils.rotate_waveform(quat, h, ell_max, h.copy())
+
+    def test_supported_upper_ellmax(self):
+        n_times = 2
+        quat = np.zeros((4, n_times), dtype=np.float64)
+        quat[0] = 1.0
+        h = np.arange(77 * n_times, dtype=np.complex128).reshape(77, n_times)
+        out = np.empty_like(h)
+        _utils.rotate_waveform(quat, h, 8, out)
+        np.testing.assert_allclose(out, h, atol=1e-12)
+
+    def test_read_only_output(self):
+        quat, h, out = self._inputs()
+        out.setflags(write=False)
+        with pytest.raises(ValueError, match="out must be writable"):
+            _utils.rotate_waveform(quat, h, 2, out)
+
+    @pytest.mark.parametrize("array_name", ["h", "out"])
+    def test_non_native_byte_order(self, array_name):
+        quat, h, out = self._inputs()
+        swapped_dtype = np.dtype(np.complex128).newbyteorder("S")
+        if array_name == "h":
+            h = h.astype(swapped_dtype)
+        else:
+            out = np.empty(out.shape, dtype=swapped_dtype)
+        with pytest.raises(TypeError, match="native-byte-order"):
+            _utils.rotate_waveform(quat, h, 2, out)
+
+    @pytest.mark.parametrize("array_name", ["h", "out"])
+    def test_misaligned_array(self, array_name):
+        quat, h, out = self._inputs()
+        target = h if array_name == "h" else out
+        buffer = bytearray(target.nbytes + 1)
+        misaligned = np.ndarray(
+            target.shape, dtype=np.complex128, buffer=buffer, offset=1
+        )
+        assert misaligned.flags.c_contiguous
+        assert not misaligned.flags.aligned
+        if array_name == "h":
+            h = misaligned
+        else:
+            out = misaligned
+        with pytest.raises(TypeError, match="aligned"):
+            _utils.rotate_waveform(quat, h, 2, out)
