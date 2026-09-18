@@ -1126,7 +1126,7 @@ static void hardcode_ell4(const double * restrict cv, const double * restrict sv
  *
  * Compute Wigner D-matrices D^ell_{m,mp}(q) for ell = 2..ellMax at N
  * quaternion time-samples.  Uses hardcoded polynomial formulas for
- * ell = 2, 3, 4 (via hc_ell2/3/4) and falls back to Horner evaluation
+ * ell = 2, 3, 4 (via hardcode_ell2/3/4) and falls back to Horner evaluation
  * with three-term ell-recurrence for ell > 4.
  *
  * Optionally performs a fused matrix-vector multiply for waveform
@@ -1176,7 +1176,7 @@ static void hardcode_ell4(const double * restrict cv, const double * restrict sv
  *
  * 4. For each ell, compute the real reduced d-matrix d_real(|a|,|b|)
  *    in the fundamental domain (mp >= 0, m + mp >= 0):
- *      ell <= 4 : hardcoded polynomial formulas (hc_ell2/3/4)
+ *      ell <= 4 : hardcoded polynomial formulas (hardcode_ell2/3/4)
  *      ell >  4 : Horner evaluation in R = s^2/c^2 for boundary (m,mp)
  *                 pairs, then three-term ell-recurrence for interior pairs.
  *
@@ -1193,8 +1193,8 @@ static void hardcode_ell4(const double * restrict cv, const double * restrict sv
  * Includes: log-factorial table, Cayley-Klein arrays, index arrays,
  * power tables, d-matrix recurrence buffers.  Freed before return.
  *
- * See also: wignerD_matrices_opt (same algorithm, no hardcoded ell<=4),
- *           hc_ell2, hc_ell3, hc_ell4 (hardcoded polynomial helpers).
+ * See also: hardcode_ell2, hardcode_ell3, hardcode_ell4
+ *           (hardcoded polynomial helpers).
  * ====================================================================
  */
 int wignerD_matrices(const double * restrict q, size_t n, int ellMax,
@@ -1444,7 +1444,7 @@ int wignerD_matrices(const double * restrict q, size_t n, int ellMax,
                     }
                 }
             } else {
-                /* ell > 4: general Horner + recurrence (same as wignerD_matrices_opt) */
+                /* ell > 4: general Horner + recurrence path */
                 for (int mp = 0; mp <= ell; ++mp) {
                     int m_start = (mp > 0) ? -mp : 0;
                     for (int m = m_start; m <= ell; ++m) {
