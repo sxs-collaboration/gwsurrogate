@@ -86,8 +86,6 @@ h: An array of waveform modes with shape (n_modes, N). The modes are ordered
 
 Returns: h_inertial, a similar array to h containing the inertial frame modes.
     """
-    quat = quatInv(quat)
-
     ellMax = {
             5: 2,
             12: 3,
@@ -98,15 +96,10 @@ Returns: h_inertial, a similar array to h containing the inertial frame modes.
             77: 8,
             }[len(h)]
 
-    matrices = _wignerD_matrices(quat, ellMax)
-
-    res = 0.*h
-    i=0
-    for ell in range(2, ellMax+1):
-        for m in range(-ell, ell+1):
-            for mp in range(-ell, ell+1):
-                res[i+m+ell] += matrices[ell-2][ell+m, ell+mp]*h[i+mp+ell]
-        i += 2*ell + 1
+    quat = np.ascontiguousarray(quat, dtype=np.float64)
+    h = np.ascontiguousarray(h, dtype=np.complex128)
+    res = np.empty_like(h)
+    _utils.rotate_waveform(quat, h, ellMax, res)
     return res
 
 def transformTimeDependentVector(quat, vec):
