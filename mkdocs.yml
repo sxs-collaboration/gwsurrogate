@@ -43,6 +43,7 @@ nav:
           - gwsurrogate.new.surrogate: "api/new/surrogate.md"
           - gwsurrogate.new.tidal_functions: "api/new/tidal_functions.md"
       - gwsurrogate.parametric_funcs: "api/parametric_funcs.md"
+      - gwsurrogate.precessing_utils._utils: "api/precessing_utils.md"
       - gwsurrogate.pycbc: "api/pycbc.md"
       - gwsurrogate.surrogate: "api/surrogate.md"
       - gwsurrogate.surrogateIO: "api/surrogateIO.md"
