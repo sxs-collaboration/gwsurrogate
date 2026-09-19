@@ -1699,13 +1699,13 @@ static PyObject *py_rotate_waveform(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_ValueError, "q must have shape (4, N)");
         return NULL;
     }
-    npy_intp N = PyArray_DIM(q_obj, 1);
+    const npy_intp N = PyArray_DIM(q_obj, 1);
 
     /* Number of modes in complete ell=2,...,ellMax blocks.  Each block is
      * assumed to contain every m=-ell,...,ell mode, so
      * sum_{ell=2}^{ellMax}(2*ell+1) = (ellMax+1)^2 - 4. */
-    int num_ells = ellMax - 1;
-    npy_intp n_modes = (ellMax + 1) * (ellMax + 1) - 4;
+    const int num_ells = ellMax - 1;
+    const npy_intp n_modes = (ellMax + 1) * (ellMax + 1) - 4;
 
     /* Validate h: shape (n_modes, N).  Raw C access requires native,
      * aligned, C-contiguous complex128 data. */
@@ -1783,10 +1783,10 @@ static PyObject *py_rotate_waveform(PyObject *self, PyObject *args)
      * squares through max_dim=2*ellMax+1 is
      * max_dim*(max_dim+1)*(max_dim+2)/6; subtract 1^2+3^2=10 because
      * the ell=0 and ell=1 blocks are not stored. */
-    size_t max_dim = 2 * (size_t)ellMax + 1;
-    size_t elems_per_time =
+    const size_t max_dim = 2 * (size_t)ellMax + 1;
+    const size_t elems_per_time =
         max_dim * (max_dim + 1) * (max_dim + 2) / 6 - 10;
-    size_t total_elems = (size_t)N * elems_per_time;
+    const size_t total_elems = (size_t)N * elems_per_time;
     mat_mem = (double complex *)malloc(total_elems * sizeof(double complex));
     if (!mat_mem) {
         Py_DECREF(q_arr);
