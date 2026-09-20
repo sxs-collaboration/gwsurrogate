@@ -10,6 +10,9 @@ in the surrogate_info tuple.
 
 (*) If your model will be available to pycbc, please also edit
 setup.py.
+
+(*) GitHub Actions hashes this file and test/download_regression_models.py to select its model cache.
+See .github/workflows/python-app.yml for cache selection; pull() verifies each model against its catalog MD5.
 """
 
 from __future__ import division # for python 2

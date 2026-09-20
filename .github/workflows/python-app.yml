@@ -37,13 +37,42 @@ jobs:
 #        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 #        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
 #        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
+    - name: Install gwsurrogate
       run: |
-        cd ..
-        pip install -e gwsurrogate
-        cd gwsurrogate
+        pip install -e .
         pwd
         pip list
-        python test/download_regression_models.py
+
+    - name: Restore cached surrogate models
+      id: cache-models
+      uses: actions/cache/restore@v4
+      with:
+        # Cache original data files, excluding backups and extracted directories.
+        path: |
+          gwsurrogate/surrogate_downloads/*.h5
+          gwsurrogate/surrogate_downloads/*.tar.gz
+        # hashFiles hashes both Python files' contents; any edit (including comments) changes the key.
+        # A new key allows saving updated models because existing cache entries cannot be overwritten.
+        # This selects the cache; catalog.pull() checks the actual model files against their MD5 hashes.
+        key: surrogate-models-v1-${{ runner.os }}-${{ hashFiles('gwsurrogate/catalog.py', 'test/download_regression_models.py') }}
+        # Restore an older cache if needed; pull() downloads only missing or mismatched models.
+        restore-keys: surrogate-models-v1-${{ runner.os }}-
+
+    # Always verify the model files, including after an exact cache hit.
+    - name: Download and verify surrogate models
+      run: python test/download_regression_models.py
+
+    # Save verified downloads before pytest so test failures do not discard them.
+    - name: Save verified surrogate models
+      if: steps.cache-models.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          gwsurrogate/surrogate_downloads/*.h5
+          gwsurrogate/surrogate_downloads/*.tar.gz
+        key: ${{ steps.cache-models.outputs.cache-primary-key }}
+
+    - name: Test with pytest
+      run: |
         pytest -v -s -k package_versions
         pytest
