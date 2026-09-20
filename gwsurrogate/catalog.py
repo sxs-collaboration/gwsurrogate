@@ -1,18 +1,16 @@
-""" Surrogate catalog. Information on all models available with gwsurrogate.
+"""Discover, download, and verify surrogate models available with gwsurrogate.
 
-NOTES: 
+Notes
+-----
+Many surrogate data files are hosted on Zenodo. A new record gives a file a new URL,
+even when its contents have not changed. Compare the file's MD5 hash with the value
+stored in its ``surrogate_info`` entry to check whether the contents match.
 
-(*) Many surrogate data files come from zenodo. When a new record is
-generated, a new URL will be too. However, the file contents may
-not be changed despite the new record. File similarity can be
-checked by computing the md5 hash and comparing with the value stored
-in the surrogate_info tuple. 
+When adding a model that will be available through PyCBC, also update ``setup.py``.
 
-(*) If your model will be available to pycbc, please also edit
-setup.py.
-
-(*) GitHub Actions hashes this file and test/download_regression_models.py to select its model cache.
-See .github/workflows/python-app.yml for cache selection; pull() verifies each model against its catalog MD5.
+GitHub Actions hashes this file and ``test/download_regression_models.py`` to select
+its model cache. See ``.github/workflows/python-app.yml`` for cache selection.
+The `pull` function verifies each model against its catalog MD5, including after a cache hit.
 """
 
 from __future__ import division # for python 2
@@ -229,7 +227,23 @@ _surrogate_world['BHPTNRSur1dq1e4'] = \
   '58a3a75e8fd18786ecc88cf98f694d4a')
 
 def _md5(filename):
-  """Compute a file's MD5 hash without loading the entire file into memory."""
+  """Compute a file's MD5 hash in chunks.
+
+  Parameters
+  ----------
+  filename : str or os.PathLike
+      Path to the file to read in binary mode.
+
+  Returns
+  -------
+  str
+      Hexadecimal MD5 digest of the file contents.
+
+  Raises
+  ------
+  OSError
+      If the file cannot be opened or read.
+  """
 
   hash_md5 = hashlib.md5()
   with open(filename, "rb") as f:
@@ -238,8 +252,35 @@ def _md5(filename):
   return hash_md5.hexdigest()
 
 def is_file_recent(filename):
-  """Check a local data file or archive against the MD5 recorded in this catalog.
-     No request is made to the model's download host."""
+  """Check whether a local model file matches its catalog checksum.
+
+  Parameters
+  ----------
+  filename : str or os.PathLike
+      Path to a local data file or archive whose filename appears in the catalog.
+
+  Returns
+  -------
+  bool
+      True if the file's MD5 matches the catalog checksum, otherwise False.
+
+  Raises
+  ------
+  ValueError
+      If the filename does not match any model in the catalog.
+  OSError
+      If the file cannot be opened or read.
+
+  See Also
+  --------
+  pull : Download or reuse a verified model file.
+  get_modelID_from_filename : Find catalog model IDs associated with a filename.
+
+  Notes
+  -----
+  The comparison uses the installed catalog; no request is made to the download host.
+  If multiple models share the filename, the first matching catalog entry is used.
+  """
 
   names = get_modelID_from_filename(filename)
   if not names:
@@ -247,7 +288,14 @@ def is_file_recent(filename):
   return _md5(filename) == _surrogate_world[names[0]].md5
 
 def download_path():
-  """return the default path for downloaded surrogates"""
+  """Return the default directory for downloaded surrogate models.
+
+  Returns
+  -------
+  str
+      Path to the ``surrogate_downloads`` directory inside the installed gwsurrogate
+      package, including a trailing slash. The directory is not created by this function.
+  """
 
   import gwsurrogate
   import os
@@ -255,7 +303,19 @@ def download_path():
   return gws_path+'/surrogate_downloads/'
 
 def list(verbose=False):
-  """show all known surrogates available for download"""
+  """Print the catalog of surrogate models available for download.
+
+  Parameters
+  ----------
+  verbose : bool, optional
+      If True, also print each model's URL, MD5 checksum, description, and references.
+      The default is False, which prints only model IDs.
+
+  Returns
+  -------
+  None
+      Model information is printed to standard output.
+  """
 
   for surr_key in _surrogate_world.keys():
     print(surr_key)
@@ -267,11 +327,25 @@ def list(verbose=False):
 
 
 def get_modelID_from_filename(filename):
-  """ From the model's filename (which could be a path),
-  return the model's unique ID as a list.
+  """Find the catalog model IDs associated with a filename.
 
-  If multiple models have the same datafile, all matching model ID tags
-  are returned. If no match is found, an empty list is returned. """
+  Parameters
+  ----------
+  filename : str or os.PathLike
+      Data file or archive name, optionally including its directory path.
+      The file does not need to exist.
+
+  Returns
+  -------
+  modelIDs : list of str
+      All matching model IDs in catalog order, including models that share a data file.
+      An empty list is returned if no model matches.
+
+  Notes
+  -----
+  Only the basename is compared with the filename in each catalog URL's path.
+  URL query parameters and fragments do not participate in the comparison.
+  """
 
   file_without_path = os.path.basename(filename)
   modelIDs = []
@@ -284,7 +358,34 @@ def get_modelID_from_filename(filename):
 
 
 def _unzip(surr_name,sdir=download_path()):
-  """Unzip a tar.gz surrogate, retaining the archive for checksum verification."""
+  """Extract a surrogate archive while retaining the original download.
+
+  Parameters
+  ----------
+  surr_name : str
+      Name of the ``.tar.gz`` archive in `sdir`.
+  sdir : str or os.PathLike, optional
+      Directory containing the archive and receiving the extracted files.
+      Defaults to `download_path`.
+
+  Returns
+  -------
+  str
+      Absolute path to the surrogate directory, named after the archive without
+      the ``.tar.gz`` suffix.
+
+  Raises
+  ------
+  tarfile.TarError
+      If the archive cannot be read or extraction fails with a tarfile error.
+  OSError
+      If the archive cannot be opened or extracted files cannot be written.
+
+  Notes
+  -----
+  The archive is retained for later checksum verification. Extraction does not
+  change the working directory. The caller is responsible for verifying the archive.
+  """
 
   sdir = os.path.abspath(sdir)
   with tarfile.open(os.path.join(sdir, surr_name), "r:gz") as t:
@@ -293,13 +394,65 @@ def _unzip(surr_name,sdir=download_path()):
   return os.path.join(sdir, surr_name[:-len('.tar.gz')])
 
 def pull(surr_name,sdir=download_path(),force=False):
-  """Ensure a verified local copy of surr_name and return its path.
-     The default download path is used if no sdir is supplied. Existing files
-     are reused when their MD5 matches this catalog, unless force=True.
-     Downloads are checked before replacing existing files, which are backed up.
-     HTTP or transfer errors are propagated; a checksum mismatch raises ValueError.
-     tar.gz archives are retained and extracted on every call, including reuse.
-     The returned path is the data file or the extracted surrogate directory."""
+  """Download or reuse a verified local surrogate model.
+
+  Parameters
+  ----------
+  surr_name : str
+      Model ID in the catalog. Use `list` to print the available IDs.
+  sdir : str or os.PathLike, optional
+      Directory for downloaded models. Defaults to `download_path` and is created
+      if needed when downloading a model.
+  force : bool, optional
+      If True, download the model even when the existing file matches its catalog
+      checksum. The new download must still pass verification. The default is False.
+
+  Returns
+  -------
+  str
+      Absolute path to the verified data file, or to the extracted surrogate
+      directory for a ``.tar.gz`` model.
+
+  Raises
+  ------
+  ValueError
+      If the model ID is unknown or the downloaded file's MD5 differs from the catalog.
+  requests.exceptions.RequestException
+      If an HTTP request or transfer fails.
+  OSError
+      If a local file cannot be read, written, backed up, or replaced.
+  tarfile.TarError
+      If the downloaded archive cannot be read or extracted by tarfile.
+
+  See Also
+  --------
+  list : Print available model IDs and metadata.
+  download_path : Get the default model download directory.
+  is_file_recent : Check an existing file against its catalog checksum.
+
+  Notes
+  -----
+  Existing files are reused when their MD5 matches the installed catalog, unless
+  `force` is True. Downloaded data is written to a temporary file and verified before
+  installation. An existing file is copied to a timestamped backup in ``sdir/backup``
+  before replacement. Failed downloads leave existing files untouched and temporary
+  downloads are removed.
+
+  For ``.tar.gz`` models, the checksum applies to the archive. The verified archive
+  is retained and extracted on every call, including reuse, without changing the
+  working directory.
+
+  Examples
+  --------
+  Download a model or reuse its verified local copy:
+
+  >>> from gwsurrogate import catalog
+  >>> path = catalog.pull('NRHybSur3dq8')  # doctest: +SKIP
+
+  Download a fresh copy into a chosen directory:
+
+  >>> path = catalog.pull('NRHybSur3dq8', sdir='models', force=True)  # doctest: +SKIP
+  """
 
   if surr_name not in _surrogate_world:
     raise ValueError("No surrogate package exists")
