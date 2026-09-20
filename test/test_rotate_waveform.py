@@ -2,6 +2,7 @@
 Unit tests for rotateWaveform.
 
 Tests:
+  - C implementation from PR #90 agrees with the previous Python implementation
   - Identity quaternion leaves waveform unchanged
   - Shape and dtype preserved
   - Unitarity: rotating by q then q^{-1} recovers original
@@ -11,7 +12,11 @@ Tests:
 import numpy as np
 import pytest
 
-from gwsurrogate.new.precessing_surrogate import rotateWaveform, quatInv
+from gwsurrogate.new.precessing_surrogate import (
+    _wignerD_matrices,
+    quatInv,
+    rotateWaveform,
+)
 from gwsurrogate.precessing_utils import _utils
 
 
@@ -27,6 +32,53 @@ def _random_waveform(n_modes, n_times, rng):
     return rng.standard_normal((n_modes, n_times)) + 1j * rng.standard_normal(
         (n_modes, n_times)
     )
+
+
+def _rotate_waveform_python_reference(quat, h):
+    """Reference implementation replaced by C in gwsurrogate PR #90.
+
+    https://github.com/sxs-collaboration/gwsurrogate/pull/90
+    """
+    quat = quatInv(quat)
+
+    ell_max = {
+        5: 2,
+        12: 3,
+        21: 4,
+        32: 5,
+        45: 6,
+        60: 7,
+        77: 8,
+    }[len(h)]
+
+    matrices = _wignerD_matrices(quat, ell_max)
+
+    result = np.zeros_like(h)
+    offset = 0
+    for ell in range(2, ell_max + 1):
+        for m in range(-ell, ell + 1):
+            for mp in range(-ell, ell + 1):
+                result[offset + m + ell] += (
+                    matrices[ell - 2][ell + m, ell + mp]
+                    * h[offset + mp + ell]
+                )
+        offset += 2 * ell + 1
+
+    return result
+
+
+@pytest.mark.parametrize("n_modes", [5, 12, 21, 32, 45, 60, 77])
+def test_matches_python_reference(n_modes):
+    """The fused C path from PR #90 agrees with the previous Python rotation."""
+    rng = np.random.default_rng(20260920)
+    n_times = 8
+    quat = _random_unit_quaternion(n_times, rng)
+    h = _random_waveform(n_modes, n_times, rng)
+
+    expected = _rotate_waveform_python_reference(quat.copy(), h)
+    actual = rotateWaveform(quat.copy(), h)
+
+    np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
 
 
 class TestRotateWaveformIdentity:

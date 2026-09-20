@@ -1604,6 +1604,9 @@ PyObject *py_wignerD_matrices(PyObject *self, PyObject *args)
         return NULL;
     }
 
+    /* q is read below through a raw double pointer.  Convert it to native,
+     * aligned, C-contiguous float64 so direct extension calls with another
+     * dtype or memory layout cannot be misinterpreted. */
     PyArrayObject *q_arr = (PyArrayObject *)PyArray_ContiguousFromAny(
         (PyObject *)q_obj, NPY_DOUBLE, 2, 2);
     if (!q_arr) return NULL;
@@ -1749,10 +1752,16 @@ static PyObject *py_rotate_waveform(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    /* Make a mutable copy of q for in-place quaternion inverse */
+    /* Convert q to native, aligned, C-contiguous float64 before accessing
+     * its buffer through a double pointer.  PyArray_NewCopy below guarantees
+     * a C-contiguous copy but preserves its input dtype, so it cannot replace
+     * this conversion for direct extension calls with a non-float64 q. */
     PyArrayObject *q_tmp = (PyArrayObject *)PyArray_ContiguousFromAny(
         (PyObject *)q_obj, NPY_DOUBLE, 2, 2);
     if (!q_tmp) return NULL;
+
+    /* Quaternion inversion is in-place, so use an independent mutable copy
+     * rather than risk modifying q_obj when q_tmp shares its data. */
     PyArrayObject *q_arr = (PyArrayObject *)PyArray_NewCopy(q_tmp, NPY_CORDER);
     Py_DECREF(q_tmp);
     if (!q_arr) return NULL;
