@@ -41,11 +41,15 @@ THE SOFTWARE.
 """
 
 import os
+import hashlib
 import requests
+import shutil
 from collections import namedtuple
-from time import gmtime, strftime
+from datetime import datetime, timezone
 from glob import glob
 import tarfile
+import tempfile
+from urllib.parse import urlsplit
 
 ### Naming convention: dictionary KEY should match file name KEY.tar.gz ###
 surrogate_info = namedtuple('surrogate_info', ['url', 'desc', 'refs', 'md5'])
@@ -221,32 +225,23 @@ _surrogate_world['BHPTNRSur1dq1e4'] = \
   '''https://arxiv.org/abs/2204.01972''',
   '58a3a75e8fd18786ecc88cf98f694d4a')
 
-# TODO: test function, and then use it whenever a file is loaded
+def _md5(filename):
+  """Compute a file's MD5 hash without loading the entire file into memory."""
+
+  hash_md5 = hashlib.md5()
+  with open(filename, "rb") as f:
+    for chunk in iter(lambda: f.read(1024*1024), b""):
+      hash_md5.update(chunk)
+  return hash_md5.hexdigest()
+
 def is_file_recent(filename):
-  """ Check local hdf5 file's hash against most recent one on Zenodo. """
-
-  import hashlib
-
-  def md5(fname):
-    """ Compute has from file. code taken from
-    https://stackoverflow.com/questions/3431825/generating-an-md5-checksum-of-a-file"""
-    hash_md5 = hashlib.md5()
-    with open(fname, "rb") as f:
-      for chunk in iter(lambda: f.read(4096), b""):
-        hash_md5.update(chunk)
-    return hash_md5.hexdigest()
-
-  file_hash = md5(filename)
+  """Check a local data file or archive against the MD5 recorded in this catalog.
+     No request is made to the model's download host."""
 
   names = get_modelID_from_filename(filename)
-  modelID = names[0]
-  zenodo_current_hash = _surrogate_world[modelID].md5
-
-  if file_hash != zenodo_current_hash:
-    return False
-    #raise AttributeError("%s out of date.\n Please download the current version"%filename)
-  else:
-    return True
+  if not names:
+    raise ValueError("No surrogate package matches %s"%filename)
+  return _md5(filename) == _surrogate_world[names[0]].md5
 
 def download_path():
   """return the default path for downloaded surrogates"""
@@ -273,71 +268,84 @@ def get_modelID_from_filename(filename):
   return the model's unique ID as a list.
 
   If multiple models have the same datafile, all matching model ID tags
-  are returned. If no match if found, and empty list is returned. """
+  are returned. If no match is found, an empty list is returned. """
 
-  file_without_path = filename.split('/')[-1]
+  file_without_path = os.path.basename(filename)
   modelIDs = []
   for modelID in _surrogate_world.keys():
     url = _surrogate_world[modelID].url
-    if url.find(file_without_path) >=0:
+    if os.path.basename(urlsplit(url).path) == file_without_path:
       modelIDs.append(modelID)
   return modelIDs
 
 
 
 def _unzip(surr_name,sdir=download_path()):
-  """unzip a tar.gz surrogate and remove the tar.gz file"""
-
-  os.chdir(sdir)
-  #os.system('tar -xvzf '+surr_name)
-  #os.remove(surr_name)
-  with tarfile.open(surr_name, "r:gz") as t:
-      t.extractall()   # extracts into the current directory
-
-  return sdir+surr_name.split('.')[0]
-
-def pull(surr_name,sdir=download_path()):
-  """pass a valid surr_name from the repo list and download location sdir.
-     The default path is used if no location supplied. tar.gz surrogates
-     are automatically unziped. The new surrogate path is returned."""
+  """Unzip a tar.gz surrogate, retaining the archive for checksum verification."""
 
   sdir = os.path.abspath(sdir)
-  if surr_name in _surrogate_world:
-    surr_url = _surrogate_world[surr_name].url
-    fname = os.path.basename(surr_url)
+  with tarfile.open(os.path.join(sdir, surr_name), "r:gz") as t:
+    t.extractall(path=sdir)
 
-    # If file already exists, move it to backup dir with time stamp
-    if os.path.isfile('%s/%s'%(sdir, fname)):
-        timestamp=strftime("%Y%b%d_%Hh:%Mm:%Ss", gmtime())
-        backup_fname = '%s_%s'%(timestamp, fname)
-        backup_dir = '%s/backup'%(sdir)
-        os.system('mkdir -p %s'%backup_dir)
-        print('\n%s file exists, moving to %s/%s.'%(fname, backup_dir, \
-            backup_fname))
-        os.system('mv %s/%s %s/%s'%(sdir, fname, backup_dir, backup_fname))
-        number_of_backup_files = glob('%s/*_%s'%(backup_dir, fname))
-        if len(number_of_backup_files) > 5:
-            print('There are a lot of backup files in %s, consider removing'
-                ' some.'%backup_dir)
+  return os.path.join(sdir, surr_name[:-len('.tar.gz')])
 
-    # download the surrogate
-    os.makedirs(sdir, exist_ok=True) # Ensure the target directory exists (mimicking wget's --directory-prefix functionality)
-    filename = surr_url.split("/")[-1]
-    output_path = os.path.join(sdir, filename)
-    with requests.get(surr_url, stream=True) as r, open(output_path, "wb") as f:
-      r.raise_for_status()
-      f.writelines(r.iter_content(chunk_size=8192))
-    #os.system('wget -q --directory-prefix='+sdir+' '+surr_url)
-  else:
+def pull(surr_name,sdir=download_path(),force=False):
+  """Ensure a verified local copy of surr_name and return its path.
+     The default download path is used if no sdir is supplied. Existing files
+     are reused when their MD5 matches this catalog, unless force=True.
+     Downloads are checked before replacing existing files, which are backed up.
+     HTTP or transfer errors are propagated; a checksum mismatch raises ValueError.
+     tar.gz archives are retained and extracted on every call, including reuse.
+     The returned path is the data file or the extracted surrogate directory."""
+
+  if surr_name not in _surrogate_world:
     raise ValueError("No surrogate package exists")
 
-  # deduce the surrogate file name and extension type
-  # one can directly load a surrogate from surr_path
-  file_name = surr_url.split('/')[-1]
-  if file_name.split('.')[1] == 'tar': # assumed to be *.h5 or *.tar.gz
-    surr_path = _unzip(file_name,sdir)
+  info = _surrogate_world[surr_name]
+  sdir = os.path.abspath(sdir)
+  fname = os.path.basename(urlsplit(info.url).path)
+  output_path = os.path.join(sdir, fname)
+
+  if not force and os.path.isfile(output_path) and _md5(output_path) == info.md5:
+    print("Reusing model %s at %s (MD5 matches catalog)."%(surr_name, output_path))
   else:
-    surr_path = sdir+'/'+file_name
+    print("Downloading model %s ..."%surr_name)
+    os.makedirs(sdir, exist_ok=True)
+    temp_path = None
+    try:
+      # Keep incomplete or incorrect downloads separate from the installed file.
+      hash_md5 = hashlib.md5()
+      with tempfile.NamedTemporaryFile(dir=sdir, prefix=fname+'.', suffix='.part', delete=False) as f:
+        temp_path = f.name
+        with requests.get(info.url, stream=True) as r:
+          r.raise_for_status()
+          for chunk in r.iter_content(chunk_size=1024*1024):
+            f.write(chunk)
+            hash_md5.update(chunk)
 
-  return surr_path
+      file_hash = hash_md5.hexdigest()
+      if file_hash != info.md5:
+        raise ValueError("MD5 mismatch for %s: expected %s, downloaded %s"%(surr_name, info.md5, file_hash))
 
+      # Preserve the existing file until its verified replacement is installed.
+      if os.path.isfile(output_path):
+        timestamp = datetime.now(timezone.utc).strftime("%Y%b%d_%Hh%Mm%Ss_%f")
+        backup_fname = '%s_%s'%(timestamp, fname)
+        backup_dir = os.path.join(sdir, 'backup')
+        os.makedirs(backup_dir, exist_ok=True)
+        backup_path = os.path.join(backup_dir, backup_fname)
+        print('\n%s file exists, backing up to %s.'%(fname, backup_path))
+        shutil.copy2(output_path, backup_path)
+        number_of_backup_files = glob(os.path.join(backup_dir, '*_'+fname))
+        if len(number_of_backup_files) > 5:
+          print('There are a lot of backup files in %s, consider removing some.'%backup_dir)
+
+      os.replace(temp_path, output_path)
+      print("Downloaded model %s to %s (MD5 matches catalog)."%(surr_name, output_path))
+    finally:
+      if temp_path is not None and os.path.exists(temp_path):
+        os.remove(temp_path)
+
+  if fname.endswith('.tar.gz'):
+    return _unzip(fname,sdir)
+  return output_path
