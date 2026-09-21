@@ -205,7 +205,8 @@ These time derivatives are given to the AB4 ODE solver.
 
         self._get_fit_params = get_fit_params
         self._get_fit_settings = get_fit_settings
-        self._fit_settings = get_fit_settings()
+        self._fit_settings = get_fit_settings()   # cached tuple (Opt 1)
+        self._fit_params_mode = getattr(get_fit_params, '_cmode', -1)
         self.omega_ref_max_model = omega_ref_max_model
 
         self.fit_data = []
@@ -263,10 +264,22 @@ These time derivatives are given to the AB4 ODE solver.
 
 
 
+    def _compute_q_consts(self, q):
+        """Compute q-dependent constants for C fit_params transform."""
+        if self._fit_params_mode == 0:
+            eta = q / (1.0 + q)**2
+            return np.array([
+                np.log(q),
+                q / (1.0 + q),
+                1.0 / (1.0 + q),
+                38.0 * eta / 113.0,
+                1.0 - 76.0 * eta / 113.0,
+            ])
+        return np.zeros(5)
+
     def get_time_deriv_from_index(self, i0, q, y):
         # Setup fit variables
         x = _utils.get_ds_fit_x(y, q)
-        fit_params = self._get_fit_params(x)
 
         # Reference implementation for the fused C path below:
         #
@@ -281,9 +294,19 @@ These time derivatives are given to the AB4 ODE solver.
 
         # Fused: evaluate 9 fits + assemble dydt in one C call
         q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder = self._fit_settings
-        dydt = _utils.eval_fit_batch_dydt(
-            self.fit_data_batch[i0], fit_params, y,
-            q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
+
+        if self._fit_params_mode >= 0:
+            # C-side transform: skip Python get_fit_params call
+            dydt = _utils.eval_fit_batch_dydt(
+                self.fit_data_batch[i0], x, y,
+                q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder,
+                self._q_consts, self._fit_params_mode)
+        else:
+            # Legacy path: Python transform
+            fit_params = self._get_fit_params(x)
+            dydt = _utils.eval_fit_batch_dydt(
+                self.fit_data_batch[i0], fit_params, y,
+                q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder)
 
         return dydt
 
@@ -429,6 +452,10 @@ L = len(self.t), and these returned arrays are sampled at self.t
         maxNorm = max(normA, normB)
         if maxNorm > 1.001:
             raise Exception("Got a spin magnitude of %s > 1.0"%(maxNorm))
+
+        # Pre-compute q-dependent constants for C fit_params transform
+        if self._fit_params_mode >= 0:
+            self._q_consts = self._compute_q_consts(float(q))
 
         # Get reference time
         if omega_ref is not None:
@@ -864,6 +891,122 @@ class CoorbitalWaveformSurrogate:
                             tmp_data = _extract_component_data(group)
                             self.data['%s_%s_%s%s'%(ell, m, reim, pm)] = tmp_data
 
+        # Detect fit_params_mode and pack component data for C path
+        self._fit_params_mode = getattr(get_fit_params, '_cmode', -1)
+        if self._fit_params_mode >= 0:
+            self._pack_component_data()
+
+    def _pack_component_data(self):
+        """Pack variable-length per-component data into flat arrays for C."""
+        comp_keys = []
+        comp_ell_list = []
+        mode_groups = []
+
+        for ell in range(2, self.ellMax + 1):
+            if (ell, 0) in self.mode_list:
+                comp_re_idx = len(comp_keys)
+                comp_keys.append('%s_0_real' % ell)
+                comp_im_idx = len(comp_keys)
+                comp_keys.append('%s_0_imag' % ell)
+                comp_ell_list += [ell, ell]
+                mode_idx = ell * (ell + 1) - 4
+                mode_groups.append([ell, 0, mode_idx, comp_re_idx,
+                                    comp_im_idx, 0, 0, 0])
+
+            for m in range(1, ell + 1):
+                if (ell, m) in self.mode_list:
+                    comp_rep_idx = len(comp_keys)
+                    comp_keys.append('%s_%s_Re+' % (ell, m))
+                    comp_rem_idx = len(comp_keys)
+                    comp_keys.append('%s_%s_Re-' % (ell, m))
+                    comp_imp_idx = len(comp_keys)
+                    comp_keys.append('%s_%s_Im+' % (ell, m))
+                    comp_imm_idx = len(comp_keys)
+                    comp_keys.append('%s_%s_Im-' % (ell, m))
+                    comp_ell_list += [ell, ell, ell, ell]
+                    idx_pos = ell * (ell + 1) - 4 + m
+                    idx_neg = ell * (ell + 1) - 4 - m
+                    mode_groups.append([ell, m, idx_pos, idx_neg,
+                                        comp_rep_idx, comp_rem_idx,
+                                        comp_imp_idx, comp_imm_idx])
+
+        # Flatten per-component data into contiguous arrays
+        comp_n_nodes_list = []
+        all_node_indices_list = []
+        all_coefs_list = []
+        all_orders_list = []
+        all_EI_basis_list = []
+        node_n_coefs_list = []
+
+        for key in comp_keys:
+            d = self.data[key]
+            nn = len(d['nodeIndices'])
+            comp_n_nodes_list.append(nn)
+            all_node_indices_list.append(
+                    np.asarray(d['nodeIndices'], dtype=np.int32))
+            all_EI_basis_list.append(d['EI_basis'])
+            for j in range(nn):
+                nc = len(d['coefs'][j])
+                node_n_coefs_list.append(nc)
+                all_coefs_list.append(d['coefs'][j])
+                # dtype 'l' is C long, which is what eval_one_fit reads.
+                all_orders_list.append(
+                        np.asarray(d['orders'][j][:nc], dtype='l'))
+
+        n_comps = len(comp_keys)
+        comp_n_nodes = np.array(comp_n_nodes_list, dtype=np.int32)
+        comp_node_offset = np.zeros(n_comps, dtype=np.int32)
+        if n_comps > 1:
+            comp_node_offset[1:] = np.cumsum(comp_n_nodes[:-1])
+
+        node_n_coefs = np.array(node_n_coefs_list, dtype=np.int32)
+        node_coef_offset = np.zeros(len(node_n_coefs_list), dtype=np.int32)
+        if len(node_n_coefs_list) > 1:
+            node_coef_offset[1:] = np.cumsum(node_n_coefs[:-1])
+
+        all_orders = np.ascontiguousarray(np.vstack(all_orders_list))
+
+        # The C loop indexes its power tables directly with these orders, so a
+        # model whose orders exceed the fit settings would read past them.
+        # Checking here keeps the check off the per-evaluation path.
+        q_max_bfOrder, chi_max_bfOrder = self._fit_settings[2:4]
+        if all_orders.size:
+            if all_orders[:, 0].min() < 0 or \
+                    all_orders[:, 0].max() > q_max_bfOrder:
+                raise ValueError("Basis function orders in q must lie in "
+                        "[0, %d]" % q_max_bfOrder)
+            if all_orders[:, 1:].min() < 0 or \
+                    all_orders[:, 1:].max() > chi_max_bfOrder:
+                raise ValueError("Basis function orders in chi must lie in "
+                        "[0, %d]" % chi_max_bfOrder)
+
+        self._packed = {
+            'comp_n_nodes': comp_n_nodes,
+            'comp_node_offset': comp_node_offset,
+            'comp_ell': np.array(comp_ell_list, dtype=np.int32),
+            'all_node_indices': np.concatenate(all_node_indices_list),
+            'node_n_coefs': node_n_coefs,
+            'node_coef_offset': node_coef_offset,
+            'all_coefs': np.ascontiguousarray(
+                    np.concatenate(all_coefs_list)),
+            'all_orders': all_orders,
+            'all_EI_basis': np.ascontiguousarray(
+                    np.vstack(all_EI_basis_list)),
+            'mode_info': np.array(mode_groups, dtype=np.int32),
+        }
+
+    def _compute_q_consts(self, q):
+        """Compute q-dependent constants for C fit_params transform."""
+        if self._fit_params_mode == 0:
+            eta = q / (1.0 + q)**2
+            return np.array([
+                np.log(q),
+                q / (1.0 + q),
+                1.0 / (1.0 + q),
+                38.0 * eta / 113.0,
+                1.0 - 76.0 * eta / 113.0,
+            ])
+        return np.zeros(5)
 
     def __call__(self, q, chiA, chiB, ellMax=4):
         """
@@ -873,6 +1016,30 @@ chiA, chiB: The time-dependent spin in the coorbital frame. These should have
             shape (N, 3) where N = len(t_coorb)
 ellMax: The maximum ell mode to evaluate.
         """
+        if self._fit_params_mode >= 0:
+            return self._call_c(q, chiA, chiB, ellMax)
+        return self._call_python(q, chiA, chiB, ellMax)
+
+    def _call_c(self, q, chiA, chiB, ellMax):
+        nmodes = ellMax * ellMax + 2 * ellMax - 3
+        q_fit_offset, q_fit_slope, q_max_bfOrder, chi_max_bfOrder \
+            = self._fit_settings
+        q_consts = self._compute_q_consts(float(q))
+        p = self._packed
+        return _utils.eval_coorb_modes(
+            float(q),
+            np.ascontiguousarray(chiA, dtype=np.float64),
+            np.ascontiguousarray(chiB, dtype=np.float64),
+            p['comp_n_nodes'], p['comp_node_offset'], p['comp_ell'],
+            p['all_node_indices'], p['node_n_coefs'],
+            p['node_coef_offset'], p['all_coefs'],
+            p['all_orders'], p['all_EI_basis'],
+            p['mode_info'], q_consts,
+            nmodes, ellMax, self._fit_params_mode,
+            q_fit_offset, q_fit_slope,
+            q_max_bfOrder, chi_max_bfOrder)
+
+    def _call_python(self, q, chiA, chiB, ellMax):
         nmodes = ellMax*ellMax + 2*ellMax - 3
         modes = np.zeros((nmodes, len(self.t)), dtype=complex)
 
@@ -886,7 +1053,6 @@ ellMax: The maximum ell mode to evaluate.
                 re = self._eval_comp(self.data['%s_0_real'%(ell)], q, chiA, chiB)
                 im = self._eval_comp(self.data['%s_0_imag'%(ell)], q, chiA, chiB)
                 modes[ell*(ell+1) - 4] = re + 1.j*im
-                #print("evaluation ell=%s, m=0"%ell)
 
             # NOTE: similar to previous for-loop, skipping means "set mode to zero".
             for m in range(1, ell+1):
@@ -898,7 +1064,6 @@ ellMax: The maximum ell mode to evaluate.
                     h_posm, h_negm = _assemble_mode_pair(rep, rem, imp, imm)
                     modes[ell*(ell+1) - 4 + m] = h_posm
                     modes[ell*(ell+1) - 4 - m] = h_negm
-                    #print("evaluation ell=%s, m=%s"%(ell,m))
 
         return modes
 
