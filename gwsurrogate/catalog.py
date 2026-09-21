@@ -227,7 +227,7 @@ _surrogate_world['BHPTNRSur1dq1e4'] = \
   '58a3a75e8fd18786ecc88cf98f694d4a')
 
 def _md5(filename):
-  """Compute a file's MD5 hash in chunks.
+  """Compute a file's MD5 hash using hashlib.file_digest.
 
   Parameters
   ----------
@@ -245,11 +245,8 @@ def _md5(filename):
       If the file cannot be opened or read.
   """
 
-  hash_md5 = hashlib.md5()
   with open(filename, "rb") as f:
-    for chunk in iter(lambda: f.read(1024*1024), b""):
-      hash_md5.update(chunk)
-  return hash_md5.hexdigest()
+    return hashlib.file_digest(f, "md5").hexdigest()
 
 def is_file_recent(filename):
   """Check whether a local model file matches its catalog checksum.
