@@ -15,6 +15,10 @@ build:
       - git config --global url."https://github.com/".insteadOf "git@github.com:"
       - git submodule init
       - git submodule update
+    pre_build:
+      # Build the external modules in-place. Otherwise, when mkdocs is run from
+      # within this directory, it won't be able to load the external modules
+      - python setup.py build_ext --inplace
 
 # Build documentation with Mkdocs
 mkdocs:

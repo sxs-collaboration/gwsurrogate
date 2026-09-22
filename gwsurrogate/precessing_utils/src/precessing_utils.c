@@ -60,8 +60,54 @@ static struct module_state _state;
 static PyObject *py_rotate_waveform(PyObject *self, PyObject *args);
 
 /* ==== Setup the python methods table === */
+
+/* Forward declarations of docstrings */
+
+char eval_fit_docstring[] = (
+    "eval_fit(bf_orders, coefs, x, q_fit_offset, q_fit_slope, "
+    "q_max_bfOrder, chi_max_bfOrder)\n"
+    "--\n\n"
+    "Evaluate a single parametric fit.\n"
+    "\n"
+    "Computes the fit evaluation by summing up coefficients multiplied by 7 \n"
+    "basis functions, each evaluated at one component of x.\n"
+    "\n"
+    "Parameters\n"
+    "----------\n"
+    "bf_orders : ndarray of int\n"
+    "    A 2d integer numpy array with shape (n_coefs, 7).\n"
+    "    Gives the basis function orders for each coefficient\n"
+    "    and each parameter.\n"
+    "\n"
+    "coefs : ndarray of float\n"
+    "    A 1d float numpy array with length n_coefs.\n"
+    "    Contains the fit coefficients.\n"
+    "\n"
+    "x : ndarray of float\n"
+    "    A 1d float numpy array with length 7.\n"
+    "    Gives the parameters at which the fit should be evaluated.\n"
+    "\n"
+    "q_fit_offset : float\n"
+    "    Gives the offset for linear transformation\n"
+    "    from q parameter to [-1,1].\n"
+    "\n"
+    "q_fit_slope : float\n"
+    "    Gives the slope for linear transformation\n"
+    "    from q parameter to [-1,1].\n"
+    "\n"
+    "q_max_bfOrder : int\n"
+    "    Max basis function order for the q parameter.\n"
+    "\n"
+    "chi_max_bfOrder : int\n"
+    "    Max basis function order for the chi parameters.\n"
+    "\n"
+    "Returns\n"
+    "-------\n"
+    "double\n"
+    "    The fit evaluation.\n");
+
 static PyMethodDef _utils_methods[] = {
-    {"eval_fit", eval_fit, METH_VARARGS},
+    {"eval_fit", eval_fit, METH_VARARGS, eval_fit_docstring},
     {"eval_fit_batch", eval_fit_batch, METH_VARARGS},
     {"eval_fit_batch_dydt", eval_fit_batch_dydt, METH_VARARGS},
     {"normalize_y", normalize_y, METH_VARARGS},
@@ -73,7 +119,7 @@ static PyMethodDef _utils_methods[] = {
     {"coorbital_to_inertial_in_place", coorbital_to_inertial_in_place, METH_VARARGS},
     {"wignerD_matrices", py_wignerD_matrices, METH_VARARGS},
     {"rotate_waveform", py_rotate_waveform, METH_VARARGS},
-    {NULL, NULL} /* Marks the end of this structure */
+    {NULL, NULL, 0, NULL} /* Marks the end of this structure */
 };
 
 #if PY_MAJOR_VERSION >= 3
