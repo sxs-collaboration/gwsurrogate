@@ -2,6 +2,12 @@ site_name: gwsurrogate
 
 repo_url: https://github.com/sxs-collaboration/gwsurrogate
 
+# Old nbformat v3 notebook, which mkdocs-jupyter cannot read;
+# draft model pages awaiting review
+exclude_docs: |
+  developer_notebooks/H5_overview.ipynb
+  models/drafts/
+
 plugins:
   - search
   - mkdocs-jupyter:
@@ -19,8 +25,15 @@ nav:
   - Home: "index.md"
   - Models:
       - "models/index.md"
-      - "models/NRSur7dq4.md"
       - "models/NRSur7dq4v2.md"
+      - "models/NRSur7dq4.md"
+      - "models/SEOBNRv4PHMSur.md"
+      - "models/NRHybSur3dq8.md"
+      - "models/NRHybSur3dq8_CCE.md"
+      - "models/NRHybSur2dq15.md"
+      - "models/NRHybSur3dq8Tidal.md"
+      - "models/BHPTNRSur1dq1e4.md"
+      - "models/EMRISur1dq1e4.md"
   - Tutorials:
       - "tutorial/index.md"
       - "tutorial/website/NRSur7dq4.ipynb"
